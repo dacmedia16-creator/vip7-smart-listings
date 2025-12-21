@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X, Loader2 } from 'lucide-react';
+import { SlidersHorizontal, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
-import { getFinalidadeCode, formatPropertyValue } from '@/services/imoviewApi';
+import { getFinalidadeCode } from '@/services/imoviewApi';
 
 export default function Imoveis() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,6 +21,7 @@ export default function Imoveis() {
   const bairro = searchParams.get('bairro') || '';
   const condominioCode = searchParams.get('condominioCode') || '';
   const ordenar = searchParams.get('ordenar') || 'recentes';
+  const paginaAtual = Number(searchParams.get('pagina')) || 1;
 
   const finalidadeCode = getFinalidadeCode(finalidade);
 
@@ -28,6 +29,8 @@ export default function Imoveis() {
   const { data: cidades = [] } = useCidades(finalidadeCode);
   const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
   const { data: condominios = [] } = useCondominios(cidade || undefined, finalidadeCode);
+
+  const ITEMS_PER_PAGE = 20;
 
   // Build filters for API call
   const apiFilters = {
@@ -39,10 +42,26 @@ export default function Imoveis() {
     valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
     valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
-    limite: 20, // API Imoview permite no máximo 20 registros por página
+    limite: ITEMS_PER_PAGE,
+    pagina: paginaAtual,
   };
 
   const { data: properties = [], isLoading, error } = useImoveis(apiFilters);
+
+  // Determina se há mais páginas (se retornou exatamente o limite, provavelmente há mais)
+  const hasMorePages = properties.length === ITEMS_PER_PAGE;
+  const hasPreviousPage = paginaAtual > 1;
+
+  const goToPage = (page: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (page > 1) {
+      newParams.set('pagina', String(page));
+    } else {
+      newParams.delete('pagina');
+    }
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Reset bairro when cidade changes
   useEffect(() => {
@@ -68,6 +87,15 @@ export default function Imoveis() {
     setSearchParams(new URLSearchParams());
     setPriceRange([0, 10000000]);
   };
+
+  // Reset página quando filtros mudam
+  useEffect(() => {
+    if (paginaAtual > 1) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('pagina');
+      setSearchParams(newParams);
+    }
+  }, [finalidade, tipo, cidade, bairro, condominioCode, ordenar]);
 
   const getPageTitle = () => {
     const parts = [];
@@ -285,17 +313,48 @@ export default function Imoveis() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : properties.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {properties.map((property, index) => (
-                    <div
-                      key={property.codigo}
-                      className="animate-slide-up"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <PropertyCard property={property} />
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {properties.map((property, index) => (
+                      <div
+                        key={property.codigo}
+                        className="animate-slide-up"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <PropertyCard property={property} />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {(hasPreviousPage || hasMorePages) && (
+                    <div className="flex items-center justify-center gap-4 mt-12">
+                      <Button
+                        variant="outline"
+                        onClick={() => goToPage(paginaAtual - 1)}
+                        disabled={!hasPreviousPage}
+                        className="gap-2"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Anterior
+                      </Button>
+                      
+                      <span className="px-4 py-2 rounded-lg bg-secondary text-foreground font-medium">
+                        Página {paginaAtual}
+                      </span>
+                      
+                      <Button
+                        variant="outline"
+                        onClick={() => goToPage(paginaAtual + 1)}
+                        disabled={!hasMorePages}
+                        className="gap-2"
+                      >
+                        Próxima
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-20">
                   <p className="text-xl text-muted-foreground mb-4">
