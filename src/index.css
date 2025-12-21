@@ -2,92 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 95%;
+    --background: 220 15% 4%;
+    --foreground: 40 20% 95%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
+    --card: 220 15% 6%;
+    --card-foreground: 40 20% 95%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 220 15% 6%;
+    --popover-foreground: 40 20% 95%;
 
-    --primary: 43 74% 49%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 38 90% 55%;
+    --primary-foreground: 220 15% 4%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 220 15% 10%;
+    --secondary-foreground: 40 20% 95%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 220 15% 12%;
+    --muted-foreground: 220 10% 55%;
 
-    --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 38 90% 55%;
+    --accent-foreground: 220 15% 4%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive-foreground: 40 20% 95%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 15%;
-    --ring: 43 74% 49%;
+    --border: 220 15% 15%;
+    --input: 220 15% 12%;
+    --ring: 38 90% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Custom tokens */
-    --gold: 43 74% 49%;
-    --gold-light: 43 74% 60%;
-    --gold-dark: 43 74% 40%;
-    --graphite: 0 0% 10%;
-    --graphite-light: 0 0% 15%;
-    --graphite-dark: 0 0% 5%;
+    /* Luxury tokens */
+    --gold: 38 90% 55%;
+    --gold-light: 40 85% 65%;
+    --gold-dark: 36 85% 45%;
+    --champagne: 40 30% 85%;
+    --onyx: 220 15% 8%;
+    --charcoal: 220 12% 12%;
+    --platinum: 220 10% 75%;
 
-    /* Gradients */
-    --gradient-gold: linear-gradient(135deg, hsl(43, 74%, 49%), hsl(43, 74%, 60%));
-    --gradient-dark: linear-gradient(180deg, hsl(0, 0%, 8%), hsl(0, 0%, 5%));
-    --gradient-hero: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%);
+    /* Premium Gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(38, 90%, 55%) 0%, hsl(40, 85%, 65%) 50%, hsl(38, 90%, 55%) 100%);
+    --gradient-gold-shine: linear-gradient(90deg, transparent 0%, hsla(40, 85%, 65%, 0.4) 50%, transparent 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(220, 15%, 6%) 0%, hsl(220, 15%, 4%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsla(220, 15%, 4%, 0.4) 0%, hsla(220, 15%, 4%, 0.95) 100%);
+    --gradient-card: linear-gradient(145deg, hsla(220, 15%, 10%, 0.8) 0%, hsla(220, 15%, 6%, 0.9) 100%);
+    --gradient-border: linear-gradient(135deg, hsla(38, 90%, 55%, 0.3) 0%, hsla(220, 15%, 20%, 0.5) 50%, hsla(38, 90%, 55%, 0.3) 100%);
 
-    /* Shadows */
-    --shadow-gold: 0 4px 30px hsla(43, 74%, 49%, 0.15);
-    --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.5);
-    --shadow-elevated: 0 20px 60px rgba(0, 0, 0, 0.6);
+    /* Luxury Shadows */
+    --shadow-gold: 0 0 60px hsla(38, 90%, 55%, 0.15);
+    --shadow-gold-intense: 0 0 100px hsla(38, 90%, 55%, 0.25);
+    --shadow-card: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    --shadow-elevated: 0 35px 80px -15px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 40px hsla(38, 90%, 55%, 0.2);
+    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
 
     /* Fonts */
-    --font-heading: 'Playfair Display', serif;
-    --font-body: 'Inter', sans-serif;
+    --font-heading: 'Cormorant Garamond', serif;
+    --font-body: 'Outfit', sans-serif;
 
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 43 74% 49%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 43 74% 49%;
-  }
-
-  .dark {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 43 74% 49%;
-    --primary-foreground: 0 0% 5%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 5%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 95%;
-    --border: 0 0% 18%;
-    --input: 0 0% 15%;
-    --ring: 43 74% 49%;
+    --sidebar-background: 220 15% 6%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 38 90% 55%;
+    --sidebar-primary-foreground: 220 15% 4%;
+    --sidebar-accent: 220 15% 10%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 38 90% 55%;
   }
 }
 
@@ -102,60 +85,169 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading;
+    @apply font-heading tracking-tight;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
   }
 }
 
 @layer components {
   .text-gradient-gold {
-    background: linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-light)));
+    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 50%, hsl(var(--champagne)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-platinum {
+    background: linear-gradient(135deg, hsl(var(--platinum)) 0%, hsl(var(--foreground)) 50%, hsl(var(--platinum)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .bg-gradient-gold {
-    background: linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-light)));
+    background: var(--gradient-gold);
   }
 
-  .border-gradient-gold {
-    border-image: linear-gradient(135deg, hsl(var(--gold)), hsl(var(--gold-light))) 1;
+  .bg-gradient-card {
+    background: var(--gradient-card);
   }
 
-  .card-hover {
-    @apply transition-all duration-500 ease-out;
+  .border-gradient {
+    position: relative;
+    background: hsl(var(--card));
+    border: 1px solid transparent;
+    background-clip: padding-box;
   }
 
-  .card-hover:hover {
-    @apply -translate-y-2;
-    box-shadow: var(--shadow-elevated);
+  .border-gradient::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    margin: -1px;
+    border-radius: inherit;
+    background: var(--gradient-border);
   }
 
-  .glass {
-    background: hsla(0, 0%, 8%, 0.8);
+  .card-luxury {
+    @apply relative overflow-hidden rounded-2xl;
+    background: linear-gradient(145deg, hsla(220, 15%, 10%, 0.6) 0%, hsla(220, 15%, 6%, 0.8) 100%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsla(38, 90%, 55%, 0.1);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-luxury::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, hsla(38, 90%, 55%, 0.05) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  .card-luxury:hover {
+    transform: translateY(-8px);
+    border-color: hsla(38, 90%, 55%, 0.3);
+    box-shadow: var(--shadow-elevated), var(--shadow-glow);
+  }
+
+  .card-luxury:hover::before {
+    opacity: 1;
+  }
+
+  .glass-luxury {
+    background: hsla(220, 15%, 6%, 0.7);
+    backdrop-filter: blur(30px) saturate(150%);
+    -webkit-backdrop-filter: blur(30px) saturate(150%);
+    border: 1px solid hsla(38, 90%, 55%, 0.08);
+  }
+
+  .glass-luxury-dark {
+    background: hsla(220, 15%, 4%, 0.85);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid hsla(220, 15%, 20%, 0.3);
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-gold-shine);
+    transform: translateX(-100%);
+    animation: shimmer 3s infinite;
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
   }
 
   .gold-glow {
     box-shadow: var(--shadow-gold);
+    transition: box-shadow 0.4s ease;
+  }
+
+  .gold-glow:hover {
+    box-shadow: var(--shadow-gold-intense);
+  }
+
+  .line-gold {
+    position: relative;
+  }
+
+  .line-gold::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -4px;
+    width: 60px;
+    height: 2px;
+    background: var(--gradient-gold);
+    border-radius: 2px;
+  }
+
+  .hover-lift {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
   }
 }
 
 @layer utilities {
   .animate-fade-in {
-    animation: fadeIn 0.6s ease-out forwards;
+    animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   .animate-slide-up {
-    animation: slideUp 0.6s ease-out forwards;
+    animation: slideUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   .animate-scale-in {
-    animation: scaleIn 0.4s ease-out forwards;
+    animation: scaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
   }
 
   @keyframes fadeIn {
@@ -170,7 +262,7 @@
   @keyframes slideUp {
     from {
       opacity: 0;
-      transform: translateY(30px);
+      transform: translateY(40px);
     }
     to {
       opacity: 1;
@@ -181,7 +273,7 @@
   @keyframes scaleIn {
     from {
       opacity: 0;
-      transform: scale(0.95);
+      transform: scale(0.9);
     }
     to {
       opacity: 1;
@@ -189,9 +281,32 @@
     }
   }
 
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes pulse-gold {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsla(38, 90%, 55%, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 15px hsla(38, 90%, 55%, 0);
+    }
+  }
+
+  .animate-pulse-gold {
+    animation: pulse-gold 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
   .delay-100 { animation-delay: 100ms; }
   .delay-200 { animation-delay: 200ms; }
   .delay-300 { animation-delay: 300ms; }
   .delay-400 { animation-delay: 400ms; }
   .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
 }

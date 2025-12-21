@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, Instagram, Facebook, Linkedin } from 'lucide-react';
+import { MapPin, Phone, Mail, Instagram, Facebook, Linkedin, Sparkles } from 'lucide-react';
 
 const quickLinks = [
   { name: 'Comprar', href: '/imoveis?finalidade=venda' },
@@ -18,121 +18,143 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="bg-card border-t border-border">
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          {/* Brand */}
-          <div>
-            <Link to="/" className="flex items-center gap-2 mb-6">
-              <span className="text-2xl font-heading font-bold text-gradient-gold">
-                VIP7
-              </span>
-              <span className="text-lg font-body text-foreground/80">
-                Imóveis
-              </span>
-            </Link>
-            <p className="text-muted-foreground mb-6">
-              Especialistas em venda e locação de imóveis de médio e alto padrão 
-              em Sorocaba e região. Mais de 10 anos de experiência no mercado imobiliário.
-            </p>
-            {/* Social Links */}
-            <div className="flex gap-4">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.name}
-                  href={social.href}
-                  className="p-2 rounded-lg bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors"
-                  aria-label={social.name}
-                >
-                  <social.icon className="h-5 w-5" />
-                </a>
-              ))}
+    <footer className="relative overflow-hidden">
+      {/* Top Border */}
+      <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+      <div className="bg-card/50">
+        <div className="container mx-auto px-4 py-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
+            {/* Brand */}
+            <div className="lg:col-span-1">
+              <Link to="/" className="flex items-center gap-3 mb-6">
+                <span className="text-3xl font-heading font-bold text-gradient-gold">
+                  VIP7
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-body text-muted-foreground uppercase tracking-luxury">
+                    Imóveis
+                  </span>
+                  <span className="text-[10px] font-body text-primary/60 uppercase tracking-widest">
+                    Premium
+                  </span>
+                </div>
+              </Link>
+              <p className="text-muted-foreground mb-8 leading-relaxed">
+                Especialistas em venda e locação de imóveis de alto padrão 
+                em Sorocaba e região há mais de 15 anos.
+              </p>
+              {/* Social Links */}
+              <div className="flex gap-3">
+                {socialLinks.map((social) => (
+                  <a
+                    key={social.name}
+                    href={social.href}
+                    className="p-3 rounded-xl glass-luxury hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 group"
+                    aria-label={social.name}
+                  >
+                    <social.icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-lg font-heading font-semibold text-foreground mb-6 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Links Rápidos
+              </h3>
+              <ul className="space-y-4">
+                {quickLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      to={link.href}
+                      className="text-muted-foreground hover:text-primary transition-colors duration-300 flex items-center gap-2 group"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-primary/50 group-hover:w-2 transition-all" />
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h3 className="text-lg font-heading font-semibold text-foreground mb-6 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Contato
+              </h3>
+              <ul className="space-y-5">
+                <li className="flex items-start gap-4">
+                  <div className="p-2 rounded-lg glass-luxury">
+                    <MapPin className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-muted-foreground text-sm leading-relaxed">
+                    Av. Antônio Carlos Comitre, 1500<br />
+                    Sorocaba - SP, 18047-620
+                  </span>
+                </li>
+                <li className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg glass-luxury">
+                    <Phone className="h-4 w-4 text-primary" />
+                  </div>
+                  <a
+                    href="tel:+5515999999999"
+                    className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  >
+                    (15) 99999-9999
+                  </a>
+                </li>
+                <li className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg glass-luxury">
+                    <Mail className="h-4 w-4 text-primary" />
+                  </div>
+                  <a
+                    href="mailto:contato@vip7imoveis.com.br"
+                    className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                  >
+                    contato@vip7imoveis.com.br
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Hours */}
+            <div>
+              <h3 className="text-lg font-heading font-semibold text-foreground mb-6 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Horário
+              </h3>
+              <div className="glass-luxury rounded-xl p-5 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Segunda a Sexta</span>
+                  <span className="text-foreground font-medium">9h às 18h</span>
+                </div>
+                <div className="h-px bg-border" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Sábado</span>
+                  <span className="text-foreground font-medium">9h às 13h</span>
+                </div>
+                <div className="h-px bg-border" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Domingo</span>
+                  <span className="text-primary font-medium">Fechado</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h3 className="text-lg font-heading font-semibold text-foreground mb-6">
-              Links Rápidos
-            </h3>
-            <ul className="space-y-3">
-              {quickLinks.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {/* Bottom */}
+          <div className="mt-16 pt-8 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} VIP7 Imóveis. Todos os direitos reservados.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              CRECI-SP 000000-J
+            </p>
           </div>
-
-          {/* Contact */}
-          <div>
-            <h3 className="text-lg font-heading font-semibold text-foreground mb-6">
-              Contato
-            </h3>
-            <ul className="space-y-4">
-              <li className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-primary mt-0.5" />
-                <span className="text-muted-foreground">
-                  Av. Antônio Carlos Comitre, 1500<br />
-                  Sorocaba - SP, 18047-620
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-primary" />
-                <a
-                  href="tel:+5515999999999"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  (15) 99999-9999
-                </a>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-primary" />
-                <a
-                  href="mailto:contato@vip7imoveis.com.br"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  contato@vip7imoveis.com.br
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Hours */}
-          <div>
-            <h3 className="text-lg font-heading font-semibold text-foreground mb-6">
-              Horário de Atendimento
-            </h3>
-            <ul className="space-y-2 text-muted-foreground">
-              <li className="flex justify-between">
-                <span>Segunda a Sexta</span>
-                <span>9h às 18h</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Sábado</span>
-                <span>9h às 13h</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Domingo</span>
-                <span>Fechado</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom */}
-        <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} VIP7 Imóveis. Todos os direitos reservados.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            CRECI-SP 000000-J
-          </p>
         </div>
       </div>
     </footer>

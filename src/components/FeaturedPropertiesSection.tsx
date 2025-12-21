@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { Property } from '@/types/property';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
@@ -24,22 +24,41 @@ export function FeaturedPropertiesSection({
   if (featured.length === 0) return null;
 
   return (
-    <section className="py-20 bg-secondary/30">
-      <div className="container mx-auto px-4">
+    <section className="py-24 lg:py-32 relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
+      
+      {/* Decorative Elements */}
+      <div className="absolute top-20 right-10 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 left-10 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+
+      <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-16">
           <div>
-            <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-2">
-              {title}
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="text-primary text-sm font-medium uppercase tracking-luxury">
+                {finalidade === 'venda' ? 'Oportunidades' : 'Para Alugar'}
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-3">
+              {title.split(' ').map((word, i) => (
+                i === title.split(' ').length - 1 ? (
+                  <span key={i} className="text-gradient-gold italic">{word}</span>
+                ) : (
+                  <span key={i}>{word} </span>
+                )
+              ))}
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-lg max-w-xl">
               {subtitle}
             </p>
           </div>
-          <Button variant="goldOutline" asChild>
-            <Link to={`/imoveis?finalidade=${finalidade}&destaque=true`}>
+          <Button variant="goldOutline" size="lg" asChild className="self-start lg:self-auto">
+            <Link to={`/imoveis?finalidade=${finalidade}&destaque=true`} className="group">
               Ver todos
-              <ArrowRight className="h-4 w-4 ml-2" />
+              <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Link>
           </Button>
         </div>
