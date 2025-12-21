@@ -411,18 +411,58 @@ serve(async (req) => {
           });
         }
         
-        // Fallback: buscar pelo nome (menos preciso)
-        console.log(`[imoview-api] City specified by name only (${cityName}), using name filter...`);
-        const condData = await fetchCondominiosPage({
-          cidade: cityName,
-          finalidade: params?.finalidade,
-          numeroPagina: 1,
-          numeroRegistros: 100,
-        });
-        const { lista } = extractCondominios(condData, cityName);
-        lista.sort((a, b) => getCondominioNome(a).localeCompare(getCondominioNome(b)));
+        // Fallback: buscar pelo nome com paginação (API limita a 20 registros por página)
+        console.log(`[imoview-api] City specified by name only (${cityName}), using name filter with pagination...`);
+        const pageSize = 20; // API maximum limit
+        const allCondominiosByName: Record<string, unknown>[] = [];
+        const seenCodigosByName = new Set<string>();
+        let paginaAtual = 1;
+        let totalQuantidade: number | undefined;
+        const maxPages = 50; // Safety limit
 
-        return new Response(JSON.stringify(lista), {
+        while (paginaAtual <= maxPages) {
+          console.log(`[imoview-api] Fetching condominios by name, page ${paginaAtual}...`);
+          const condData = await fetchCondominiosPage({
+            cidade: cityName,
+            finalidade: params?.finalidade,
+            numeroPagina: paginaAtual,
+            numeroRegistros: pageSize,
+          });
+          
+          const { lista, quantidade } = extractCondominios(condData, cityName);
+          
+          if (totalQuantidade === undefined && quantidade !== undefined) {
+            totalQuantidade = quantidade;
+            console.log(`[imoview-api] Total condominios for ${cityName}: ${totalQuantidade}`);
+          }
+          
+          // Add unique condominios
+          for (const cond of lista) {
+            const codigo = String((cond as Record<string, unknown>).codigo ?? '');
+            if (codigo && !seenCodigosByName.has(codigo)) {
+              seenCodigosByName.add(codigo);
+              allCondominiosByName.push(cond);
+            }
+          }
+          
+          // Check if we've fetched all
+          if (lista.length === 0 || lista.length < pageSize) {
+            console.log(`[imoview-api] No more condominios to fetch (got ${lista.length} items)`);
+            break;
+          }
+          
+          if (totalQuantidade !== undefined && allCondominiosByName.length >= totalQuantidade) {
+            console.log(`[imoview-api] Fetched all ${allCondominiosByName.length} condominios`);
+            break;
+          }
+          
+          paginaAtual++;
+        }
+
+        console.log(`[imoview-api] Total unique condominios found by name: ${seenCodigosByName.size}`);
+        allCondominiosByName.sort((a, b) => getCondominioNome(a).localeCompare(getCondominioNome(b)));
+
+        return new Response(JSON.stringify(allCondominiosByName), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
