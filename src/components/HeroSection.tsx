@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Home, Building2, MapPin, DollarSign, ArrowRight, Star, Castle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCidades, getBairros, getCondominios } from '@/data/mockProperties';
+import { useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
+import { getFinalidadeCode } from '@/services/imoviewApi';
 
 export function HeroSection() {
   const navigate = useNavigate();
@@ -14,9 +15,17 @@ export function HeroSection() {
   const [condominio, setCondominio] = useState<string>('');
   const [faixaPreco, setFaixaPreco] = useState<string>('');
 
-  const cidades = getCidades();
-  const bairros = getBairros(cidade || undefined);
-  const condominios = getCondominios();
+  const finalidadeCode = getFinalidadeCode(finalidade);
+  
+  const { data: cidades = [] } = useCidades(finalidadeCode);
+  const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
+  const { data: condominios = [] } = useCondominios(cidade || undefined, finalidadeCode);
+
+  // Reset bairro e condominio quando cidade mudar
+  useEffect(() => {
+    setBairro('');
+    setCondominio('');
+  }, [cidade]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -127,6 +136,8 @@ export function HeroSection() {
                   <SelectContent className="bg-card border-border">
                     <SelectItem value="casa">Casa</SelectItem>
                     <SelectItem value="apartamento">Apartamento</SelectItem>
+                    <SelectItem value="terreno">Terreno</SelectItem>
+                    <SelectItem value="comercial">Comercial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -143,7 +154,7 @@ export function HeroSection() {
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     {cidades.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <SelectItem key={c.codigo || c.nome} value={c.nome}>{c.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -155,13 +166,13 @@ export function HeroSection() {
                   <Building2 className="h-3.5 w-3.5 text-primary" />
                   Bairro
                 </label>
-                <Select value={bairro} onValueChange={setBairro}>
+                <Select value={bairro} onValueChange={setBairro} disabled={!cidade}>
                   <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
-                    <SelectValue placeholder="Todos os bairros" />
+                    <SelectValue placeholder={cidade ? "Selecione o bairro" : "Selecione a cidade primeiro"} />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     {bairros.map((b) => (
-                      <SelectItem key={b} value={b}>{b}</SelectItem>
+                      <SelectItem key={b.codigo || b.nome} value={b.nome}>{b.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -182,7 +193,7 @@ export function HeroSection() {
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     {condominios.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <SelectItem key={c.codigo || c.nome} value={c.nome}>{c.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

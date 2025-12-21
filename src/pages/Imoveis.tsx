@@ -1,63 +1,58 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, Grid, List, X } from 'lucide-react';
+import { SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { mockProperties, getCidades, getBairros, getCondominios } from '@/data/mockProperties';
-import { formatCurrency } from '@/lib/formatters';
+import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
+import { getFinalidadeCode, formatPropertyValue } from '@/services/imoviewApi';
 
 export default function Imoveis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
 
   // Get filter values from URL
   const finalidade = searchParams.get('finalidade') || '';
   const tipo = searchParams.get('tipo') || '';
   const cidade = searchParams.get('cidade') || '';
   const bairro = searchParams.get('bairro') || '';
+  const condominio = searchParams.get('condominio') || '';
   const ordenar = searchParams.get('ordenar') || 'recentes';
 
-  const cidades = getCidades();
-  const bairros = getBairros(cidade || undefined);
-  const condominios = getCondominios();
+  const finalidadeCode = getFinalidadeCode(finalidade);
 
-  // Filter and sort properties
-  const filteredProperties = useMemo(() => {
-    let result = [...mockProperties];
+  // Fetch data from API
+  const { data: cidades = [] } = useCidades(finalidadeCode);
+  const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
+  const { data: condominios = [] } = useCondominios(cidade || undefined, finalidadeCode);
 
-    if (finalidade) {
-      result = result.filter(p => p.finalidade === finalidade);
-    }
-    if (tipo) {
-      result = result.filter(p => p.tipo === tipo);
-    }
+  // Build filters for API call
+  const apiFilters = {
+    finalidade: finalidadeCode,
+    tipo: tipo || undefined,
+    cidade: cidade || undefined,
+    bairro: bairro || undefined,
+    condominio: condominio || undefined,
+    valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
+    valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
+    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
+    limite: 50,
+  };
+
+  const { data: properties = [], isLoading, error } = useImoveis(apiFilters);
+
+  // Reset bairro when cidade changes
+  useEffect(() => {
     if (cidade) {
-      result = result.filter(p => p.cidade === cidade);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('bairro');
+      newParams.delete('condominio');
+      setSearchParams(newParams);
     }
-    if (bairro) {
-      result = result.filter(p => p.bairro === bairro);
-    }
-    result = result.filter(p => p.valor >= priceRange[0] && p.valor <= priceRange[1]);
-
-    // Sort
-    switch (ordenar) {
-      case 'menor_preco':
-        result.sort((a, b) => a.valor - b.valor);
-        break;
-      case 'maior_preco':
-        result.sort((a, b) => b.valor - a.valor);
-        break;
-      default:
-        // recentes - keep original order
-        break;
-    }
-
-    return result;
-  }, [finalidade, tipo, cidade, bairro, priceRange, ordenar]);
+  }, [cidade]);
 
   const updateFilter = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
@@ -71,7 +66,7 @@ export default function Imoveis() {
 
   const clearFilters = () => {
     setSearchParams(new URLSearchParams());
-    setPriceRange([0, 5000000]);
+    setPriceRange([0, 10000000]);
   };
 
   const getPageTitle = () => {
@@ -89,6 +84,13 @@ export default function Imoveis() {
     return parts.join(' ');
   };
 
+  const formatPriceLabel = (value: number) => {
+    if (value >= 1000000) {
+      return `R$ ${(value / 1000000).toFixed(1)}M`;
+    }
+    return `R$ ${(value / 1000).toFixed(0)}K`;
+  };
+
   return (
     <Layout>
       <div className="pt-24 pb-16">
@@ -100,7 +102,7 @@ export default function Imoveis() {
                 {getPageTitle()}
               </h1>
               <p className="text-muted-foreground">
-                {filteredProperties.length} imóveis encontrados
+                {isLoading ? 'Carregando...' : `${properties.length} imóveis encontrados`}
               </p>
             </div>
 
@@ -110,7 +112,7 @@ export default function Imoveis() {
                 <SelectTrigger className="w-[180px] bg-secondary border-border">
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-card border-border">
                   <SelectItem value="recentes">Mais recentes</SelectItem>
                   <SelectItem value="menor_preco">Menor preço</SelectItem>
                   <SelectItem value="maior_preco">Maior preço</SelectItem>
@@ -179,10 +181,12 @@ export default function Imoveis() {
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Todos os tipos" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card border-border">
                       <SelectItem value="">Todos</SelectItem>
                       <SelectItem value="casa">Casa</SelectItem>
                       <SelectItem value="apartamento">Apartamento</SelectItem>
+                      <SelectItem value="terreno">Terreno</SelectItem>
+                      <SelectItem value="comercial">Comercial</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -194,10 +198,10 @@ export default function Imoveis() {
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Todas as cidades" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card border-border">
                       <SelectItem value="">Todas</SelectItem>
                       {cidades.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                        <SelectItem key={c.codigo || c.nome} value={c.nome}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -206,14 +210,30 @@ export default function Imoveis() {
                 {/* Bairro */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Bairro</h3>
-                  <Select value={bairro} onValueChange={(v) => updateFilter('bairro', v)}>
+                  <Select value={bairro} onValueChange={(v) => updateFilter('bairro', v)} disabled={!cidade}>
                     <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Todos os bairros" />
+                      <SelectValue placeholder={cidade ? "Selecione" : "Selecione a cidade"} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card border-border">
                       <SelectItem value="">Todos</SelectItem>
                       {bairros.map((b) => (
-                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                        <SelectItem key={b.codigo || b.nome} value={b.nome}>{b.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Condomínio */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Condomínio</h3>
+                  <Select value={condominio} onValueChange={(v) => updateFilter('condominio', v)}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Todos os condomínios" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="">Todos</SelectItem>
+                      {condominios.map((c) => (
+                        <SelectItem key={c.codigo || c.nome} value={c.nome}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -227,13 +247,13 @@ export default function Imoveis() {
                       value={priceRange}
                       onValueChange={(v) => setPriceRange(v as [number, number])}
                       min={0}
-                      max={5000000}
-                      step={50000}
+                      max={10000000}
+                      step={100000}
                       className="my-4"
                     />
                     <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{formatCurrency(priceRange[0])}</span>
-                      <span>{formatCurrency(priceRange[1])}</span>
+                      <span>{formatPriceLabel(priceRange[0])}</span>
+                      <span>{formatPriceLabel(priceRange[1])}</span>
                     </div>
                   </div>
                 </div>
@@ -260,11 +280,15 @@ export default function Imoveis() {
 
             {/* Property Grid */}
             <div className="flex-1">
-              {filteredProperties.length > 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : properties.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredProperties.map((property, index) => (
+                  {properties.map((property, index) => (
                     <div
-                      key={property.id}
+                      key={property.codigo}
                       className="animate-slide-up"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >

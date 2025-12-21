@@ -1,27 +1,43 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { Property } from '@/types/property';
+import { ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
+import { useImoveisDestaque } from '@/hooks/useImoveis';
+import { ImoviewProperty } from '@/services/imoviewApi';
 
 interface FeaturedPropertiesSectionProps {
   title: string;
   subtitle: string;
-  properties: Property[];
   finalidade: 'venda' | 'aluguel';
 }
 
 export function FeaturedPropertiesSection({
   title,
   subtitle,
-  properties,
   finalidade,
 }: FeaturedPropertiesSectionProps) {
-  const featured = properties.filter(
-    (p) => p.finalidade === finalidade && p.destaque
-  ).slice(0, 4);
+  const finalidadeCode = finalidade === 'venda' ? 1 : 2;
+  const { data: properties = [], isLoading, error } = useImoveisDestaque(finalidadeCode);
 
-  if (featured.length === 0) return null;
+  // Limitar a 4 imóveis
+  const featured = properties.slice(0, 4);
+
+  if (isLoading) {
+    return (
+      <section className="py-24 lg:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error || featured.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden">
@@ -65,9 +81,9 @@ export function FeaturedPropertiesSection({
 
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featured.map((property, index) => (
+          {featured.map((property: ImoviewProperty, index: number) => (
             <div
-              key={property.id}
+              key={property.codigo}
               className="animate-slide-up"
               style={{ animationDelay: `${index * 100}ms` }}
             >
