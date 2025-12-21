@@ -87,32 +87,70 @@ export interface ImoviewListResult {
 
 export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
   try {
-    // Se houver múltiplos condomínios, fazer requisições paralelas SEM limite para buscar TODOS
-    if (filters.codigosCondominio && filters.codigosCondominio.length > 0) {
-      const requests = filters.codigosCondominio.map((codigo) => {
-        // Remover limite e paginação para buscar TODOS os imóveis de cada condomínio
-        const singleFilter = { 
-          ...filters, 
-          codigoCondominio: codigo, 
-          codigosCondominio: undefined,
-          limite: 500, // Limite alto para buscar todos de cada condomínio
-          pagina: 1,
-        };
-        return callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
-          'listarImoveis',
-          singleFilter as Record<string, unknown>
-        );
-      });
+    const condominiosSelecionados: number[] =
+      filters.codigosCondominio && filters.codigosCondominio.length > 0
+        ? filters.codigosCondominio
+        : typeof filters.codigoCondominio === 'number'
+          ? [filters.codigoCondominio]
+          : [];
 
-      const results = await Promise.all(requests);
-      
-      // Combinar resultados e remover duplicatas
+    // Se houver 1 ou mais condomínios, precisamos paginar manualmente porque a API limita 20 registros por requisição.
+    if (condominiosSelecionados.length > 0) {
+      const PAGE_SIZE = 20;
+      const MAX_PAGES = 200;
+
+      const fetchAllForCondominio = async (codigoCondominio: number) => {
+        const all: ImoviewProperty[] = [];
+        const seen = new Set<number>();
+        let pagina = 1;
+        let total: number | undefined;
+
+        for (;;) {
+          const pageFilter = {
+            ...filters,
+            codigoCondominio,
+            codigosCondominio: undefined,
+            limite: PAGE_SIZE,
+            pagina,
+          };
+
+          const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
+            'listarImoveis',
+            pageFilter as Record<string, unknown>
+          );
+
+          const lista = Array.isArray(data) ? data : data?.lista || [];
+          const quantidade = Array.isArray(data) ? undefined : data?.quantidade;
+
+          if (total === undefined && typeof quantidade === 'number' && Number.isFinite(quantidade)) {
+            total = quantidade;
+          }
+
+          for (const imovel of lista) {
+            if (!seen.has(imovel.codigo)) {
+              seen.add(imovel.codigo);
+              all.push(imovel);
+            }
+          }
+
+          if (lista.length === 0) break;
+          if (total !== undefined && all.length >= total) break;
+          if (lista.length < PAGE_SIZE) break;
+
+          pagina += 1;
+          if (pagina > MAX_PAGES) break;
+        }
+
+        return all;
+      };
+
+      const results = await Promise.all(condominiosSelecionados.map(fetchAllForCondominio));
+
+      // Combinar resultados e remover duplicatas (entre condomínios)
       const seenCodigos = new Set<number>();
       const combinedList: ImoviewProperty[] = [];
 
-      for (const data of results) {
-        const lista = Array.isArray(data) ? data : data?.lista || [];
-
+      for (const lista of results) {
         for (const imovel of lista) {
           if (!seenCodigos.has(imovel.codigo)) {
             seenCodigos.add(imovel.codigo);
