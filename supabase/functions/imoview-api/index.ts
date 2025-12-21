@@ -33,21 +33,36 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
   
   console.log(`[imoview-api] Raw finalidade: "${rawFinalidade}" (${typeof rawFinalidade}) -> Mapped: ${finalidadeCode}`);
 
+  // Log raw value fields for debugging
+  console.log(`[imoview-api] Raw valor: ${raw.valor} (${typeof raw.valor})`);
+
+  // Helper function to parse Brazilian currency format
+  // Handles formats like: "R$ 780.000,00", "780.000,00", "780000", 780000
+  const parseCurrencyValue = (val: unknown): number => {
+    if (typeof val === 'number') {
+      return val;
+    }
+    if (typeof val === 'string') {
+      // Remove "R$", espaços e outros caracteres não numéricos exceto pontos e vírgulas
+      const cleanedValue = val
+        .replace(/R\$\s*/gi, '')  // Remove "R$ "
+        .replace(/\s/g, '')       // Remove espaços
+        .replace(/\./g, '')       // Remove pontos de milhar (ex: 780.000 -> 780000)
+        .replace(',', '.');       // Troca vírgula por ponto (ex: 780000,00 -> 780000.00)
+      
+      const parsed = parseFloat(cleanedValue);
+      console.log(`[imoview-api] Parsing currency: "${val}" -> cleaned: "${cleanedValue}" -> parsed: ${parsed}`);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
   // Convert valor to number
-  let valorNumerico = 0;
-  if (typeof raw.valor === 'number') {
-    valorNumerico = raw.valor;
-  } else if (typeof raw.valor === 'string') {
-    valorNumerico = parseFloat(String(raw.valor).replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
-  }
+  const valorNumerico = parseCurrencyValue(raw.valor);
+  console.log(`[imoview-api] Valor convertido: ${valorNumerico}`);
 
   // Convert valorcondominio to number
-  let valorCondominioNumerico = 0;
-  if (typeof raw.valorcondominio === 'number') {
-    valorCondominioNumerico = raw.valorcondominio;
-  } else if (typeof raw.valorcondominio === 'string') {
-    valorCondominioNumerico = parseFloat(String(raw.valorcondominio).replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
-  }
+  const valorCondominioNumerico = parseCurrencyValue(raw.valorcondominio);
 
   // Build fotos array from urlfotoprincipal and existing fotos
   const fotos: Array<{ url: string; descricao?: string }> = [];
