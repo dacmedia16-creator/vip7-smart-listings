@@ -36,24 +36,28 @@ serve(async (req) => {
         method = 'POST';
 
         const pagina = Number(params?.pagina ?? 1);
-        const registrosPorPagina = Number(params?.limite ?? 12);
+        const numeroregistros = Number(params?.limite ?? 50);
 
-        // Formato simplificado - apenas campos essenciais
+        // Formato correto baseado na API Imoview
         const listarImoveisBody: Record<string, unknown> = {
           finalidade: params?.finalidade,
           tipo: params?.tipo,
           cidade: params?.cidade,
           bairro: params?.bairro,
-          condominio: params?.condominio,
           valorMinimo: params?.valorMin,
           valorMaximo: params?.valorMax,
           qtdeQuartos: params?.dormitorios,
           qtdeSuites: params?.suites,
           qtdeVagas: params?.vagas,
           pagina,
-          registrosPorPagina,
+          numeroregistros,
           ordenarPor: params?.ordenarPor,
         };
+
+        // Suporte a código numérico de condomínio (codigocondominio)
+        if (params?.codigoCondominio) {
+          listarImoveisBody.codigocondominio = Number(params.codigoCondominio);
+        }
 
         if (params?.destaque === true) {
           listarImoveisBody.destaque = 1;
