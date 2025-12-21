@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Instagram, Facebook, Linkedin, Sparkles } from 'lucide-react';
+import logoVip7 from '@/assets/logo-vip7.png';
 
 const quickLinks = [
   { name: 'Comprar', href: '/imoveis?finalidade=venda' },
@@ -27,18 +28,12 @@ export function Footer() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
             {/* Brand */}
             <div className="lg:col-span-1">
-              <Link to="/" className="flex items-center gap-3 mb-6">
-                <span className="text-3xl font-heading font-bold text-gradient-gold">
-                  VIP7
-                </span>
-                <div className="flex flex-col">
-                  <span className="text-xs font-body text-muted-foreground uppercase tracking-luxury">
-                    Imóveis
-                  </span>
-                  <span className="text-[10px] font-body text-primary/60 uppercase tracking-widest">
-                    Premium
-                  </span>
-                </div>
+              <Link to="/" className="block mb-6">
+                <img 
+                  src={logoVip7} 
+                  alt="VIP7 Imóveis" 
+                  className="h-12 w-auto"
+                />
               </Link>
               <p className="text-muted-foreground mb-8 leading-relaxed">
                 Especialistas em venda e locação de imóveis de alto padrão 
