@@ -177,12 +177,12 @@ export default function Imoveis() {
                 {/* Tipo */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Tipo de Imóvel</h3>
-                  <Select value={tipo} onValueChange={(v) => updateFilter('tipo', v)}>
+                  <Select value={tipo || "all"} onValueChange={(v) => updateFilter('tipo', v === "all" ? "" : v)}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Todos os tipos" />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border">
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="casa">Casa</SelectItem>
                       <SelectItem value="apartamento">Apartamento</SelectItem>
                       <SelectItem value="terreno">Terreno</SelectItem>
@@ -194,14 +194,14 @@ export default function Imoveis() {
                 {/* Cidade */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Cidade</h3>
-                  <Select value={cidade} onValueChange={(v) => updateFilter('cidade', v)}>
+                  <Select value={cidade || "all"} onValueChange={(v) => updateFilter('cidade', v === "all" ? "" : v)}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Todas as cidades" />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border">
-                      <SelectItem value="">Todas</SelectItem>
+                      <SelectItem value="all">Todas</SelectItem>
                       {cidades.map((c) => (
-                        <SelectItem key={c.codigo || c.nome} value={c.nome}>{c.nome}</SelectItem>
+                        <SelectItem key={c.codigo || c.nome} value={c.nome || `cidade-${c.codigo}`}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -210,14 +210,14 @@ export default function Imoveis() {
                 {/* Bairro */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Bairro</h3>
-                  <Select value={bairro} onValueChange={(v) => updateFilter('bairro', v)} disabled={!cidade}>
+                  <Select value={bairro || "all"} onValueChange={(v) => updateFilter('bairro', v === "all" ? "" : v)} disabled={!cidade}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder={cidade ? "Selecione" : "Selecione a cidade"} />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border">
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       {bairros.map((b) => (
-                        <SelectItem key={b.codigo || b.nome} value={b.nome}>{b.nome}</SelectItem>
+                        <SelectItem key={b.codigo || b.nome} value={b.nome || `bairro-${b.codigo}`}>{b.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -226,14 +226,14 @@ export default function Imoveis() {
                 {/* Condomínio */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Condomínio</h3>
-                  <Select value={condominio} onValueChange={(v) => updateFilter('condominio', v)}>
+                  <Select value={condominio || "all"} onValueChange={(v) => updateFilter('condominio', v === "all" ? "" : v)}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Todos os condomínios" />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border">
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       {condominios.map((c) => (
-                        <SelectItem key={c.codigo || c.nome} value={c.nome}>{c.nome}</SelectItem>
+                        <SelectItem key={c.codigo || c.nome} value={c.nome || `cond-${c.codigo}`}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
