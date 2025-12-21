@@ -39,11 +39,20 @@ export function useImovelDetalhes(codigo: string | number | undefined) {
   });
 }
 
+// Cache configuration for filter data (rarely changes)
+const FILTER_CACHE_CONFIG = {
+  staleTime: 1000 * 60 * 60, // 1 hora - dados considerados frescos
+  gcTime: 1000 * 60 * 60 * 24, // 24 horas - manter em cache
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+  refetchOnReconnect: false,
+};
+
 export function useCidades(finalidade?: number) {
   return useQuery({
     queryKey: ['cidades', finalidade],
     queryFn: () => listarCidades(finalidade),
-    staleTime: 1000 * 60 * 30, // 30 minutos
+    ...FILTER_CACHE_CONFIG,
   });
 }
 
@@ -52,7 +61,7 @@ export function useBairros(cidade?: string, finalidade?: number) {
     queryKey: ['bairros', cidade, finalidade],
     queryFn: () => listarBairros(cidade, finalidade),
     enabled: !!cidade,
-    staleTime: 1000 * 60 * 30,
+    ...FILTER_CACHE_CONFIG,
   });
 }
 
@@ -60,7 +69,7 @@ export function useCondominios(cidade?: string, finalidade?: number) {
   return useQuery({
     queryKey: ['condominios', cidade, finalidade],
     queryFn: () => listarCondominios(cidade, finalidade),
-    staleTime: 1000 * 60 * 30,
+    ...FILTER_CACHE_CONFIG,
   });
 }
 
@@ -68,6 +77,6 @@ export function useTiposImoveis() {
   return useQuery({
     queryKey: ['tipos-imoveis'],
     queryFn: () => listarTiposImoveis(),
-    staleTime: 1000 * 60 * 60, // 1 hora
+    ...FILTER_CACHE_CONFIG,
   });
 }
