@@ -56,6 +56,7 @@ export default {
         onyx: "hsl(var(--onyx))",
         charcoal: "hsl(var(--charcoal))",
         platinum: "hsl(var(--platinum))",
+        ivory: "hsl(var(--ivory))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -68,8 +69,8 @@ export default {
         },
       },
       fontFamily: {
-        heading: ['Cormorant Garamond', 'serif'],
-        body: ['Outfit', 'sans-serif'],
+        heading: ['Playfair Display', 'Georgia', 'serif'],
+        body: ['DM Sans', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
