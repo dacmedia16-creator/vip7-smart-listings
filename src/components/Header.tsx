@@ -8,8 +8,7 @@ import logoVip7 from '@/assets/logo-vip7.png';
 const navigation = [
   { name: 'COMPRAR', href: '/imoveis?finalidade=venda' },
   { name: 'ALUGAR', href: '/imoveis?finalidade=aluguel' },
-  { name: 'CONDOMÍNIOS', href: '/condominios' },
-  { name: 'AVALIAR', href: '/avaliar' },
+  { name: 'NOSSA HISTÓRIA', href: '/nossa-historia' },
   { name: 'CONTATO', href: '/contato' },
 ];
 
