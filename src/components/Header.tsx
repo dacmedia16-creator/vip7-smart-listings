@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Phone } from 'lucide-react';
+import { Menu, X, Phone, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +16,16 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/') return location.pathname === '/';
@@ -24,17 +33,32 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
+    <header 
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
+        scrolled 
+          ? "glass-luxury-dark py-3" 
+          : "bg-transparent py-5"
+      )}
+    >
       <nav className="container mx-auto px-4 lg:px-8" aria-label="Global">
-        <div className="flex h-20 items-center justify-between">
+        <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl font-heading font-bold text-gradient-gold">
-              VIP7
-            </span>
-            <span className="text-lg font-body text-foreground/80">
-              Imóveis
-            </span>
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="relative">
+              <Sparkles className="h-8 w-8 text-primary absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <span className="text-3xl font-heading font-bold text-gradient-gold tracking-tight">
+                VIP7
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-body text-muted-foreground uppercase tracking-luxury">
+                Imóveis
+              </span>
+              <span className="text-[10px] font-body text-primary/60 uppercase tracking-widest">
+                Premium
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
@@ -44,13 +68,19 @@ export function Header() {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium transition-colors rounded-md",
+                  "px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg relative group",
                   isActive(item.href)
                     ? "text-primary"
-                    : "text-foreground/70 hover:text-foreground hover:bg-secondary/50"
+                    : "text-foreground/70 hover:text-foreground"
                 )}
               >
                 {item.name}
+                <span 
+                  className={cn(
+                    "absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300",
+                    isActive(item.href) ? "w-full" : "w-0 group-hover:w-full"
+                  )}
+                />
               </Link>
             ))}
           </div>
@@ -65,62 +95,64 @@ export function Header() {
                 className="flex items-center gap-2"
               >
                 <Phone className="h-4 w-4" />
-                Fale com um Especialista
+                Fale com Especialista
               </a>
             </Button>
           </div>
 
           {/* Mobile menu button */}
-          <div className="lg:hidden">
-            <button
-              type="button"
-              className="p-2 text-foreground"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="lg:hidden p-2 text-foreground hover:text-primary transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
         </div>
 
         {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-border animate-fade-in">
-            <div className="flex flex-col gap-2">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "px-4 py-3 text-base font-medium transition-colors rounded-md",
-                    isActive(item.href)
-                      ? "text-primary bg-secondary/50"
-                      : "text-foreground/70 hover:text-foreground hover:bg-secondary/50"
-                  )}
-                  onClick={() => setMobileMenuOpen(false)}
+        <div 
+          className={cn(
+            "lg:hidden overflow-hidden transition-all duration-500",
+            mobileMenuOpen ? "max-h-[500px] opacity-100 mt-6" : "max-h-0 opacity-0"
+          )}
+        >
+          <div className="glass-luxury rounded-2xl p-4 space-y-2">
+            {navigation.map((item, index) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  "block px-4 py-3 text-base font-medium transition-all duration-300 rounded-xl",
+                  isActive(item.href)
+                    ? "text-primary bg-primary/10"
+                    : "text-foreground/70 hover:text-foreground hover:bg-secondary/50"
+                )}
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                {item.name}
+              </Link>
+            ))}
+            <div className="pt-4 border-t border-border">
+              <Button variant="gold" size="lg" className="w-full" asChild>
+                <a
+                  href="https://wa.me/5515999999999?text=Olá! Gostaria de falar com um especialista."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2"
                 >
-                  {item.name}
-                </Link>
-              ))}
-              <div className="mt-4 px-4">
-                <Button variant="gold" size="lg" className="w-full" asChild>
-                  <a
-                    href="https://wa.me/5515999999999?text=Olá! Gostaria de falar com um especialista."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <Phone className="h-4 w-4" />
-                    Fale com um Especialista
-                  </a>
-                </Button>
-              </div>
+                  <Phone className="h-4 w-4" />
+                  Fale com Especialista
+                </a>
+              </Button>
             </div>
           </div>
-        )}
+        </div>
       </nav>
     </header>
   );
