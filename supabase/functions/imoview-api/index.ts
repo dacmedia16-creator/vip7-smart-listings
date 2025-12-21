@@ -201,7 +201,88 @@ serve(async (req) => {
         }));
         break;
 
-      case 'listarCondominios':
+      case 'listarCondominios': {
+        console.log('[imoview-api] listarCondominios params:', JSON.stringify(params));
+        
+        // Se não tiver cidade, buscar condomínios de todas as cidades
+        if (!params?.cidade) {
+          console.log('[imoview-api] No city specified, fetching condominios from all cities...');
+          
+          // Primeiro buscar todas as cidades
+          const cidadesResponse = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarCidadesDisponiveis`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'chave': IMOVIEW_API_KEY || '',
+            },
+            body: JSON.stringify(removeNullValues({ finalidade: params?.finalidade })),
+          });
+          
+          if (!cidadesResponse.ok) {
+            throw new Error(`Failed to fetch cities: ${cidadesResponse.status}`);
+          }
+          
+          const cidadesData = await cidadesResponse.json();
+          const cidades = Array.isArray(cidadesData) ? cidadesData : cidadesData?.lista || [];
+          console.log(`[imoview-api] Found ${cidades.length} cities`);
+          
+          // Buscar condomínios de cada cidade em paralelo
+          const allCondominios: Record<string, unknown>[] = [];
+          const seenCodigos = new Set<number>();
+          
+          // Limitar a 10 requisições paralelas por vez
+          const batchSize = 10;
+          for (let i = 0; i < cidades.length; i += batchSize) {
+            const batch = cidades.slice(i, i + batchSize);
+            const promises = batch.map(async (cidade: Record<string, unknown>) => {
+              try {
+                const condResponse = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarCondominiosDisponiveis`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'chave': IMOVIEW_API_KEY || '',
+                  },
+                  body: JSON.stringify(removeNullValues({ 
+                    cidade: cidade.nome, 
+                    finalidade: params?.finalidade 
+                  })),
+                });
+                
+                if (condResponse.ok) {
+                  const condData = await condResponse.json();
+                  return Array.isArray(condData) ? condData : condData?.lista || [];
+                }
+                return [];
+              } catch (e) {
+                console.error(`[imoview-api] Error fetching condominios for city ${cidade.nome}:`, e);
+                return [];
+              }
+            });
+            
+            const results = await Promise.all(promises);
+            for (const condList of results) {
+              for (const cond of condList) {
+                if (cond.codigo && !seenCodigos.has(cond.codigo)) {
+                  seenCodigos.add(cond.codigo);
+                  allCondominios.push(cond);
+                }
+              }
+            }
+          }
+          
+          // Ordenar por nome
+          allCondominios.sort((a, b) => 
+            String(a.nome || '').localeCompare(String(b.nome || ''))
+          );
+          
+          console.log(`[imoview-api] Total unique condominios found: ${allCondominios.length}`);
+          
+          return new Response(JSON.stringify(allCondominios), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // Comportamento padrão quando tem cidade
         endpoint = '/Imovel/RetornarCondominiosDisponiveis';
         method = 'POST';
         body = JSON.stringify(removeNullValues({
@@ -209,6 +290,7 @@ serve(async (req) => {
           finalidade: params?.finalidade,
         }));
         break;
+      }
 
       case 'listarTipos':
         endpoint = '/Imovel/RetornarTiposImoveisDisponiveis';
