@@ -49,6 +49,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
             {isRental && (
               <span className="text-sm text-muted-foreground">/mês</span>
             )}
+            {property.valorCondominio !== undefined && property.valorCondominio > 0 && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Condomínio: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.valorCondominio)}
+              </p>
+            )}
           </div>
         </div>
 
