@@ -194,7 +194,6 @@ export function HeroSection() {
                 onValueChange={setCondominioCode}
                 placeholder="Condomínio"
                 isLoading={isLoadingCondominios}
-                noCitySelected={!cidade}
                 triggerClassName="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors"
               />
 

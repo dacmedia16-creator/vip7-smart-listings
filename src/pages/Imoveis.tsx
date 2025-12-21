@@ -265,7 +265,6 @@ export default function Imoveis() {
                     onValueChange={(v) => updateFilter('condominioCode', v)}
                     placeholder="Todos os condomínios"
                     isLoading={isLoadingCondominios}
-                    noCitySelected={!cidade}
                     triggerClassName="bg-secondary border-border"
                   />
                 </div>
