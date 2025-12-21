@@ -12,7 +12,7 @@ export function HeroSection() {
   const [tipo, setTipo] = useState<string>('');
   const [cidade, setCidade] = useState<string>('');
   const [bairro, setBairro] = useState<string>('');
-  const [condominio, setCondominio] = useState<string>('');
+  const [condominioCode, setCondominioCode] = useState<string>('');
   const [faixaPreco, setFaixaPreco] = useState<string>('');
 
   const finalidadeCode = getFinalidadeCode(finalidade);
@@ -24,7 +24,7 @@ export function HeroSection() {
   // Reset bairro e condominio quando cidade mudar
   useEffect(() => {
     setBairro('');
-    setCondominio('');
+    setCondominioCode('');
   }, [cidade]);
 
   const handleSearch = () => {
@@ -33,7 +33,7 @@ export function HeroSection() {
     if (tipo) params.set('tipo', tipo);
     if (cidade) params.set('cidade', cidade);
     if (bairro) params.set('bairro', bairro);
-    if (condominio) params.set('condominio', condominio);
+    if (condominioCode) params.set('condominioCode', condominioCode);
     if (faixaPreco) {
       const [min, max] = faixaPreco.split('-');
       if (min) params.set('valorMin', min);
@@ -187,13 +187,13 @@ export function HeroSection() {
                   <Castle className="h-3.5 w-3.5 text-primary" />
                   Condomínio
                 </label>
-                <Select value={condominio} onValueChange={setCondominio}>
+                <Select value={condominioCode} onValueChange={setCondominioCode} disabled={!cidade}>
                   <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
-                    <SelectValue placeholder="Todos os condomínios" />
+                    <SelectValue placeholder={cidade ? "Todos os condomínios" : "Selecione a cidade primeiro"} />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     {condominios.map((c) => (
-                      <SelectItem key={c.codigo || c.nome} value={c.nome}>{c.nome}</SelectItem>
+                      <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
