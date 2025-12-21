@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SlidersHorizontal, X, Loader2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
@@ -23,6 +24,10 @@ export default function Imoveis() {
   const condominiosCodes = searchParams.get('condominios') || ''; // Comma-separated list
   const ordenar = searchParams.get('ordenar') || 'recentes';
   const paginaAtual = Number(searchParams.get('pagina')) || 1;
+  const busca = searchParams.get('busca') || '';
+
+  // Estado local para o campo de busca (debounced)
+  const [searchInput, setSearchInput] = useState(busca);
 
   // Parse condominios from URL (comma-separated string to array)
   const condominiosArray = useMemo(() => {
@@ -108,13 +113,48 @@ export default function Imoveis() {
 
   const { data: imoveisData, isLoading, error } = useImoveis(apiFilters);
   
-  const properties = imoveisData?.lista || [];
-  const totalImoveis = imoveisData?.quantidade || 0;
+  // Filtrar propriedades por busca de texto (local)
+  const filteredProperties = useMemo(() => {
+    const rawList = imoveisData?.lista || [];
+    if (!busca.trim()) return rawList;
+    
+    const searchLower = busca.toLowerCase().trim();
+    return rawList.filter((property) => {
+      const searchableFields = [
+        property.titulo,
+        property.descricao,
+        property.endereco,
+        property.bairro,
+        property.cidade,
+        property.condominio,
+        property.tipo,
+        String(property.codigo),
+        String(property.codigoReferencia),
+      ].filter(Boolean);
+      
+      return searchableFields.some((field) => 
+        String(field).toLowerCase().includes(searchLower)
+      );
+    });
+  }, [imoveisData?.lista, busca]);
+
+  const properties = filteredProperties;
+  const totalImoveis = busca.trim() ? filteredProperties.length : (imoveisData?.quantidade || 0);
   const totalPages = Math.ceil(totalImoveis / ITEMS_PER_PAGE);
 
   // Determina se há mais páginas baseado no total real
   const hasMorePages = paginaAtual < totalPages;
   const hasPreviousPage = paginaAtual > 1;
+
+  // Debounce para a busca
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== busca) {
+        updateFilter('busca', searchInput);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const goToPage = (page: number) => {
     const newParams = new URLSearchParams(searchParams);
@@ -150,6 +190,7 @@ export default function Imoveis() {
   const clearFilters = () => {
     setSearchParams(new URLSearchParams());
     setPriceRange([0, 10000000]);
+    setSearchInput('');
   };
 
   // Reset página quando filtros mudam
@@ -159,7 +200,7 @@ export default function Imoveis() {
       newParams.delete('pagina');
       setSearchParams(newParams);
     }
-  }, [finalidade, tipo, cidade, bairro, condominiosCodes, ordenar]);
+  }, [finalidade, tipo, cidade, bairro, condominiosCodes, ordenar, busca]);
 
   // Handler for updating condominios (multi-select)
   const updateCondominios = (values: string[]) => {
@@ -268,6 +309,35 @@ export default function Imoveis() {
                   <Button variant="ghost" size="icon" onClick={() => setShowFilters(false)}>
                     <X className="h-5 w-5" />
                   </Button>
+                </div>
+
+                {/* Busca por texto */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Buscar</h3>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Endereço, bairro, condomínio..."
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      className="pl-9 bg-secondary border-border"
+                      maxLength={100}
+                    />
+                    {searchInput && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                        onClick={() => {
+                          setSearchInput('');
+                          updateFilter('busca', '');
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Finalidade */}
