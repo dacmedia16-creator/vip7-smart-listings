@@ -122,7 +122,7 @@ serve(async (req) => {
         method = 'POST';
 
         const pagina = Number(params?.pagina ?? 1);
-        const numeroregistros = Number(params?.limite ?? 50);
+        const numeroregistros = Math.min(Number(params?.limite ?? 20), 20); // API Imoview limita a 20 registros
 
         // Formato correto baseado na API Imoview
         const listarImoveisBody: Record<string, unknown> = {

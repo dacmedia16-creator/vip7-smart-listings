@@ -39,7 +39,7 @@ export default function Imoveis() {
     valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
     valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
-    limite: 50,
+    limite: 20, // API Imoview permite no máximo 20 registros por página
   };
 
   const { data: properties = [], isLoading, error } = useImoveis(apiFilters);
