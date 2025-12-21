@@ -1,12 +1,11 @@
 import * as React from "react";
-import { Check, ChevronsUpDown, Castle, Search, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Castle, Search, Loader2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -29,6 +28,7 @@ interface CondominioComboboxProps {
   placeholder?: string;
   disabled?: boolean;
   isLoading?: boolean;
+  noCitySelected?: boolean;
   className?: string;
   triggerClassName?: string;
 }
@@ -40,6 +40,7 @@ export function CondominioCombobox({
   placeholder = "Selecione um condomínio",
   disabled = false,
   isLoading = false,
+  noCitySelected = false,
   className,
   triggerClassName,
 }: CondominioComboboxProps) {
@@ -145,7 +146,12 @@ export function CondominioCombobox({
             />
           </div>
           <CommandList className="max-h-[300px] overflow-auto">
-            {filteredCondominios.length === 0 ? (
+            {noCitySelected ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                Selecione uma cidade primeiro
+              </div>
+            ) : filteredCondominios.length === 0 ? (
               <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
                 Nenhum condomínio encontrado.
               </CommandEmpty>
