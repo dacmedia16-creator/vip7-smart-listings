@@ -142,13 +142,30 @@ export function Footer() {
           </div>
 
           {/* Bottom */}
-          <div className="mt-16 pt-8 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} VIP7 Imóveis. Todos os direitos reservados.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              CRECI-SP 000000-J
-            </p>
+          <div className="mt-16 pt-8 border-t border-border/50">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+              <p className="text-sm text-muted-foreground">
+                © {new Date().getFullYear()} VIP7 Imóveis. Todos os direitos reservados.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                CRECI-SP 000000-J
+              </p>
+            </div>
+            <div className="flex justify-center gap-4">
+              <Link 
+                to="/politica-privacidade" 
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Política de Privacidade
+              </Link>
+              <span className="text-muted-foreground">•</span>
+              <Link 
+                to="/termos-uso" 
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Termos de Uso
+              </Link>
+            </div>
           </div>
         </div>
       </div>
