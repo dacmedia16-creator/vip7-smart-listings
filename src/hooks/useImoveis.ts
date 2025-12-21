@@ -60,7 +60,6 @@ export function useCondominios(cidade?: string, finalidade?: number) {
   return useQuery({
     queryKey: ['condominios', cidade, finalidade],
     queryFn: () => listarCondominios(cidade, finalidade),
-    enabled: !!cidade, // Só buscar condomínios quando uma cidade estiver selecionada
     staleTime: 1000 * 60 * 30,
   });
 }

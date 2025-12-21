@@ -262,7 +262,7 @@ export default function Imoveis() {
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Todos os condomínios" />
                     </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
+                    <SelectContent className="bg-card border-border max-h-60">
                       <SelectItem value="all">Todos</SelectItem>
                       {condominios.map((c) => (
                         <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nome}</SelectItem>

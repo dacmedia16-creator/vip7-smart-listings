@@ -187,9 +187,9 @@ export function HeroSection() {
                   <Castle className="h-3.5 w-3.5 text-primary" />
                   Condomínio
                 </label>
-                <Select value={condominioCode} onValueChange={setCondominioCode} disabled={!cidade}>
+                <Select value={condominioCode} onValueChange={setCondominioCode}>
                   <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
-                    <SelectValue placeholder={cidade ? "Todos os condomínios" : "Selecione a cidade primeiro"} />
+                    <SelectValue placeholder="Todos os condomínios" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     {condominios.map((c) => (
