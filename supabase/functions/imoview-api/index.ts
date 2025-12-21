@@ -18,13 +18,20 @@ function removeNullValues(obj: Record<string, unknown>): Record<string, unknown>
 
 // Function to map Imoview API response to frontend expected format
 function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknown> {
-  // Convert finalidade: "Aluguel" → 1, "Venda" → 2 (conforme documentação API Imoview)
+  // A API Imoview retorna finalidade como string: "Venda" ou "Aluguel"
+  // Convertemos para: 1 = Aluguel, 2 = Venda (conforme documentação API Imoview)
   let finalidadeCode = 2; // default venda
-  if (typeof raw.finalidade === 'string') {
-    finalidadeCode = raw.finalidade.toLowerCase().includes('aluguel') ? 1 : 2;
-  } else if (typeof raw.finalidade === 'number') {
-    finalidadeCode = raw.finalidade;
+  const rawFinalidade = raw.finalidade;
+  
+  if (typeof rawFinalidade === 'string') {
+    // Se for string, verificar se contém "aluguel" (case insensitive)
+    finalidadeCode = rawFinalidade.toLowerCase().includes('aluguel') ? 1 : 2;
+  } else if (typeof rawFinalidade === 'number') {
+    // Se já vier como número da API, usar diretamente
+    finalidadeCode = rawFinalidade;
   }
+  
+  console.log(`[imoview-api] Raw finalidade: "${rawFinalidade}" (${typeof rawFinalidade}) -> Mapped: ${finalidadeCode}`);
 
   // Convert valor to number
   let valorNumerico = 0;
