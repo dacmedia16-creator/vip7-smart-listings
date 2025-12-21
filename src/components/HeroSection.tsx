@@ -103,7 +103,7 @@ export function HeroSection() {
               asChild
             >
               <a
-                href="https://wa.me/5515999999999?text=Olá! Gostaria de uma consultoria exclusiva."
+                href="https://wa.me/551535008641?text=Olá! Gostaria de uma consultoria exclusiva."
                 target="_blank"
                 rel="noopener noreferrer"
               >

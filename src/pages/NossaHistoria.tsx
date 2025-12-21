@@ -232,7 +232,7 @@ const NossaHistoria = () => {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button variant="gold" size="xl" asChild>
                     <a
-                      href="https://wa.me/5515999999999?text=Olá! Gostaria de falar com um especialista."
+                      href="https://wa.me/551535008641?text=Olá! Gostaria de falar com um especialista."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2"

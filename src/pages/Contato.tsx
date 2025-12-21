@@ -129,8 +129,8 @@ export default function Contato() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Telefone</h3>
-                    <a href="tel:+5515999999999" className="text-muted-foreground hover:text-primary transition-colors">
-                      (15) 99999-9999
+                    <a href="tel:+551535008641" className="text-muted-foreground hover:text-primary transition-colors">
+                      (15) 3500-8641
                     </a>
                   </div>
                 </div>

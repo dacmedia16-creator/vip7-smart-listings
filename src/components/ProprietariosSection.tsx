@@ -75,7 +75,7 @@ export function ProprietariosSection() {
             <ScrollReveal variant="fade-up" delay={0.5}>
               <Button variant="gold" size="xl" asChild className="group">
                 <a
-                  href="https://wa.me/5515999999999?text=Olá! Gostaria de avaliar meu imóvel para venda/locação."
+                  href="https://wa.me/551535008641?text=Olá! Gostaria de avaliar meu imóvel para venda/locação."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-3"

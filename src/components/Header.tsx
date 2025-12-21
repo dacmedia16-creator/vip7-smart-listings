@@ -78,7 +78,7 @@ export function Header() {
           <div className="hidden lg:flex">
             <Button variant="gold" size="lg" asChild>
               <a
-                href="https://wa.me/5515999999999?text=Olá! Gostaria de falar com um especialista."
+                href="https://wa.me/551535008641?text=Olá! Gostaria de falar com um especialista."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
@@ -130,7 +130,7 @@ export function Header() {
             <div className="pt-4 border-t border-border">
               <Button variant="gold" size="lg" className="w-full" asChild>
                 <a
-                  href="https://wa.me/5515999999999?text=Olá! Gostaria de falar com um especialista."
+                  href="https://wa.me/551535008641?text=Olá! Gostaria de falar com um especialista."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2"
