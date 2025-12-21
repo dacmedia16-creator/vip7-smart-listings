@@ -16,6 +16,92 @@ function removeNullValues(obj: Record<string, unknown>): Record<string, unknown>
   );
 }
 
+// Function to map Imoview API response to frontend expected format
+function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknown> {
+  // Convert finalidade: "Venda" → 1, "Aluguel" → 2
+  let finalidadeCode = 1;
+  if (typeof raw.finalidade === 'string') {
+    finalidadeCode = raw.finalidade.toLowerCase().includes('aluguel') ? 2 : 1;
+  } else if (typeof raw.finalidade === 'number') {
+    finalidadeCode = raw.finalidade;
+  }
+
+  // Convert valor to number
+  let valorNumerico = 0;
+  if (typeof raw.valor === 'number') {
+    valorNumerico = raw.valor;
+  } else if (typeof raw.valor === 'string') {
+    valorNumerico = parseFloat(String(raw.valor).replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
+  }
+
+  // Convert valorcondominio to number
+  let valorCondominioNumerico = 0;
+  if (typeof raw.valorcondominio === 'number') {
+    valorCondominioNumerico = raw.valorcondominio;
+  } else if (typeof raw.valorcondominio === 'string') {
+    valorCondominioNumerico = parseFloat(String(raw.valorcondominio).replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
+  }
+
+  // Build fotos array from urlfotoprincipal and existing fotos
+  const fotos: Array<{ url: string; descricao?: string }> = [];
+  if (raw.urlfotoprincipal && typeof raw.urlfotoprincipal === 'string') {
+    fotos.push({ url: raw.urlfotoprincipal, descricao: 'Foto principal' });
+  }
+  if (Array.isArray(raw.fotos)) {
+    fotos.push(...raw.fotos.map((f: Record<string, unknown>) => ({
+      url: String(f.url || f.arquivo || ''),
+      descricao: String(f.descricao || '')
+    })));
+  }
+
+  // Parse area values
+  const parseArea = (val: unknown): number => {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+      return parseFloat(val.replace(',', '.')) || 0;
+    }
+    return 0;
+  };
+
+  // Parse integer values
+  const parseInt2 = (val: unknown): number => {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') return parseInt(val) || 0;
+    return 0;
+  };
+
+  return {
+    codigo: raw.codigo,
+    codigoReferencia: raw.codigoauxiliar || raw.codigo,
+    titulo: raw.titulo || `${raw.tipo || 'Imóvel'} em ${raw.bairro || 'localização'}`,
+    descricao: raw.descricao || raw.metadescription || '',
+    finalidade: finalidadeCode,
+    tipo: raw.tipo || '',
+    tipoDescricao: raw.tipo || '',
+    cidade: raw.cidade || '',
+    bairro: raw.bairro || '',
+    condominio: raw.nomecondominio || '',
+    endereco: raw.endereco || '',
+    valor: valorNumerico,
+    valorCondominio: valorCondominioNumerico,
+    areaTotal: parseArea(raw.arealote || raw.areaprincipal),
+    areaConstruida: parseArea(raw.areaprincipal || raw.areainterna),
+    qtdeQuartos: parseInt2(raw.numeroquartos),
+    qtdeSuites: parseInt2(raw.numerosuites),
+    qtdeVagas: parseInt2(raw.numerovagas),
+    qtdeBanheiros: parseInt2(raw.numerobanhos),
+    destaque: raw.destaque === 'Destaque' || raw.destaque === 1 || raw.destaque === '1',
+    fotos: fotos,
+    latitude: parseArea(raw.latitude) || undefined,
+    longitude: parseArea(raw.longitude) || undefined,
+    // Keep original fields that might be needed
+    estado: raw.estado || '',
+    cep: raw.cep || '',
+    numero: raw.numero || '',
+    complemento: raw.complemento || '',
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -138,24 +224,35 @@ serve(async (req) => {
 
     const data = await response.json();
     
-    // Log detalhado da resposta para debug
+    // Process response based on action
     if (action === 'listarImoveis') {
       const d = data as Record<string, unknown>;
       console.log(`[imoview-api] Response keys:`, Object.keys(d));
       console.log(`[imoview-api] quantidade:`, d.quantidade);
-      console.log(`[imoview-api] lista type:`, typeof d.lista);
-      console.log(`[imoview-api] lista length:`, Array.isArray(d.lista) ? d.lista.length : 'not array');
       
-      // Se lista estiver em outro campo, tentar encontrar
-      if (d.imoveis && Array.isArray(d.imoveis)) {
-        console.log(`[imoview-api] Found 'imoveis' array with ${d.imoveis.length} items`);
-        d.lista = d.imoveis;
+      // Map properties to frontend format
+      if (Array.isArray(d.lista)) {
+        console.log(`[imoview-api] Mapping ${d.lista.length} properties`);
+        const mappedList = d.lista.map(mapImoviewProperty);
+        d.lista = mappedList;
+        if (mappedList.length > 0) {
+          console.log(`[imoview-api] First mapped item:`, JSON.stringify(mappedList[0]).substring(0, 500));
+        }
       }
       
-      // Log primeiro item se existir
-      if (Array.isArray(d.lista) && d.lista.length > 0) {
-        console.log(`[imoview-api] First item keys:`, Object.keys(d.lista[0]));
-      }
+      return new Response(JSON.stringify(d), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (action === 'detalhesImovel') {
+      console.log(`[imoview-api] Mapping property details`);
+      const mappedData = mapImoviewProperty(data as Record<string, unknown>);
+      console.log(`[imoview-api] Mapped details:`, JSON.stringify(mappedData).substring(0, 500));
+      
+      return new Response(JSON.stringify(mappedData), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     return new Response(JSON.stringify(data), {
