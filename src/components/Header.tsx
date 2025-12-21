@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Phone, Sparkles } from 'lucide-react';
+import { Menu, X, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import logoVip7 from '@/assets/logo-vip7.png';
 
 const navigation = [
   { name: 'Comprar', href: '/imoveis?finalidade=venda' },
@@ -44,21 +45,12 @@ export function Header() {
       <nav className="container mx-auto px-4 lg:px-8" aria-label="Global">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative">
-              <Sparkles className="h-8 w-8 text-primary absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <span className="text-3xl font-heading font-bold text-gradient-gold tracking-tight">
-                VIP7
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-body text-muted-foreground uppercase tracking-luxury">
-                Imóveis
-              </span>
-              <span className="text-[10px] font-body text-primary/60 uppercase tracking-widest">
-                Premium
-              </span>
-            </div>
+          <Link to="/" className="flex items-center">
+            <img 
+              src={logoVip7} 
+              alt="VIP7 Imóveis" 
+              className="h-10 md:h-12 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
