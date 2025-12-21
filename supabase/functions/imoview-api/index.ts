@@ -27,8 +27,9 @@ serve(async (req) => {
       case 'listarImoveis':
         endpoint = '/Imovel/RetornarImoveisDisponiveis';
         method = 'POST';
-        body = JSON.stringify({
-          finalidade: params?.finalidade || null, // 1 = Venda, 2 = Aluguel
+        // Build request body, only including destaque if it's explicitly set
+        const listarImoveisBody: Record<string, unknown> = {
+          finalidade: params?.finalidade || null,
           tipo: params?.tipo || null,
           cidade: params?.cidade || null,
           bairro: params?.bairro || null,
@@ -38,11 +39,17 @@ serve(async (req) => {
           qtdeQuartos: params?.dormitorios || null,
           qtdeSuites: params?.suites || null,
           qtdeVagas: params?.vagas || null,
-          destaque: params?.destaque === true ? 1 : (params?.destaque === false ? 0 : null),
           pagina: params?.pagina || 1,
           registrosPorPagina: params?.limite || 12,
           ordenarPor: params?.ordenarPor || null,
-        });
+        };
+        // Only add destaque if it's explicitly true or false (as 1 or 0)
+        if (params?.destaque === true) {
+          listarImoveisBody.destaque = 1;
+        } else if (params?.destaque === false) {
+          listarImoveisBody.destaque = 0;
+        }
+        body = JSON.stringify(listarImoveisBody);
         break;
 
       case 'detalhesImovel':
