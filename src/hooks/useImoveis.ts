@@ -8,6 +8,7 @@ import {
   detalhesImovel,
   ImoviewFilters,
   ImoviewProperty,
+  ImoviewListResult,
 } from '@/services/imoviewApi';
 
 export function useImoveis(filters: ImoviewFilters = {}) {
@@ -21,7 +22,10 @@ export function useImoveis(filters: ImoviewFilters = {}) {
 export function useImoveisDestaque(finalidade?: number) {
   return useQuery({
     queryKey: ['imoveis-destaque', finalidade],
-    queryFn: () => listarImoveis({ finalidade, destaque: true, limite: 8 }),
+    queryFn: async () => {
+      const result = await listarImoveis({ finalidade, destaque: true, limite: 8 });
+      return result.lista;
+    },
     staleTime: 1000 * 60 * 5,
   });
 }

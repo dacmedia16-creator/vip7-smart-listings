@@ -77,17 +77,25 @@ async function callImoviewApi<T>(action: string, params?: Record<string, unknown
   return data as T;
 }
 
-export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewProperty[]> {
+export interface ImoviewListResult {
+  lista: ImoviewProperty[];
+  quantidade: number;
+}
+
+export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
   try {
-    const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[] }>('listarImoveis', filters as Record<string, unknown>);
-    // A API pode retornar um array direto ou um objeto com propriedade 'lista'
+    const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>('listarImoveis', filters as Record<string, unknown>);
+    // A API pode retornar um array direto ou um objeto com propriedade 'lista' e 'quantidade'
     if (Array.isArray(data)) {
-      return data;
+      return { lista: data, quantidade: data.length };
     }
-    return data?.lista || [];
+    return { 
+      lista: data?.lista || [], 
+      quantidade: data?.quantidade || data?.lista?.length || 0 
+    };
   } catch (error) {
     console.error('[imoview-service] listarImoveis error:', error);
-    return [];
+    return { lista: [], quantidade: 0 };
   }
 }
 
