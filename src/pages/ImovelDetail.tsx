@@ -254,9 +254,29 @@ export default function ImovelDetail() {
                   <p className="text-sm text-muted-foreground mb-2">
                     {isRental ? 'Aluguel mensal' : 'Valor de venda'}
                   </p>
-                  <p className="text-3xl font-heading font-bold text-gradient-gold mb-6">
+                  <p className="text-3xl font-heading font-bold text-gradient-gold">
                     {formatPropertyValue(property.valor, isRental)}
                   </p>
+                  
+                  {/* Valor do Condomínio */}
+                  {property.valorCondominio !== undefined && property.valorCondominio > 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Condomínio: {new Intl.NumberFormat('pt-BR', { 
+                        style: 'currency', 
+                        currency: 'BRL', 
+                        minimumFractionDigits: 0 
+                      }).format(property.valorCondominio)}/mês
+                    </p>
+                  )}
+                  
+                  {/* Área do Imóvel */}
+                  {(property.areaConstruida || property.areaTotal) && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Área: {property.areaConstruida || property.areaTotal} m²
+                    </p>
+                  )}
+                  
+                  <div className="mb-6" />
 
                   <Button variant="whatsapp" size="xl" className="w-full mb-4" asChild>
                     <a
@@ -291,7 +311,7 @@ export default function ImovelDetail() {
                     Nossa equipe está pronta para ajudá-lo a encontrar o imóvel ideal.
                   </p>
                   <p className="text-primary font-semibold">
-                    (15) 99999-9999
+                    (15) 3500-8641
                   </p>
                 </div>
 
