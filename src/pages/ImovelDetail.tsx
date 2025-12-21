@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ChevronLeft, 
-  ChevronRight, 
   MapPin, 
   BedDouble, 
   Bath, 
@@ -20,14 +18,13 @@ import {
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PropertyGallery } from '@/components/PropertyGallery';
 import { useImovelDetalhes } from '@/hooks/useImoveis';
 import { formatPropertyValue } from '@/services/imoviewApi';
 import { generatePropertyWhatsAppMessage, generateWhatsAppLink } from '@/lib/formatters';
 
 export default function ImovelDetail() {
   const { codigo } = useParams<{ codigo: string }>();
-  const [currentImage, setCurrentImage] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data: property, isLoading, error } = useImovelDetalhes(codigo);
 
@@ -72,14 +69,6 @@ export default function ImovelDetail() {
     ? property.fotos.map(f => f.url) 
     : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200'];
 
-  const nextImage = () => {
-    setCurrentImage((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
-  };
-
   const handleShare = async () => {
     const shareData = {
       title: property.titulo || 'Imóvel VIP7',
@@ -101,108 +90,15 @@ export default function ImovelDetail() {
   return (
     <Layout>
       <div className="pt-20">
-        {/* Lightbox */}
-        {lightboxOpen && (
-          <div 
-            className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center"
-            onClick={() => setLightboxOpen(false)}
-          >
-            <button 
-              className="absolute top-6 right-6 p-2 rounded-full bg-card hover:bg-card/80 transition-colors"
-              onClick={() => setLightboxOpen(false)}
-            >
-              <X className="h-6 w-6" />
-            </button>
-            
-            <button
-              onClick={(e) => { e.stopPropagation(); prevImage(); }}
-              className="absolute left-4 p-3 rounded-full bg-card hover:bg-card/80 transition-colors"
-            >
-              <ChevronLeft className="h-8 w-8" />
-            </button>
-            
-            <img
-              src={images[currentImage]}
-              alt={property.titulo}
-              className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg"
-              onClick={(e) => e.stopPropagation()}
-            />
-            
-            <button
-              onClick={(e) => { e.stopPropagation(); nextImage(); }}
-              className="absolute right-4 p-3 rounded-full bg-card hover:bg-card/80 transition-colors"
-            >
-              <ChevronRight className="h-8 w-8" />
-            </button>
-            
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-foreground">
-              {currentImage + 1} / {images.length}
-            </div>
-          </div>
-        )}
-
         {/* Image Gallery */}
-        <div className="relative h-[50vh] md:h-[70vh] bg-card">
-          <img
-            src={images[currentImage]}
-            alt={property.titulo}
-            className="w-full h-full object-cover cursor-pointer"
-            onClick={() => setLightboxOpen(true)}
+        <div className="relative">
+          <PropertyGallery 
+            images={images} 
+            title={property.titulo || 'Imóvel'} 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent pointer-events-none" />
-
-          {/* Navigation Arrows */}
-          {images.length > 1 && (
-            <>
-              <button
-                onClick={prevImage}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-background/80 hover:bg-background transition-colors"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </button>
-              <button
-                onClick={nextImage}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-background/80 hover:bg-background transition-colors"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </button>
-            </>
-          )}
-
-          {/* Image Counter */}
-          <div className="absolute bottom-6 right-6 px-4 py-2 rounded-full bg-background/80 backdrop-blur-sm text-sm font-medium">
-            {currentImage + 1} / {images.length}
-          </div>
-
-          {/* Thumbnail Strip */}
-          {images.length > 1 && (
-            <div className="absolute bottom-6 left-6 flex gap-2 max-w-[60%] overflow-x-auto pb-2">
-              {images.slice(0, 6).map((img, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentImage(index)}
-                  className={`flex-shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${
-                    index === currentImage
-                      ? 'border-primary'
-                      : 'border-transparent opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-              {images.length > 6 && (
-                <button 
-                  onClick={() => setLightboxOpen(true)}
-                  className="flex-shrink-0 w-16 h-12 rounded-lg bg-background/80 flex items-center justify-center text-sm font-medium"
-                >
-                  +{images.length - 6}
-                </button>
-              )}
-            </div>
-          )}
-
+          
           {/* Badges */}
-          <div className="absolute top-24 left-6 flex gap-2">
+          <div className="absolute top-4 left-6 flex gap-2 z-10">
             <Badge variant="default" className="bg-primary text-primary-foreground text-sm">
               {isRental ? 'Aluguel' : 'Venda'}
             </Badge>
@@ -216,7 +112,7 @@ export default function ImovelDetail() {
           {/* Back Button */}
           <Link 
             to="/imoveis" 
-            className="absolute top-24 right-6 p-2 rounded-full bg-background/80 hover:bg-background transition-colors"
+            className="absolute top-4 right-6 p-2 rounded-full bg-background/80 hover:bg-background transition-colors z-10"
           >
             <X className="h-5 w-5" />
           </Link>
