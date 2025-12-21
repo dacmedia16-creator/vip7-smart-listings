@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X, Loader2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
+import { PropertyGridSkeleton } from '@/components/PropertyCardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -10,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
-
 export default function Imoveis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
@@ -472,9 +472,7 @@ export default function Imoveis() {
             {/* Property Grid */}
             <div className="flex-1">
               {isLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
+                <PropertyGridSkeleton count={6} />
               ) : properties.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
