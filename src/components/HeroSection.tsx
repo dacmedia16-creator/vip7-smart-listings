@@ -34,7 +34,7 @@ export function HeroSection() {
     if (tipo) params.set('tipo', tipo);
     if (cidade) params.set('cidade', cidade);
     if (bairro) params.set('bairro', bairro);
-    if (condominioCode) params.set('condominioCode', condominioCode);
+    if (condominioCode) params.set('condominios', condominioCode); // Usar 'condominios' para compatibilidade
     if (faixaPreco) {
       const [min, max] = faixaPreco.split('-');
       if (min) params.set('valorMin', min);
