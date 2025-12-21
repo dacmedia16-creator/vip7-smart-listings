@@ -7,7 +7,7 @@ interface WhatsAppButtonProps {
 
 export function WhatsAppButton({ 
   message = 'Olá! Gostaria de mais informações sobre os imóveis.',
-  phone = '5515999999999' 
+  phone = '551535008641' 
 }: WhatsAppButtonProps) {
   const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 

@@ -11,7 +11,7 @@ export const formatArea = (area: number): string => {
   return `${area} m²`;
 };
 
-export const generateWhatsAppLink = (message: string, phone = '5515999999999'): string => {
+export const generateWhatsAppLink = (message: string, phone = '551535008641'): string => {
   const encodedMessage = encodeURIComponent(message);
   return `https://wa.me/${phone}?text=${encodedMessage}`;
 };
