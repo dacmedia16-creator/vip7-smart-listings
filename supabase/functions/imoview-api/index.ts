@@ -225,16 +225,50 @@ serve(async (req) => {
           const cidadesData = await cidadesResponse.json();
           const cidades = Array.isArray(cidadesData) ? cidadesData : cidadesData?.lista || [];
           console.log(`[imoview-api] Found ${cidades.length} cities`);
-          
+
+          if (cidades.length > 0) {
+            console.log('[imoview-api] First city sample:', JSON.stringify(cidades[0]));
+          }
+
+          const getCityName = (cidade: Record<string, unknown>) => {
+            const name =
+              cidade?.nome ??
+              cidade?.cidade ??
+              cidade?.descricao ??
+              cidade?.name ??
+              cidade?.label;
+            return String(name ?? '').trim();
+          };
+
+          const getCondominioCodigo = (cond: Record<string, unknown>) => {
+            const raw =
+              cond?.codigo ??
+              cond?.codigoCondominio ??
+              cond?.codigocondominio ??
+              cond?.codigoauxiliar ??
+              cond?.id;
+            if (raw === null || raw === undefined) return null;
+            const s = String(raw).trim();
+            return s.length ? s : null;
+          };
+
+          const getCondominioNome = (cond: Record<string, unknown>) => {
+            const raw = cond?.nome ?? cond?.nomecondominio ?? cond?.descricao ?? cond?.label;
+            return String(raw ?? '').trim();
+          };
+
           // Buscar condomínios de cada cidade em paralelo
           const allCondominios: Record<string, unknown>[] = [];
-          const seenCodigos = new Set<number>();
-          
+          const seenCodigos = new Set<string>();
+
           // Limitar a 10 requisições paralelas por vez
           const batchSize = 10;
           for (let i = 0; i < cidades.length; i += batchSize) {
             const batch = cidades.slice(i, i + batchSize);
             const promises = batch.map(async (cidade: Record<string, unknown>) => {
+              const cityName = getCityName(cidade);
+              if (!cityName) return [];
+
               try {
                 const condResponse = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarCondominiosDisponiveis`, {
                   method: 'POST',
@@ -242,41 +276,62 @@ serve(async (req) => {
                     'Content-Type': 'application/json',
                     'chave': IMOVIEW_API_KEY || '',
                   },
-                  body: JSON.stringify(removeNullValues({ 
-                    cidade: cidade.nome, 
-                    finalidade: params?.finalidade 
+                  body: JSON.stringify(removeNullValues({
+                    cidade: cityName,
+                    finalidade: params?.finalidade,
                   })),
                 });
-                
-                if (condResponse.ok) {
-                  const condData = await condResponse.json();
-                  return Array.isArray(condData) ? condData : condData?.lista || [];
+
+                if (!condResponse.ok) {
+                  const txt = await condResponse.text();
+                  console.error(`[imoview-api] Failed condominios for city ${cityName}: ${condResponse.status} - ${txt}`);
+                  return [];
                 }
-                return [];
+
+                const condData = await condResponse.json();
+                const condList = Array.isArray(condData)
+                  ? condData
+                  : Array.isArray(condData?.lista)
+                    ? condData.lista
+                    : [];
+
+                const quantidade = typeof condData === 'object' && condData ? (condData as Record<string, unknown>).quantidade : undefined;
+                console.log(`[imoview-api] City ${cityName}: extracted ${condList.length} condominios (quantidade=${quantidade ?? 'n/a'})`);
+
+                if (condList.length > 0) {
+                  console.log(`[imoview-api] City ${cityName}: first cond keys:`, Object.keys(condList[0] ?? {}));
+                }
+
+                return condList as Record<string, unknown>[];
               } catch (e) {
-                console.error(`[imoview-api] Error fetching condominios for city ${cidade.nome}:`, e);
+                console.error(`[imoview-api] Error fetching condominios for city ${cityName}:`, e);
                 return [];
               }
             });
-            
+
             const results = await Promise.all(promises);
             for (const condList of results) {
               for (const cond of condList) {
-                if (cond.codigo && !seenCodigos.has(cond.codigo)) {
-                  seenCodigos.add(cond.codigo);
+                const codigo = getCondominioCodigo(cond);
+                // Se não vier código, ainda assim incluir (mas sem dedup) para não perder opções
+                if (!codigo) {
+                  allCondominios.push(cond);
+                  continue;
+                }
+
+                if (!seenCodigos.has(codigo)) {
+                  seenCodigos.add(codigo);
                   allCondominios.push(cond);
                 }
               }
             }
           }
-          
+
           // Ordenar por nome
-          allCondominios.sort((a, b) => 
-            String(a.nome || '').localeCompare(String(b.nome || ''))
-          );
-          
-          console.log(`[imoview-api] Total unique condominios found: ${allCondominios.length}`);
-          
+          allCondominios.sort((a, b) => getCondominioNome(a).localeCompare(getCondominioNome(b)));
+
+          console.log(`[imoview-api] Total unique condominios found: ${seenCodigos.size} (total items returned: ${allCondominios.length})`);
+
           return new Response(JSON.stringify(allCondominios), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
