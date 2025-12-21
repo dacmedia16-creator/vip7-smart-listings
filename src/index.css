@@ -231,6 +231,31 @@
   .hover-lift:hover {
     transform: translateY(-4px);
   }
+
+  /* Decorated Title */
+  .title-decorated {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .title-decorated::before,
+  .title-decorated::after {
+    content: '';
+    height: 1px;
+    width: 60px;
+    background: linear-gradient(to right, transparent, hsl(var(--primary)));
+  }
+
+  .title-decorated::after {
+    background: linear-gradient(to left, transparent, hsl(var(--primary)));
+  }
+
+  /* Section Divider */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+  }
 }
 
 @layer utilities {
