@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { MapPin, BedDouble, Bath, Car, Maximize, ArrowUpRight } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ImoviewProperty, formatPropertyValue } from '@/services/imoviewApi';
 
 interface PropertyCardProps {
@@ -14,84 +15,96 @@ export function PropertyCard({ property }: PropertyCardProps) {
   return (
     <Link
       to={`/imovel/${property.codigo}`}
-      className="group block"
+      className="group block h-full"
     >
-      <article className="card-luxury rounded-2xl overflow-hidden">
+      <article className="card-luxury rounded-2xl overflow-hidden h-full flex flex-col">
         {/* Image Container */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <img
             src={imageUrl}
             alt={property.titulo || 'Imóvel'}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
           
-          {/* Badges */}
-          <div className="absolute top-4 left-4 flex gap-2">
-            <Badge className="bg-background/80 backdrop-blur-md text-foreground border-none text-xs uppercase tracking-wider">
-              {isRental ? 'Aluguel' : 'Venda'}
-            </Badge>
-            {property.destaque && (
-              <Badge className="bg-gradient-to-r from-gold to-gold-light text-primary-foreground border-none text-xs uppercase tracking-wider">
-                Destaque
-              </Badge>
-            )}
-          </div>
-
-          {/* View Button */}
-          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <ArrowUpRight className="h-5 w-5 text-primary-foreground" />
+          {/* Top Badges */}
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+            <div className="flex flex-col gap-2">
+              {property.condominio && (
+                <Badge className="bg-primary/90 text-primary-foreground border-none text-xs font-medium">
+                  {property.condominio}
+                </Badge>
+              )}
             </div>
+            <Badge className="bg-background/80 backdrop-blur-sm text-foreground border-none text-xs uppercase tracking-wider">
+              {isRental ? 'Locação' : 'Venda'}
+            </Badge>
           </div>
 
-          {/* Price */}
+          {/* Price at bottom of image */}
           <div className="absolute bottom-4 left-4 right-4">
             <p className="text-2xl md:text-3xl font-heading font-bold text-foreground">
               {formatPropertyValue(property.valor, isRental)}
             </p>
+            {isRental && (
+              <span className="text-sm text-muted-foreground">/mês</span>
+            )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <h3 className="text-lg font-heading font-semibold text-foreground mb-3 line-clamp-1 group-hover:text-primary transition-colors duration-300">
+        <div className="p-5 flex-1 flex flex-col">
+          {/* Title */}
+          <h3 className="text-lg font-heading font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors duration-300 leading-tight">
             {property.titulo || property.tipoDescricao || 'Imóvel disponível'}
           </h3>
 
-          <div className="flex items-center gap-2 text-muted-foreground mb-5">
-            <MapPin className="h-4 w-4 text-primary" />
+          {/* Location */}
+          <div className="flex items-center gap-2 text-muted-foreground mb-4">
+            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
             <span className="text-sm truncate">
               {property.bairro}{property.cidade ? `, ${property.cidade}` : ''}
             </span>
           </div>
 
-          {/* Features */}
-          <div className="flex items-center justify-between pt-4 border-t border-border/50">
-            {property.qtdeQuartos !== undefined && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <BedDouble className="h-4 w-4" />
-                <span className="text-sm">{property.qtdeQuartos}</span>
+          {/* Features - Compact Icons */}
+          <div className="flex items-center gap-4 text-muted-foreground mb-5 text-sm">
+            {property.qtdeQuartos !== undefined && property.qtdeQuartos > 0 && (
+              <div className="flex items-center gap-1.5" title="Quartos">
+                <BedDouble className="h-4 w-4 text-primary/70" />
+                <span>{property.qtdeQuartos}</span>
               </div>
             )}
-            {property.qtdeSuites !== undefined && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Bath className="h-4 w-4" />
-                <span className="text-sm">{property.qtdeSuites}</span>
+            {property.qtdeSuites !== undefined && property.qtdeSuites > 0 && (
+              <div className="flex items-center gap-1.5" title="Suítes">
+                <Bath className="h-4 w-4 text-primary/70" />
+                <span>{property.qtdeSuites}</span>
               </div>
             )}
-            {property.qtdeVagas !== undefined && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Car className="h-4 w-4" />
-                <span className="text-sm">{property.qtdeVagas}</span>
+            {property.qtdeVagas !== undefined && property.qtdeVagas > 0 && (
+              <div className="flex items-center gap-1.5" title="Vagas">
+                <Car className="h-4 w-4 text-primary/70" />
+                <span>{property.qtdeVagas}</span>
               </div>
             )}
             {(property.areaConstruida || property.areaTotal) && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Maximize className="h-4 w-4" />
-                <span className="text-sm">{property.areaConstruida || property.areaTotal} m²</span>
+              <div className="flex items-center gap-1.5" title="Área">
+                <Maximize className="h-4 w-4 text-primary/70" />
+                <span>{property.areaConstruida || property.areaTotal} m²</span>
               </div>
             )}
+          </div>
+
+          {/* CTA Button - Pushed to bottom */}
+          <div className="mt-auto">
+            <Button 
+              variant="goldOutline" 
+              size="sm" 
+              className="w-full group/btn"
+            >
+              Ver Imóvel
+              <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+            </Button>
           </div>
         </div>
       </article>

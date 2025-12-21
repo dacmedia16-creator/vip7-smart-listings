@@ -6,13 +6,11 @@ import { cn } from '@/lib/utils';
 import logoVip7 from '@/assets/logo-vip7.png';
 
 const navigation = [
-  { name: 'Comprar', href: '/imoveis?finalidade=venda' },
-  { name: 'Alugar', href: '/imoveis?finalidade=aluguel' },
-  { name: 'Casas', href: '/imoveis?tipo=casa' },
-  { name: 'Apartamentos', href: '/imoveis?tipo=apartamento' },
-  { name: 'Condomínios', href: '/condominios' },
-  { name: 'Avaliar Imóvel', href: '/avaliar' },
-  { name: 'Contato', href: '/contato' },
+  { name: 'COMPRAR', href: '/imoveis?finalidade=venda' },
+  { name: 'ALUGAR', href: '/imoveis?finalidade=aluguel' },
+  { name: 'CONDOMÍNIOS', href: '/condominios' },
+  { name: 'AVALIAR', href: '/avaliar' },
+  { name: 'CONTATO', href: '/contato' },
 ];
 
 export function Header() {
@@ -54,13 +52,13 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex lg:items-center lg:gap-1">
+          <div className="hidden lg:flex lg:items-center lg:gap-8">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg relative group",
+                  "text-xs tracking-[0.15em] font-medium transition-all duration-300 relative group py-2",
                   isActive(item.href)
                     ? "text-primary"
                     : "text-foreground/70 hover:text-foreground"
@@ -69,7 +67,7 @@ export function Header() {
                 {item.name}
                 <span 
                   className={cn(
-                    "absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300",
+                    "absolute -bottom-1 left-0 h-px bg-primary transition-all duration-300",
                     isActive(item.href) ? "w-full" : "w-0 group-hover:w-full"
                   )}
                 />
