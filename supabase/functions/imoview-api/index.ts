@@ -64,6 +64,9 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
   // Convert valorcondominio to number
   const valorCondominioNumerico = parseCurrencyValue(raw.valorcondominio);
 
+  // Convert valoriptu to number
+  const valorIptuNumerico = parseCurrencyValue(raw.valoriptu);
+
   // Build fotos array from urlfotoprincipal and existing fotos
   const fotos: Array<{ url: string; descricao?: string }> = [];
   if (raw.urlfotoprincipal && typeof raw.urlfotoprincipal === 'string') {
@@ -106,6 +109,7 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
     endereco: raw.endereco || '',
     valor: valorNumerico,
     valorCondominio: valorCondominioNumerico,
+    valorIptu: valorIptuNumerico,
     areaTotal: parseArea(raw.arealote || raw.areaprincipal),
     areaConstruida: parseArea(raw.areaprincipal || raw.areainterna),
     qtdeQuartos: parseInt2(raw.numeroquartos),

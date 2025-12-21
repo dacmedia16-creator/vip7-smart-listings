@@ -14,6 +14,7 @@ export interface ImoviewProperty {
   endereco?: string;
   valor?: number;
   valorCondominio?: number;
+  valorIptu?: number;
   areaTotal?: number;
   areaConstruida?: number;
   qtdeQuartos?: number;

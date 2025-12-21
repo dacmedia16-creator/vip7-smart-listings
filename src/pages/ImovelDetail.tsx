@@ -269,6 +269,17 @@ export default function ImovelDetail() {
                     </p>
                   )}
                   
+                  {/* Valor do IPTU */}
+                  {property.valorIptu !== undefined && property.valorIptu > 0 && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      IPTU: {new Intl.NumberFormat('pt-BR', { 
+                        style: 'currency', 
+                        currency: 'BRL', 
+                        minimumFractionDigits: 0 
+                      }).format(property.valorIptu)}/ano
+                    </p>
+                  )}
+                  
                   {/* Área do Imóvel */}
                   {(property.areaConstruida || property.areaTotal) && (
                     <p className="text-sm text-muted-foreground mt-1">
