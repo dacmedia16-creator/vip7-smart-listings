@@ -1,0 +1,180 @@
+import { Property } from '@/types/property';
+
+export const mockProperties: Property[] = [
+  {
+    id: '1',
+    titulo: 'Casa de Alto Padrão no Alphaville',
+    descricao: 'Magnífica residência com arquitetura contemporânea, acabamentos de luxo e vista deslumbrante. Projeto assinado por renomado arquiteto, integrando perfeitamente os ambientes internos e externos.',
+    finalidade: 'venda',
+    tipo: 'casa',
+    cidade: 'Sorocaba',
+    bairro: 'Alphaville',
+    condominio: 'Alphaville Sorocaba',
+    valor: 3500000,
+    area: 450,
+    dormitorios: 5,
+    suites: 4,
+    vagas: 4,
+    destaque: true,
+    imagens: [
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+    ],
+    caracteristicas: ['Piscina aquecida', 'Churrasqueira gourmet', 'Home theater', 'Adega climatizada'],
+  },
+  {
+    id: '2',
+    titulo: 'Apartamento Premium no Campolim',
+    descricao: 'Apartamento de alto padrão com vista panorâmica, varanda gourmet e lazer completo. Localização privilegiada próximo aos melhores restaurantes e shoppings da região.',
+    finalidade: 'venda',
+    tipo: 'apartamento',
+    cidade: 'Sorocaba',
+    bairro: 'Campolim',
+    valor: 1800000,
+    area: 180,
+    dormitorios: 4,
+    suites: 2,
+    vagas: 3,
+    destaque: true,
+    imagens: [
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
+    ],
+    caracteristicas: ['Varanda gourmet', 'Vista panorâmica', 'Lazer completo'],
+  },
+  {
+    id: '3',
+    titulo: 'Casa em Condomínio Fechado',
+    descricao: 'Elegante residência em condomínio com segurança 24h. Amplos espaços, jardim paisagístico e área de lazer completa.',
+    finalidade: 'venda',
+    tipo: 'casa',
+    cidade: 'Sorocaba',
+    bairro: 'Jardim Portal da Colina',
+    condominio: 'Portal da Colina',
+    valor: 2200000,
+    area: 380,
+    dormitorios: 4,
+    suites: 3,
+    vagas: 3,
+    destaque: true,
+    imagens: [
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+      'https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800',
+    ],
+    caracteristicas: ['Segurança 24h', 'Jardim paisagístico', 'Piscina'],
+  },
+  {
+    id: '4',
+    titulo: 'Apartamento para Locação no Centro',
+    descricao: 'Apartamento moderno e funcional, totalmente mobiliado, ideal para executivos. Localização central com fácil acesso a todos os serviços.',
+    finalidade: 'aluguel',
+    tipo: 'apartamento',
+    cidade: 'Sorocaba',
+    bairro: 'Centro',
+    valor: 4500,
+    area: 85,
+    dormitorios: 2,
+    suites: 1,
+    vagas: 1,
+    destaque: true,
+    imagens: [
+      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
+    ],
+    caracteristicas: ['Mobiliado', 'Ar condicionado', 'Portaria 24h'],
+  },
+  {
+    id: '5',
+    titulo: 'Casa para Locação no Campolim',
+    descricao: 'Casa ampla e confortável em bairro nobre. Perfeita para famílias que buscam qualidade de vida e segurança.',
+    finalidade: 'aluguel',
+    tipo: 'casa',
+    cidade: 'Sorocaba',
+    bairro: 'Campolim',
+    valor: 8500,
+    area: 250,
+    dormitorios: 4,
+    suites: 2,
+    vagas: 3,
+    destaque: true,
+    imagens: [
+      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+      'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800',
+    ],
+    caracteristicas: ['Quintal amplo', 'Churrasqueira', 'Edícula'],
+  },
+  {
+    id: '6',
+    titulo: 'Cobertura Duplex de Luxo',
+    descricao: 'Espetacular cobertura duplex com terraço privativo, piscina e vista privilegiada da cidade. Acabamentos de altíssimo padrão.',
+    finalidade: 'venda',
+    tipo: 'apartamento',
+    cidade: 'Sorocaba',
+    bairro: 'Jardim Faculdade',
+    valor: 4200000,
+    area: 380,
+    dormitorios: 4,
+    suites: 4,
+    vagas: 4,
+    destaque: true,
+    imagens: [
+      'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800',
+      'https://images.unsplash.com/photo-1600210492493-0946911123ea?w=800',
+    ],
+    caracteristicas: ['Terraço privativo', 'Piscina privativa', 'Home office'],
+  },
+  {
+    id: '7',
+    titulo: 'Casa Térrea Moderna',
+    descricao: 'Residência térrea com projeto moderno, integração total dos ambientes e amplo quintal com área gourmet.',
+    finalidade: 'venda',
+    tipo: 'casa',
+    cidade: 'Sorocaba',
+    bairro: 'Jardim Ibiti do Paço',
+    valor: 1650000,
+    area: 280,
+    dormitorios: 3,
+    suites: 2,
+    vagas: 2,
+    destaque: false,
+    imagens: [
+      'https://images.unsplash.com/photo-1600047509358-9dc75507daeb?w=800',
+    ],
+    caracteristicas: ['Área gourmet', 'Projeto moderno', 'Quintal amplo'],
+  },
+  {
+    id: '8',
+    titulo: 'Apartamento Garden',
+    descricao: 'Apartamento garden com área privativa de jardim. Ideal para quem busca espaço e contato com a natureza.',
+    finalidade: 'aluguel',
+    tipo: 'apartamento',
+    cidade: 'Sorocaba',
+    bairro: 'Parque Campolim',
+    valor: 6200,
+    area: 140,
+    dormitorios: 3,
+    suites: 1,
+    vagas: 2,
+    destaque: true,
+    imagens: [
+      'https://images.unsplash.com/photo-1600585154363-67eb9e2e2099?w=800',
+    ],
+    caracteristicas: ['Jardim privativo', 'Pet friendly', 'Academia'],
+  },
+];
+
+export const getCidades = (): string[] => {
+  return [...new Set(mockProperties.map(p => p.cidade))];
+};
+
+export const getBairros = (cidade?: string): string[] => {
+  const filtered = cidade 
+    ? mockProperties.filter(p => p.cidade === cidade)
+    : mockProperties;
+  return [...new Set(filtered.map(p => p.bairro))];
+};
+
+export const getCondominios = (): string[] => {
+  return [...new Set(mockProperties.filter(p => p.condominio).map(p => p.condominio!))];
+};
