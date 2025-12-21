@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, Building2, MapPin, DollarSign, ArrowRight, Star } from 'lucide-react';
+import { Search, Home, Building2, MapPin, DollarSign, ArrowRight, Star, Castle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCidades, getBairros } from '@/data/mockProperties';
+import { getCidades, getBairros, getCondominios } from '@/data/mockProperties';
 
 export function HeroSection() {
   const navigate = useNavigate();
@@ -11,10 +11,12 @@ export function HeroSection() {
   const [tipo, setTipo] = useState<string>('');
   const [cidade, setCidade] = useState<string>('');
   const [bairro, setBairro] = useState<string>('');
+  const [condominio, setCondominio] = useState<string>('');
   const [faixaPreco, setFaixaPreco] = useState<string>('');
 
   const cidades = getCidades();
   const bairros = getBairros(cidade || undefined);
+  const condominios = getCondominios();
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -22,6 +24,7 @@ export function HeroSection() {
     if (tipo) params.set('tipo', tipo);
     if (cidade) params.set('cidade', cidade);
     if (bairro) params.set('bairro', bairro);
+    if (condominio) params.set('condominio', condominio);
     if (faixaPreco) {
       const [min, max] = faixaPreco.split('-');
       if (min) params.set('valorMin', min);
@@ -109,8 +112,8 @@ export function HeroSection() {
               </button>
             </div>
 
-            {/* Filters Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            {/* Filters Grid - Row 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
               {/* Tipo */}
               <div className="space-y-2">
                 <label className="text-xs text-muted-foreground flex items-center gap-2 uppercase tracking-wider">
@@ -121,7 +124,7 @@ export function HeroSection() {
                   <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="Todos os tipos" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="casa">Casa</SelectItem>
                     <SelectItem value="apartamento">Apartamento</SelectItem>
                   </SelectContent>
@@ -138,7 +141,7 @@ export function HeroSection() {
                   <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="Todas as cidades" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card border-border">
                     {cidades.map((c) => (
                       <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
@@ -156,9 +159,30 @@ export function HeroSection() {
                   <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="Todos os bairros" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card border-border">
                     {bairros.map((b) => (
                       <SelectItem key={b} value={b}>{b}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Filters Grid - Row 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+              {/* Condomínio */}
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground flex items-center gap-2 uppercase tracking-wider">
+                  <Castle className="h-3.5 w-3.5 text-primary" />
+                  Condomínio
+                </label>
+                <Select value={condominio} onValueChange={setCondominio}>
+                  <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
+                    <SelectValue placeholder="Todos os condomínios" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {condominios.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -174,7 +198,7 @@ export function HeroSection() {
                   <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="Qualquer valor" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="0-500000">Até R$ 500 mil</SelectItem>
                     <SelectItem value="500000-1000000">R$ 500 mil - R$ 1 milhão</SelectItem>
                     <SelectItem value="1000000-2000000">R$ 1 milhão - R$ 2 milhões</SelectItem>
