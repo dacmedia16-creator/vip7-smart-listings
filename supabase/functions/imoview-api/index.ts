@@ -275,16 +275,17 @@ serve(async (req) => {
           return response.json();
         };
 
-        const fetchAllCondominiosForCity = async (cityName: string) => {
+        // Agora usa codigoCidade (número) para filtrar corretamente
+        const fetchAllCondominiosForCity = async (cityCode: number, cityName: string) => {
           const all: Record<string, unknown>[] = [];
           const pageSize = 20; // limite da API
           let pagina = 1;
           let total: number | undefined;
 
           for (;;) {
-            console.log(`[imoview-api] Fetching condominios page ${pagina} for city: ${cityName}`);
+            console.log(`[imoview-api] Fetching condominios page ${pagina} for city: ${cityName} (code: ${cityCode})`);
             const condData = await fetchCondominiosPage({
-              cidade: cityName,
+              codigoCidade: cityCode, // ✅ Usar código numérico, não nome
               finalidade: params?.finalidade,
               numeroPagina: pagina,
               numeroRegistros: pageSize,
@@ -296,7 +297,7 @@ serve(async (req) => {
             all.push(...lista);
 
             console.log(
-              `[imoview-api] City ${cityName}: page ${pagina} -> ${lista.length} items (acc=${all.length}, total=${total ?? 'n/a'})`,
+              `[imoview-api] City ${cityName} (code: ${cityCode}): page ${pagina} -> ${lista.length} items (acc=${all.length}, total=${total ?? 'n/a'})`,
             );
 
             // Sem itens: parar para evitar loop infinito
@@ -351,17 +352,21 @@ serve(async (req) => {
 
             const results = await Promise.all(
               batch.map(async (cidade: Record<string, unknown>) => {
+                const cityCode = cidade?.codigo as number;
                 const cityName = getCityName(cidade);
-                if (!cityName) return [];
+                if (!cityCode || !cityName) {
+                  console.log(`[imoview-api] Skipping city without code or name:`, JSON.stringify(cidade));
+                  return [];
+                }
 
                 try {
-                  const list = await fetchAllCondominiosForCity(cityName);
+                  const list = await fetchAllCondominiosForCity(cityCode, cityName);
                   if (list.length > 0) {
-                    console.log(`[imoview-api] City ${cityName}: first cond keys:`, Object.keys(list[0] ?? {}));
+                    console.log(`[imoview-api] City ${cityName} (code: ${cityCode}): first cond keys:`, Object.keys(list[0] ?? {}));
                   }
                   return list;
                 } catch (e) {
-                  console.error(`[imoview-api] Error fetching condominios for city ${cityName}:`, e);
+                  console.error(`[imoview-api] Error fetching condominios for city ${cityName} (code: ${cityCode}):`, e);
                   return [];
                 }
               }),
@@ -392,14 +397,32 @@ serve(async (req) => {
           });
         }
 
-        // 2) Se tiver cidade: também paginar (para não ficar travado em 20)
+        // 2) Se tiver cidade específica: usar codigoCidade se disponível
+        const cityCode = params?.codigoCidade as number | undefined;
         const cityName = String(params?.cidade ?? '').trim();
-        console.log(`[imoview-api] City specified (${cityName}), fetching condominios (paginated)...`);
+        
+        if (cityCode) {
+          console.log(`[imoview-api] City specified by code (${cityCode} - ${cityName}), fetching condominios (paginated)...`);
+          const list = await fetchAllCondominiosForCity(cityCode, cityName);
+          list.sort((a, b) => getCondominioNome(a).localeCompare(getCondominioNome(b)));
 
-        const list = await fetchAllCondominiosForCity(cityName);
-        list.sort((a, b) => getCondominioNome(a).localeCompare(getCondominioNome(b)));
+          return new Response(JSON.stringify(list), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // Fallback: buscar pelo nome (menos preciso)
+        console.log(`[imoview-api] City specified by name only (${cityName}), using name filter...`);
+        const condData = await fetchCondominiosPage({
+          cidade: cityName,
+          finalidade: params?.finalidade,
+          numeroPagina: 1,
+          numeroRegistros: 100,
+        });
+        const { lista } = extractCondominios(condData, cityName);
+        lista.sort((a, b) => getCondominioNome(a).localeCompare(getCondominioNome(b)));
 
-        return new Response(JSON.stringify(list), {
+        return new Response(JSON.stringify(lista), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
