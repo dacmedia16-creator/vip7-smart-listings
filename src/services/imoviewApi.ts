@@ -87,10 +87,17 @@ export interface ImoviewListResult {
 
 export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
   try {
-    // Se houver múltiplos condomínios, fazer requisições paralelas
+    // Se houver múltiplos condomínios, fazer requisições paralelas SEM limite para buscar TODOS
     if (filters.codigosCondominio && filters.codigosCondominio.length > 0) {
       const requests = filters.codigosCondominio.map((codigo) => {
-        const singleFilter = { ...filters, codigoCondominio: codigo, codigosCondominio: undefined };
+        // Remover limite e paginação para buscar TODOS os imóveis de cada condomínio
+        const singleFilter = { 
+          ...filters, 
+          codigoCondominio: codigo, 
+          codigosCondominio: undefined,
+          limite: 500, // Limite alto para buscar todos de cada condomínio
+          pagina: 1,
+        };
         return callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
           'listarImoveis',
           singleFilter as Record<string, unknown>
@@ -102,12 +109,9 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       // Combinar resultados e remover duplicatas
       const seenCodigos = new Set<number>();
       const combinedList: ImoviewProperty[] = [];
-      let totalQuantidade = 0;
 
       for (const data of results) {
         const lista = Array.isArray(data) ? data : data?.lista || [];
-        const quantidade = Array.isArray(data) ? data.length : data?.quantidade || 0;
-        totalQuantidade += quantidade;
 
         for (const imovel of lista) {
           if (!seenCodigos.has(imovel.codigo)) {
@@ -124,7 +128,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         combinedList.sort((a, b) => (b.valor || 0) - (a.valor || 0));
       }
 
-      // Aplicar paginação
+      // Aplicar paginação no resultado combinado
       const pagina = filters.pagina || 1;
       const limite = filters.limite || 20;
       const startIndex = (pagina - 1) * limite;
