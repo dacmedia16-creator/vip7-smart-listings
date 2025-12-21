@@ -148,7 +148,7 @@ export function Footer() {
                 © {new Date().getFullYear()} VIP7 Imóveis. Todos os direitos reservados.
               </p>
               <p className="text-sm text-muted-foreground">
-                CRECI-SP 000000-J
+                CRECI 34502J
               </p>
             </div>
             <div className="flex justify-center gap-4">
