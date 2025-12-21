@@ -150,7 +150,7 @@ serve(async (req) => {
         const pagina = Number(params?.pagina ?? 1);
         const numeroregistros = Math.min(Number(params?.limite ?? 20), 20); // API Imoview limita a 20 registros
 
-        // Formato correto baseado na API Imoview
+        // Formato correto baseado na API Imoview (algumas contas usam numeroPagina/numeroRegistros)
         const listarImoveisBody: Record<string, unknown> = {
           finalidade: params?.finalidade,
           tipo: params?.tipo,
@@ -161,8 +161,11 @@ serve(async (req) => {
           qtdeQuartos: params?.dormitorios,
           qtdeSuites: params?.suites,
           qtdeVagas: params?.vagas,
+          // Enviar ambos para garantir paginação
           pagina,
+          numeroPagina: pagina,
           numeroregistros,
+          numeroRegistros: numeroregistros,
           ordenarPor: params?.ordenarPor,
         };
 
