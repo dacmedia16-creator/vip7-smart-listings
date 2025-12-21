@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, Home, Building2, MapPin, DollarSign, ArrowRight, Castle, ChevronDown } from 'lucide-react';
+import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CondominioCombobox } from '@/components/CondominioCombobox';
 import { useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { getFinalidadeCode } from '@/services/imoviewApi';
 
@@ -19,7 +20,7 @@ export function HeroSection() {
   
   const { data: cidades = [] } = useCidades(finalidadeCode);
   const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
-  const { data: condominios = [] } = useCondominios(cidade || undefined, finalidadeCode);
+  const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominios(cidade || undefined, finalidadeCode);
 
   // Reset bairro e condominio quando cidade mudar
   useEffect(() => {
@@ -187,17 +188,14 @@ export function HeroSection() {
               </Select>
 
               {/* Condomínio */}
-              <Select value={condominioCode} onValueChange={setCondominioCode}>
-                <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
-                  <Castle className="h-4 w-4 text-primary mr-2" />
-                  <SelectValue placeholder="Condomínio" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border max-h-60">
-                  {condominios.map((c) => (
-                    <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CondominioCombobox
+                condominios={condominios}
+                value={condominioCode}
+                onValueChange={setCondominioCode}
+                placeholder="Condomínio"
+                isLoading={isLoadingCondominios}
+                triggerClassName="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors"
+              />
 
               {/* Faixa de Preço */}
               <Select value={faixaPreco} onValueChange={setFaixaPreco}>

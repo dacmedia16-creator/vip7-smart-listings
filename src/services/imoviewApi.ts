@@ -57,6 +57,7 @@ export interface ImoviewNeighborhood {
 export interface ImoviewCondominium {
   codigo: number;
   nome: string;
+  cidade?: string;
 }
 
 export interface ImoviewPropertyType {

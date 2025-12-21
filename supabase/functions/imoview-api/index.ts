@@ -231,7 +231,7 @@ serve(async (req) => {
           return String(raw ?? '').trim();
         };
 
-        const extractCondominios = (condData: unknown) => {
+        const extractCondominios = (condData: unknown, cityNameForEnrichment?: string) => {
           const data = condData as Record<string, unknown> | null;
           const lista =
             Array.isArray(condData)
@@ -248,7 +248,13 @@ serve(async (req) => {
                 ? Number(quantidadeRaw)
                 : undefined;
 
-          return { lista, quantidade: Number.isFinite(quantidade) ? quantidade : undefined };
+          // Enrich each condomínio with city name
+          const enrichedLista = lista.map((cond) => ({
+            ...cond,
+            cidade: (cond.cidade as string) || cityNameForEnrichment || '',
+          }));
+
+          return { lista: enrichedLista, quantidade: Number.isFinite(quantidade) ? quantidade : undefined };
         };
 
         const fetchCondominiosPage = async (payload: Record<string, unknown>) => {
@@ -283,7 +289,7 @@ serve(async (req) => {
               numeroregistros: pageSize,
             });
 
-            const { lista, quantidade } = extractCondominios(condData);
+            const { lista, quantidade } = extractCondominios(condData, cityName);
             if (total === undefined) total = quantidade;
 
             all.push(...lista);

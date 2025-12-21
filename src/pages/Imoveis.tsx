@@ -6,6 +6,7 @@ import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { CondominioCombobox } from '@/components/CondominioCombobox';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { getFinalidadeCode } from '@/services/imoviewApi';
 
@@ -28,7 +29,7 @@ export default function Imoveis() {
   // Fetch data from API
   const { data: cidades = [] } = useCidades(finalidadeCode);
   const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
-  const { data: condominios = [] } = useCondominios(cidade || undefined, finalidadeCode);
+  const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominios(cidade || undefined, finalidadeCode);
 
   const ITEMS_PER_PAGE = 20;
 
@@ -258,17 +259,14 @@ export default function Imoveis() {
                 {/* Condomínio */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Condomínio</h3>
-                  <Select value={condominioCode || "all"} onValueChange={(v) => updateFilter('condominioCode', v === "all" ? "" : v)}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Todos os condomínios" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border max-h-60">
-                      <SelectItem value="all">Todos</SelectItem>
-                      {condominios.map((c) => (
-                        <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CondominioCombobox
+                    condominios={condominios}
+                    value={condominioCode}
+                    onValueChange={(v) => updateFilter('condominioCode', v)}
+                    placeholder="Todos os condomínios"
+                    isLoading={isLoadingCondominios}
+                    triggerClassName="bg-secondary border-border"
+                  />
                 </div>
 
                 {/* Price Range */}
