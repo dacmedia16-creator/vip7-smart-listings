@@ -33,7 +33,8 @@ export interface ImoviewFilters {
   tipo?: string;
   cidade?: string;
   bairro?: string;
-  codigoCondominio?: number; // Código numérico do condomínio
+  codigoCondominio?: number; // Código numérico do condomínio (single)
+  codigosCondominio?: number[]; // Array de códigos de condomínios (multi-select)
   valorMin?: number;
   valorMax?: number;
   dormitorios?: number;
@@ -86,8 +87,54 @@ export interface ImoviewListResult {
 
 export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
   try {
+    // Se houver múltiplos condomínios, fazer requisições paralelas
+    if (filters.codigosCondominio && filters.codigosCondominio.length > 0) {
+      const requests = filters.codigosCondominio.map((codigo) => {
+        const singleFilter = { ...filters, codigoCondominio: codigo, codigosCondominio: undefined };
+        return callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
+          'listarImoveis',
+          singleFilter as Record<string, unknown>
+        );
+      });
+
+      const results = await Promise.all(requests);
+      
+      // Combinar resultados e remover duplicatas
+      const seenCodigos = new Set<number>();
+      const combinedList: ImoviewProperty[] = [];
+      let totalQuantidade = 0;
+
+      for (const data of results) {
+        const lista = Array.isArray(data) ? data : data?.lista || [];
+        const quantidade = Array.isArray(data) ? data.length : data?.quantidade || 0;
+        totalQuantidade += quantidade;
+
+        for (const imovel of lista) {
+          if (!seenCodigos.has(imovel.codigo)) {
+            seenCodigos.add(imovel.codigo);
+            combinedList.push(imovel);
+          }
+        }
+      }
+
+      // Aplicar ordenação se necessário
+      if (filters.ordenarPor === 'valor_asc') {
+        combinedList.sort((a, b) => (a.valor || 0) - (b.valor || 0));
+      } else if (filters.ordenarPor === 'valor_desc') {
+        combinedList.sort((a, b) => (b.valor || 0) - (a.valor || 0));
+      }
+
+      // Aplicar paginação
+      const pagina = filters.pagina || 1;
+      const limite = filters.limite || 20;
+      const startIndex = (pagina - 1) * limite;
+      const paginatedList = combinedList.slice(startIndex, startIndex + limite);
+
+      return { lista: paginatedList, quantidade: combinedList.length };
+    }
+
+    // Comportamento original para single ou nenhum condomínio
     const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>('listarImoveis', filters as Record<string, unknown>);
-    // A API pode retornar um array direto ou um objeto com propriedade 'lista' e 'quantidade'
     if (Array.isArray(data)) {
       return { lista: data, quantidade: data.length };
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -6,7 +6,7 @@ import { PropertyCard } from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { CondominioCombobox } from '@/components/CondominioCombobox';
+import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { getFinalidadeCode } from '@/services/imoviewApi';
 
@@ -20,9 +20,14 @@ export default function Imoveis() {
   const tipo = searchParams.get('tipo') || '';
   const cidade = searchParams.get('cidade') || '';
   const bairro = searchParams.get('bairro') || '';
-  const condominioCode = searchParams.get('condominioCode') || '';
+  const condominiosCodes = searchParams.get('condominios') || ''; // Comma-separated list
   const ordenar = searchParams.get('ordenar') || 'recentes';
   const paginaAtual = Number(searchParams.get('pagina')) || 1;
+
+  // Parse condominios from URL (comma-separated string to array)
+  const condominiosArray = useMemo(() => {
+    return condominiosCodes ? condominiosCodes.split(',').filter(Boolean) : [];
+  }, [condominiosCodes]);
 
   const finalidadeCode = getFinalidadeCode(finalidade);
 
@@ -39,7 +44,7 @@ export default function Imoveis() {
     tipo: tipo || undefined,
     cidade: cidade || undefined,
     bairro: bairro || undefined,
-    codigoCondominio: condominioCode ? Number(condominioCode) : undefined,
+    codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
     valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
@@ -100,7 +105,19 @@ export default function Imoveis() {
       newParams.delete('pagina');
       setSearchParams(newParams);
     }
-  }, [finalidade, tipo, cidade, bairro, condominioCode, ordenar]);
+  }, [finalidade, tipo, cidade, bairro, condominiosCodes, ordenar]);
+
+  // Handler for updating condominios (multi-select)
+  const updateCondominios = (values: string[]) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (values.length > 0) {
+      newParams.set('condominios', values.join(','));
+    } else {
+      newParams.delete('condominios');
+    }
+    newParams.delete('pagina'); // Reset page on filter change
+    setSearchParams(newParams);
+  };
 
   const getPageTitle = () => {
     const parts = [];
@@ -256,16 +273,17 @@ export default function Imoveis() {
                   </Select>
                 </div>
 
-                {/* Condomínio */}
+                {/* Condomínios (Multi-Select) */}
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">Condomínio</h3>
-                  <CondominioCombobox
+                  <h3 className="font-semibold text-foreground">Condomínios</h3>
+                  <CondominioMultiSelect
                     condominios={condominios}
-                    value={condominioCode}
-                    onValueChange={(v) => updateFilter('condominioCode', v)}
+                    values={condominiosArray}
+                    onValuesChange={updateCondominios}
                     placeholder="Todos os condomínios"
                     isLoading={isLoadingCondominios}
                     triggerClassName="bg-secondary border-border"
+                    maxSelections={10}
                   />
                 </div>
 
