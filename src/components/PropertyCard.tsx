@@ -8,7 +8,7 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
-  const isRental = property.finalidade === 2;
+  const isRental = property.finalidade === 1; // API Imoview: 1 = Aluguel
   const imageUrl = property.fotos?.[0]?.url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800';
 
   return (

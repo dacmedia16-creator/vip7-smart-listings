@@ -5,7 +5,7 @@ export interface ImoviewProperty {
   codigoReferencia?: string;
   titulo?: string;
   descricao?: string;
-  finalidade: number; // 1 = Venda, 2 = Aluguel
+  finalidade: number; // 1 = Aluguel, 2 = Venda (conforme API Imoview)
   tipo?: string;
   tipoDescricao?: string;
   cidade?: string;
@@ -28,7 +28,7 @@ export interface ImoviewProperty {
 }
 
 export interface ImoviewFilters {
-  finalidade?: number; // 1 = Venda, 2 = Aluguel
+  finalidade?: number; // 1 = Aluguel, 2 = Venda (conforme API Imoview)
   tipo?: string;
   cidade?: string;
   bairro?: string;
@@ -161,13 +161,13 @@ export async function listarTiposImoveis(): Promise<ImoviewPropertyType[]> {
   }
 }
 
-// Helper para converter finalidade string para número
+// Helper para converter finalidade string para número (conforme API Imoview: 1 = Aluguel, 2 = Venda)
 export function getFinalidadeCode(finalidade: string): number | undefined {
   switch (finalidade) {
     case 'venda':
-      return 1;
+      return 2; // API Imoview: 2 = Venda
     case 'aluguel':
-      return 2;
+      return 1; // API Imoview: 1 = Aluguel
     default:
       return undefined;
   }
