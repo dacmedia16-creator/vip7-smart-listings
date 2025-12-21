@@ -268,8 +268,49 @@ serve(async (req) => {
     }
     
     if (action === 'detalhesImovel') {
+      // Log da resposta RAW completa para diagnóstico
+      console.log(`[imoview-api] Raw details response FULL:`, JSON.stringify(data).substring(0, 2000));
+      console.log(`[imoview-api] Raw details response keys:`, Object.keys(data as Record<string, unknown>));
+      
+      // A API de detalhes pode encapsular os dados dentro de uma propriedade
+      const rawData = data as Record<string, unknown>;
+      let propertyData: Record<string, unknown>;
+      
+      // Verificar diferentes estruturas possíveis da resposta
+      if (rawData.imovel && typeof rawData.imovel === 'object') {
+        console.log(`[imoview-api] Data found in 'imovel' property`);
+        propertyData = rawData.imovel as Record<string, unknown>;
+      } else if (rawData.dados && typeof rawData.dados === 'object') {
+        console.log(`[imoview-api] Data found in 'dados' property`);
+        propertyData = rawData.dados as Record<string, unknown>;
+      } else if (rawData.resultado && typeof rawData.resultado === 'object') {
+        console.log(`[imoview-api] Data found in 'resultado' property`);
+        propertyData = rawData.resultado as Record<string, unknown>;
+      } else if (rawData.codigo || rawData.titulo || rawData.valor) {
+        console.log(`[imoview-api] Data at root level`);
+        propertyData = rawData;
+      } else {
+        // Tentar encontrar qualquer objeto aninhado que contenha dados do imóvel
+        console.log(`[imoview-api] Looking for nested property data...`);
+        const possibleKeys = Object.keys(rawData);
+        console.log(`[imoview-api] Available keys:`, possibleKeys);
+        
+        // Se tiver apenas uma chave e for um objeto, usar ela
+        if (possibleKeys.length === 1 && typeof rawData[possibleKeys[0]] === 'object' && rawData[possibleKeys[0]] !== null) {
+          console.log(`[imoview-api] Using single nested object: ${possibleKeys[0]}`);
+          propertyData = rawData[possibleKeys[0]] as Record<string, unknown>;
+        } else {
+          // Última tentativa - usar os dados como estão
+          console.log(`[imoview-api] Using raw data as-is`);
+          propertyData = rawData;
+        }
+      }
+      
+      console.log(`[imoview-api] Property data keys:`, Object.keys(propertyData));
+      console.log(`[imoview-api] Property data sample:`, JSON.stringify(propertyData).substring(0, 1000));
+      
       console.log(`[imoview-api] Mapping property details`);
-      const mappedData = mapImoviewProperty(data as Record<string, unknown>);
+      const mappedData = mapImoviewProperty(propertyData);
       console.log(`[imoview-api] Mapped details:`, JSON.stringify(mappedData).substring(0, 500));
       
       return new Response(JSON.stringify(mappedData), {
