@@ -60,7 +60,7 @@ export default function ImovelDetail() {
     );
   }
 
-  const isRental = property.finalidade === 2;
+  const isRental = property.finalidade === 1; // API Imoview: 1 = Aluguel, 2 = Venda
   const whatsappMessage = generatePropertyWhatsAppMessage({ titulo: property.titulo, codigo: property.codigo });
   const whatsappLink = generateWhatsAppLink(whatsappMessage);
 
