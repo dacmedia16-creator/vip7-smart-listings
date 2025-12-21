@@ -16,7 +16,7 @@ export const generateWhatsAppLink = (message: string, phone = '5515999999999'): 
   return `https://wa.me/${phone}?text=${encodedMessage}`;
 };
 
-export const generatePropertyWhatsAppMessage = (property: { titulo: string; id: string }): string => {
+export const generatePropertyWhatsAppMessage = (property: { titulo?: string; codigo: number | string }): string => {
   const baseUrl = window.location.origin;
-  return `Olá! Tenho interesse no imóvel: ${property.titulo}\n\nLink: ${baseUrl}/imovel/${property.id}`;
+  return `Olá! Tenho interesse no imóvel: ${property.titulo || `Código ${property.codigo}`}\n\nLink: ${baseUrl}/imovel/${property.codigo}`;
 };
