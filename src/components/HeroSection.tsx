@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CondominioCombobox } from '@/components/CondominioCombobox';
+import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { getFinalidadeCode } from '@/services/imoviewApi';
 
@@ -13,7 +13,7 @@ export function HeroSection() {
   const [tipo, setTipo] = useState<string>('');
   const [cidade, setCidade] = useState<string>('');
   const [bairro, setBairro] = useState<string>('');
-  const [condominioCode, setCondominioCode] = useState<string>('');
+  const [condominiosCodes, setCondominiosCodes] = useState<string[]>([]);
   const [faixaPreco, setFaixaPreco] = useState<string>('');
 
   const finalidadeCode = getFinalidadeCode(finalidade);
@@ -25,7 +25,7 @@ export function HeroSection() {
   // Reset bairro e condominio quando cidade mudar
   useEffect(() => {
     setBairro('');
-    setCondominioCode('');
+    setCondominiosCodes([]);
   }, [cidade]);
 
   const handleSearch = () => {
@@ -34,7 +34,7 @@ export function HeroSection() {
     if (tipo) params.set('tipo', tipo);
     if (cidade) params.set('cidade', cidade);
     if (bairro) params.set('bairro', bairro);
-    if (condominioCode) params.set('condominios', condominioCode); // Usar 'condominios' para compatibilidade
+    if (condominiosCodes.length > 0) params.set('condominios', condominiosCodes.join(','));
     if (faixaPreco) {
       const [min, max] = faixaPreco.split('-');
       if (min) params.set('valorMin', min);
@@ -161,13 +161,14 @@ export function HeroSection() {
               </Select>
 
               {/* Condomínio */}
-              <CondominioCombobox
+              <CondominioMultiSelect
                 condominios={condominios}
-                value={condominioCode}
-                onValueChange={setCondominioCode}
-                placeholder="Condomínio"
+                values={condominiosCodes}
+                onValuesChange={setCondominiosCodes}
+                placeholder="Condomínios"
                 isLoading={isLoadingCondominios}
                 triggerClassName="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors"
+                maxSelections={5}
               />
 
               {/* Faixa de Preço */}
