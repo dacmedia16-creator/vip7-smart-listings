@@ -1,3 +1,5 @@
+import { ScrollReveal } from '@/components/ScrollReveal';
+
 const differentials = [
   {
     number: '01',
@@ -43,51 +45,51 @@ export function DiferenciaisSection() {
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
-            <span className="text-xs uppercase tracking-[0.3em] text-primary font-medium">
-              Por que nos escolher
-            </span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+        <ScrollReveal variant="fade-up">
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center gap-4 mb-6">
+              <div className="h-px w-12 bg-gradient-to-r from-transparent to-primary" />
+              <span className="text-xs uppercase tracking-[0.3em] text-primary font-medium">
+                Por que nos escolher
+              </span>
+              <div className="h-px w-12 bg-gradient-to-l from-transparent to-primary" />
+            </div>
+
+            <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
+              Nossos{' '}
+              <span className="text-gradient-gold italic">Diferenciais</span>
+            </h2>
+
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Oferecemos um serviço completo para quem busca excelência no mercado imobiliário.
+            </p>
           </div>
-
-          <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
-            Nossos{' '}
-            <span className="text-gradient-gold italic">Diferenciais</span>
-          </h2>
-
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Oferecemos um serviço completo para quem busca excelência no mercado imobiliário.
-          </p>
-        </div>
+        </ScrollReveal>
 
         {/* Differentials Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {differentials.map((item, index) => (
-            <div
-              key={item.number}
-              className="group relative p-8 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-500"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              {/* Number */}
-              <span className="absolute top-6 right-6 text-5xl font-heading font-bold text-primary/10 group-hover:text-primary/20 transition-colors">
-                {item.number}
-              </span>
+            <ScrollReveal key={item.number} variant="zoom-in" delay={index * 0.1}>
+              <div className="group relative p-8 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-500 h-full">
+                {/* Number */}
+                <span className="absolute top-6 right-6 text-5xl font-heading font-bold text-primary/10 group-hover:text-primary/20 transition-colors">
+                  {item.number}
+                </span>
 
-              {/* Content */}
-              <div className="relative z-10">
-                <h3 className="text-xl font-heading font-semibold text-foreground mb-3 group-hover:text-primary transition-colors">
-                  {item.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {item.description}
-                </p>
+                {/* Content */}
+                <div className="relative z-10">
+                  <h3 className="text-xl font-heading font-semibold text-foreground mb-3 group-hover:text-primary transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+
+                {/* Hover Line */}
+                <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-gold group-hover:w-full transition-all duration-500" />
               </div>
-
-              {/* Hover Line */}
-              <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-gold group-hover:w-full transition-all duration-500" />
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </div>

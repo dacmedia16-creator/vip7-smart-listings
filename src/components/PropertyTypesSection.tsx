@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Home, Building2, Key, Landmark, ArrowUpRight } from 'lucide-react';
+import { ScrollReveal } from '@/components/ScrollReveal';
 
 const propertyTypes = [
   {
@@ -41,60 +42,62 @@ export function PropertyTypesSection() {
 
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center mb-16 lg:mb-20">
-          <span className="text-primary text-sm font-medium uppercase tracking-luxury mb-4 block">
-            Encontre seu imóvel
-          </span>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-foreground mb-6">
-            O que você está{' '}
-            <span className="text-gradient-gold italic">procurando?</span>
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            Explore nossa seleção curada de imóveis por categoria
-          </p>
-        </div>
+        <ScrollReveal variant="fade-up">
+          <div className="text-center mb-16 lg:mb-20">
+            <span className="text-primary text-sm font-medium uppercase tracking-luxury mb-4 block">
+              Encontre seu imóvel
+            </span>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-foreground mb-6">
+              O que você está{' '}
+              <span className="text-gradient-gold italic">procurando?</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+              Explore nossa seleção curada de imóveis por categoria
+            </p>
+          </div>
+        </ScrollReveal>
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {propertyTypes.map((item, index) => (
-            <Link
-              key={item.title}
-              to={item.href}
-              className="group relative rounded-2xl overflow-hidden card-luxury animate-slide-up"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              {/* Background Image */}
-              <div className="aspect-[3/4] relative">
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-              </div>
-
-              {/* Content */}
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                {/* Icon */}
-                <div className="mb-auto pt-4 flex justify-between items-start">
-                  <div className="p-3 rounded-xl glass-luxury group-hover:bg-primary/20 transition-colors duration-500">
-                    <item.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="w-10 h-10 rounded-full glass-luxury flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
-                    <ArrowUpRight className="h-5 w-5 text-primary" />
-                  </div>
+            <ScrollReveal key={item.title} variant="fade-up" delay={index * 0.1}>
+              <Link
+                to={item.href}
+                className="group relative rounded-2xl overflow-hidden card-luxury block"
+              >
+                {/* Background Image */}
+                <div className="aspect-[3/4] relative">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
                 </div>
 
-                <div>
-                  <h3 className="text-xl font-heading font-bold text-foreground mb-2 group-hover:text-primary transition-colors duration-300">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {item.description}
-                  </p>
+                {/* Content */}
+                <div className="absolute inset-0 flex flex-col justify-end p-6">
+                  {/* Icon */}
+                  <div className="mb-auto pt-4 flex justify-between items-start">
+                    <div className="p-3 rounded-xl glass-luxury group-hover:bg-primary/20 transition-colors duration-500">
+                      <item.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="w-10 h-10 rounded-full glass-luxury flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
+                      <ArrowUpRight className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-heading font-bold text-foreground mb-2 group-hover:text-primary transition-colors duration-300">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            </ScrollReveal>
           ))}
         </div>
       </div>
