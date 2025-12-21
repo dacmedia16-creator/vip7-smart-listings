@@ -96,9 +96,10 @@ export function Footer() {
                     <Phone className="h-4 w-4 text-primary" />
                   </div>
                   <a
-                    href="tel:+5515999999999"
+                    href="tel:+551535008641"
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
+                    (15) 3500-8641
                     (15) 99999-9999
                   </a>
                 </li>
