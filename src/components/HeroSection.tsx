@@ -84,33 +84,6 @@ export function HeroSection() {
             <span className="text-foreground/90">em Sorocaba e Votorantim</span>
           </p>
 
-          {/* Dual CTAs */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 animate-slide-up delay-200">
-            <Button 
-              variant="gold" 
-              size="xl" 
-              asChild
-              className="group"
-            >
-              <Link to="/imoveis?finalidade=venda">
-                Ver Imóveis à Venda
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </Button>
-            <Button 
-              variant="goldOutline" 
-              size="xl"
-              asChild
-            >
-              <a
-                href="https://wa.me/551535008641?text=Olá! Gostaria de uma consultoria exclusiva."
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Consultoria Exclusiva
-              </a>
-            </Button>
-          </div>
 
           {/* Credibility Badges */}
           <div className="flex flex-wrap gap-6 md:gap-10 justify-center text-sm text-muted-foreground animate-slide-up delay-300">
