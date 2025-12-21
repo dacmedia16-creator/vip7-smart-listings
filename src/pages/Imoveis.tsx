@@ -46,10 +46,14 @@ export default function Imoveis() {
     pagina: paginaAtual,
   };
 
-  const { data: properties = [], isLoading, error } = useImoveis(apiFilters);
+  const { data: imoveisData, isLoading, error } = useImoveis(apiFilters);
+  
+  const properties = imoveisData?.lista || [];
+  const totalImoveis = imoveisData?.quantidade || 0;
+  const totalPages = Math.ceil(totalImoveis / ITEMS_PER_PAGE);
 
-  // Determina se há mais páginas (se retornou exatamente o limite, provavelmente há mais)
-  const hasMorePages = properties.length === ITEMS_PER_PAGE;
+  // Determina se há mais páginas baseado no total real
+  const hasMorePages = paginaAtual < totalPages;
   const hasPreviousPage = paginaAtual > 1;
 
   const goToPage = (page: number) => {
@@ -130,7 +134,7 @@ export default function Imoveis() {
                 {getPageTitle()}
               </h1>
               <p className="text-muted-foreground">
-                {isLoading ? 'Carregando...' : `${properties.length} imóveis encontrados`}
+                {isLoading ? 'Carregando...' : `${totalImoveis} imóveis encontrados`}
               </p>
             </div>
 
@@ -340,7 +344,7 @@ export default function Imoveis() {
                       </Button>
                       
                       <span className="px-4 py-2 rounded-lg bg-secondary text-foreground font-medium">
-                        Página {paginaAtual}
+                        Página {paginaAtual} de {totalPages}
                       </span>
                       
                       <Button
