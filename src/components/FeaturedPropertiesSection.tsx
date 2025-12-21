@@ -16,7 +16,7 @@ export function FeaturedPropertiesSection({
   subtitle,
   finalidade,
 }: FeaturedPropertiesSectionProps) {
-  const finalidadeCode = finalidade === 'venda' ? 1 : 2;
+  const finalidadeCode = finalidade === 'venda' ? 2 : 1; // API Imoview: 1 = Aluguel, 2 = Venda
   const { data: properties = [], isLoading, error } = useImoveisDestaque(finalidadeCode);
 
   // Limitar a 4 imóveis
