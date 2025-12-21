@@ -235,3 +235,22 @@ export function formatPropertyValue(value: number | undefined, isRental: boolean
   
   return isRental ? `${formatted}/mês` : formatted;
 }
+
+// Função para contar imóveis por condomínio (usando cache)
+export async function contarImoveisPorCondominio(
+  codigoCondominio: number,
+  finalidade?: number
+): Promise<number> {
+  try {
+    const result = await listarImoveis({
+      codigoCondominio,
+      finalidade,
+      limite: 1,
+      pagina: 1,
+    });
+    return result.quantidade;
+  } catch (error) {
+    console.error('[imoview-service] contarImoveisPorCondominio error:', error);
+    return 0;
+  }
+}

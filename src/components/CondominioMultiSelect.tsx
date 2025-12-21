@@ -20,6 +20,7 @@ export interface CondominioOption {
   codigo: number;
   nome: string;
   cidade?: string;
+  quantidadeImoveis?: number;
 }
 
 interface CondominioMultiSelectProps {
@@ -248,6 +249,11 @@ export function CondominioMultiSelect({
                           <div className="flex flex-col flex-1 min-w-0">
                             <span className="truncate font-medium">
                               {cond.nome}
+                              {cond.quantidadeImoveis !== undefined && (
+                                <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                                  ({cond.quantidadeImoveis})
+                                </span>
+                              )}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               Código: {cond.codigo}

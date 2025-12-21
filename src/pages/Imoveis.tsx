@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
-import { getFinalidadeCode } from '@/services/imoviewApi';
+import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
 
 export default function Imoveis() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,6 +35,60 @@ export default function Imoveis() {
   const { data: cidades = [] } = useCidades(finalidadeCode);
   const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
   const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominios(cidade || undefined, finalidadeCode);
+
+  // Cache de contagens de imóveis por condomínio
+  const [condominiosContagem, setCondominiosContagem] = useState<Record<number, number>>({});
+  const [isLoadingContagem, setIsLoadingContagem] = useState(false);
+
+  // Buscar contagem de imóveis para os primeiros 30 condomínios
+  useEffect(() => {
+    if (condominios.length === 0) return;
+
+    const fetchCounts = async () => {
+      setIsLoadingContagem(true);
+      
+      // Limitar a 30 condomínios para performance
+      const condominiosToFetch = condominios.slice(0, 30).filter(
+        (c) => condominiosContagem[c.codigo] === undefined
+      );
+
+      if (condominiosToFetch.length === 0) {
+        setIsLoadingContagem(false);
+        return;
+      }
+
+      try {
+        const counts = await Promise.all(
+          condominiosToFetch.map(async (c) => ({
+            codigo: c.codigo,
+            quantidade: await contarImoveisPorCondominio(c.codigo, finalidadeCode),
+          }))
+        );
+
+        setCondominiosContagem((prev) => {
+          const updated = { ...prev };
+          for (const { codigo, quantidade } of counts) {
+            updated[codigo] = quantidade;
+          }
+          return updated;
+        });
+      } catch (error) {
+        console.error('Erro ao buscar contagens:', error);
+      } finally {
+        setIsLoadingContagem(false);
+      }
+    };
+
+    fetchCounts();
+  }, [condominios, finalidadeCode]);
+
+  // Enriquecer condomínios com contagem
+  const condominiosComContagem = useMemo(() => {
+    return condominios.map((c) => ({
+      ...c,
+      quantidadeImoveis: condominiosContagem[c.codigo],
+    }));
+  }, [condominios, condominiosContagem]);
 
   const ITEMS_PER_PAGE = 20;
 
@@ -138,7 +192,7 @@ export default function Imoveis() {
   const selectedCondominiosNames = useMemo(() => {
     if (condominiosArray.length === 0) return null;
     
-    const selected = condominios.filter((c) =>
+    const selected = condominiosComContagem.filter((c) =>
       condominiosArray.includes(String(c.codigo))
     );
     
@@ -146,7 +200,7 @@ export default function Imoveis() {
     if (selected.length === 1) return selected[0].nome;
     if (selected.length === 2) return `${selected[0].nome} e ${selected[1].nome}`;
     return `${selected[0].nome}, ${selected[1].nome} e mais ${selected.length - 2}`;
-  }, [condominiosArray, condominios]);
+  }, [condominiosArray, condominiosComContagem]);
 
   const formatPriceLabel = (value: number) => {
     if (value >= 1000000) {
@@ -296,11 +350,11 @@ export default function Imoveis() {
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Condomínios</h3>
                   <CondominioMultiSelect
-                    condominios={condominios}
+                    condominios={condominiosComContagem}
                     values={condominiosArray}
                     onValuesChange={updateCondominios}
                     placeholder="Todos os condomínios"
-                    isLoading={isLoadingCondominios}
+                    isLoading={isLoadingCondominios || isLoadingContagem}
                     triggerClassName="bg-secondary border-border"
                     maxSelections={10}
                   />
