@@ -24,7 +24,7 @@ serve(async (req) => {
 
   try {
     const { action, params } = await req.json();
-    console.log(`[imoview-api] Action: ${action}, Params:`, params);
+    console.log(`[imoview-api] Action: ${action}, Params:`, JSON.stringify(params));
 
     let endpoint = '';
     let method = 'GET';
@@ -37,10 +37,8 @@ serve(async (req) => {
 
         const pagina = Number(params?.pagina ?? 1);
         const registrosPorPagina = Number(params?.limite ?? 12);
-        const inicio = Math.max(0, (pagina - 1) * registrosPorPagina);
 
-        // Observação: alguns convênios/instâncias do Imoview aceitam nomes de paginação diferentes.
-        // Enviamos os campos “mais comuns” juntos para maximizar compatibilidade.
+        // Formato simplificado - apenas campos essenciais
         const listarImoveisBody: Record<string, unknown> = {
           finalidade: params?.finalidade,
           tipo: params?.tipo,
@@ -52,18 +50,8 @@ serve(async (req) => {
           qtdeQuartos: params?.dormitorios,
           qtdeSuites: params?.suites,
           qtdeVagas: params?.vagas,
-
-          // paginação (principais)
           pagina,
           registrosPorPagina,
-
-          // paginação (aliases comuns)
-          paginaAtual: pagina,
-          quantidadeRegistros: registrosPorPagina,
-          itensPorPagina: registrosPorPagina,
-          offset: inicio,
-          inicio,
-
           ordenarPor: params?.ordenarPor,
         };
 
@@ -74,13 +62,13 @@ serve(async (req) => {
         }
 
         const cleaned = removeNullValues(listarImoveisBody);
-        console.log('[imoview-api] listarImoveis body:', cleaned);
+        console.log('[imoview-api] listarImoveis body:', JSON.stringify(cleaned));
         body = JSON.stringify(cleaned);
         break;
       }
 
       case 'detalhesImovel':
-        endpoint = `/Imovel/RetornarDetalhesImovelDisponivel?codigo=${params?.codigo}`;
+        endpoint = `/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${params?.codigo}`;
         method = 'GET';
         break;
 
@@ -120,6 +108,9 @@ serve(async (req) => {
     }
 
     console.log(`[imoview-api] Calling: ${method} ${IMOVIEW_API_URL}${endpoint}`);
+    if (body) {
+      console.log(`[imoview-api] Request body: ${body}`);
+    }
 
     const fetchOptions: RequestInit = {
       method,
@@ -142,71 +133,24 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log(`[imoview-api] Success, received data:`, typeof data === 'object' ? 'object' : data);
-
-    // Alguns convênios do Imoview retornam apenas os metadados (quantidade/maiorvalor/menorvalor)
-    // e deixam a lista vazia no POST. Nesses casos tentamos uma chamada GET com querystring.
-    if (action === 'listarImoveis' && data && typeof data === 'object') {
+    
+    // Log detalhado da resposta para debug
+    if (action === 'listarImoveis') {
       const d = data as Record<string, unknown>;
-      const quantidade = Number(d.quantidade ?? 0);
-      const lista = d.lista;
-
-      if (quantidade > 0 && Array.isArray(lista) && lista.length === 0) {
-        console.warn('[imoview-api] listarImoveis returned quantidade > 0 but empty lista. Retrying with GET querystring...');
-
-        const pagina = Number(params?.pagina ?? 1);
-        const registrosPorPagina = Number(params?.limite ?? 12);
-
-        const qsObj: Record<string, unknown> = {
-          finalidade: params?.finalidade,
-          tipo: params?.tipo,
-          cidade: params?.cidade,
-          bairro: params?.bairro,
-          condominio: params?.condominio,
-          valorMinimo: params?.valorMin,
-          valorMaximo: params?.valorMax,
-          qtdeQuartos: params?.dormitorios,
-          qtdeSuites: params?.suites,
-          qtdeVagas: params?.vagas,
-          pagina,
-          registrosPorPagina,
-          ordenarPor: params?.ordenarPor,
-        };
-
-        if (params?.destaque === true) qsObj.destaque = 1;
-        if (params?.destaque === false) qsObj.destaque = 0;
-
-        const qsClean = removeNullValues(qsObj);
-        const search = new URLSearchParams();
-        for (const [k, v] of Object.entries(qsClean)) {
-          search.set(k, String(v));
-        }
-
-        const url = `${IMOVIEW_API_URL}${endpoint}?${search.toString()}`;
-        console.log('[imoview-api] Fallback GET:', url);
-
-        const fallbackResp = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'chave': IMOVIEW_API_KEY || '',
-          },
-        });
-
-        if (fallbackResp.ok) {
-          const fallbackData = await fallbackResp.json();
-          const fallbackLista = (fallbackData as any)?.lista;
-          console.log('[imoview-api] Fallback success. lista length:', Array.isArray(fallbackLista) ? fallbackLista.length : 'n/a');
-
-          if (Array.isArray(fallbackLista) && fallbackLista.length > 0) {
-            return new Response(JSON.stringify(fallbackData), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-        } else {
-          const errorText = await fallbackResp.text();
-          console.warn(`[imoview-api] Fallback GET failed: ${fallbackResp.status} - ${errorText}`);
-        }
+      console.log(`[imoview-api] Response keys:`, Object.keys(d));
+      console.log(`[imoview-api] quantidade:`, d.quantidade);
+      console.log(`[imoview-api] lista type:`, typeof d.lista);
+      console.log(`[imoview-api] lista length:`, Array.isArray(d.lista) ? d.lista.length : 'not array');
+      
+      // Se lista estiver em outro campo, tentar encontrar
+      if (d.imoveis && Array.isArray(d.imoveis)) {
+        console.log(`[imoview-api] Found 'imoveis' array with ${d.imoveis.length} items`);
+        d.lista = d.imoveis;
+      }
+      
+      // Log primeiro item se existir
+      if (Array.isArray(d.lista) && d.lista.length > 0) {
+        console.log(`[imoview-api] First item keys:`, Object.keys(d.lista[0]));
       }
     }
 
