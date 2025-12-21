@@ -19,7 +19,7 @@ export default function Imoveis() {
   const tipo = searchParams.get('tipo') || '';
   const cidade = searchParams.get('cidade') || '';
   const bairro = searchParams.get('bairro') || '';
-  const condominio = searchParams.get('condominio') || '';
+  const condominioCode = searchParams.get('condominioCode') || '';
   const ordenar = searchParams.get('ordenar') || 'recentes';
 
   const finalidadeCode = getFinalidadeCode(finalidade);
@@ -35,7 +35,7 @@ export default function Imoveis() {
     tipo: tipo || undefined,
     cidade: cidade || undefined,
     bairro: bairro || undefined,
-    condominio: condominio || undefined,
+    codigoCondominio: condominioCode ? Number(condominioCode) : undefined,
     valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
     valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
@@ -226,14 +226,14 @@ export default function Imoveis() {
                 {/* Condomínio */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Condomínio</h3>
-                  <Select value={condominio || "all"} onValueChange={(v) => updateFilter('condominio', v === "all" ? "" : v)}>
+                  <Select value={condominioCode || "all"} onValueChange={(v) => updateFilter('condominioCode', v === "all" ? "" : v)}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Todos os condomínios" />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border">
                       <SelectItem value="all">Todos</SelectItem>
                       {condominios.map((c) => (
-                        <SelectItem key={c.codigo || c.nome} value={c.nome || `cond-${c.codigo}`}>{c.nome}</SelectItem>
+                        <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
