@@ -32,7 +32,7 @@ export interface ImoviewFilters {
   tipo?: string;
   cidade?: string;
   bairro?: string;
-  condominio?: string;
+  codigoCondominio?: number; // Código numérico do condomínio
   valorMin?: number;
   valorMax?: number;
   dormitorios?: number;
