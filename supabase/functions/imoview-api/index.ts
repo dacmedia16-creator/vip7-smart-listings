@@ -282,11 +282,12 @@ serve(async (req) => {
           let total: number | undefined;
 
           for (;;) {
+            console.log(`[imoview-api] Fetching condominios page ${pagina} for city: ${cityName}`);
             const condData = await fetchCondominiosPage({
               cidade: cityName,
               finalidade: params?.finalidade,
-              pagina,
-              numeroregistros: pageSize,
+              numeroPagina: pagina,
+              numeroRegistros: pageSize,
             });
 
             const { lista, quantidade } = extractCondominios(condData, cityName);
