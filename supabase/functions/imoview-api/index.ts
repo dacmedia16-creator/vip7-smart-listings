@@ -9,6 +9,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Utility function to remove null and undefined values from objects
+function removeNullValues(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value !== null && value !== undefined)
+  );
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -27,29 +34,27 @@ serve(async (req) => {
       case 'listarImoveis':
         endpoint = '/Imovel/RetornarImoveisDisponiveis';
         method = 'POST';
-        // Build request body, only including destaque if it's explicitly set
         const listarImoveisBody: Record<string, unknown> = {
-          finalidade: params?.finalidade || null,
-          tipo: params?.tipo || null,
-          cidade: params?.cidade || null,
-          bairro: params?.bairro || null,
-          condominio: params?.condominio || null,
-          valorMinimo: params?.valorMin || null,
-          valorMaximo: params?.valorMax || null,
-          qtdeQuartos: params?.dormitorios || null,
-          qtdeSuites: params?.suites || null,
-          qtdeVagas: params?.vagas || null,
+          finalidade: params?.finalidade,
+          tipo: params?.tipo,
+          cidade: params?.cidade,
+          bairro: params?.bairro,
+          condominio: params?.condominio,
+          valorMinimo: params?.valorMin,
+          valorMaximo: params?.valorMax,
+          qtdeQuartos: params?.dormitorios,
+          qtdeSuites: params?.suites,
+          qtdeVagas: params?.vagas,
           pagina: params?.pagina || 1,
           registrosPorPagina: params?.limite || 12,
-          ordenarPor: params?.ordenarPor || null,
+          ordenarPor: params?.ordenarPor,
         };
-        // Only add destaque if it's explicitly true or false (as 1 or 0)
         if (params?.destaque === true) {
           listarImoveisBody.destaque = 1;
         } else if (params?.destaque === false) {
           listarImoveisBody.destaque = 0;
         }
-        body = JSON.stringify(listarImoveisBody);
+        body = JSON.stringify(removeNullValues(listarImoveisBody));
         break;
 
       case 'detalhesImovel':
@@ -60,27 +65,27 @@ serve(async (req) => {
       case 'listarCidades':
         endpoint = '/Imovel/RetornarCidadesDisponiveis';
         method = 'POST';
-        body = JSON.stringify({
-          finalidade: params?.finalidade || null,
-        });
+        body = JSON.stringify(removeNullValues({
+          finalidade: params?.finalidade,
+        }));
         break;
 
       case 'listarBairros':
         endpoint = '/Imovel/RetornarBairrosDisponiveis';
         method = 'POST';
-        body = JSON.stringify({
-          cidade: params?.cidade || null,
-          finalidade: params?.finalidade || null,
-        });
+        body = JSON.stringify(removeNullValues({
+          cidade: params?.cidade,
+          finalidade: params?.finalidade,
+        }));
         break;
 
       case 'listarCondominios':
         endpoint = '/Imovel/RetornarCondominiosDisponiveis';
         method = 'POST';
-        body = JSON.stringify({
-          cidade: params?.cidade || null,
-          finalidade: params?.finalidade || null,
-        });
+        body = JSON.stringify(removeNullValues({
+          cidade: params?.cidade,
+          finalidade: params?.finalidade,
+        }));
         break;
 
       case 'listarTipos':
