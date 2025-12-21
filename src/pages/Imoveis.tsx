@@ -134,6 +134,20 @@ export default function Imoveis() {
     return parts.join(' ');
   };
 
+  // Encontrar nomes dos condomínios selecionados
+  const selectedCondominiosNames = useMemo(() => {
+    if (condominiosArray.length === 0) return null;
+    
+    const selected = condominios.filter((c) =>
+      condominiosArray.includes(String(c.codigo))
+    );
+    
+    if (selected.length === 0) return null;
+    if (selected.length === 1) return selected[0].nome;
+    if (selected.length === 2) return `${selected[0].nome} e ${selected[1].nome}`;
+    return `${selected[0].nome}, ${selected[1].nome} e mais ${selected.length - 2}`;
+  }, [condominiosArray, condominios]);
+
   const formatPriceLabel = (value: number) => {
     if (value >= 1000000) {
       return `R$ ${(value / 1000000).toFixed(1)}M`;
@@ -151,6 +165,11 @@ export default function Imoveis() {
               <h1 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-2">
                 {getPageTitle()}
               </h1>
+              {selectedCondominiosNames && (
+                <p className="text-lg text-primary font-medium mb-1">
+                  {selectedCondominiosNames}
+                </p>
+              )}
               <p className="text-muted-foreground">
                 {isLoading ? 'Carregando...' : `${totalImoveis} imóveis encontrados`}
               </p>
