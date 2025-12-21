@@ -38,7 +38,7 @@ serve(async (req) => {
           qtdeQuartos: params?.dormitorios || null,
           qtdeSuites: params?.suites || null,
           qtdeVagas: params?.vagas || null,
-          destaque: params?.destaque || null,
+          destaque: params?.destaque === true ? 1 : (params?.destaque === false ? 0 : null),
           pagina: params?.pagina || 1,
           registrosPorPagina: params?.limite || 12,
           ordenarPor: params?.ordenarPor || null,
