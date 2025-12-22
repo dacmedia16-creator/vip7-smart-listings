@@ -141,11 +141,12 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         let total: number | undefined;
 
         for (;;) {
+          // Remover tipo string do spread para garantir que apenas o código numérico seja enviado
+          const { tipo: _ignoredTipo, codigosCondominio: _ignored, ...filtersWithoutTipo } = filters;
           const pageFilter = {
-            ...filters,
-            tipo,
+            ...filtersWithoutTipo,
+            tipo, // código numérico
             codigoCondominio,
-            codigosCondominio: undefined,
             limite: PAGE_SIZE,
             pagina,
           };
@@ -220,8 +221,10 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
     // Chamada simples: enviar apenas o PRIMEIRO código numérico do tipo
     // A filtragem refinada será feita no cliente via matchesTipoFiltro()
+    // Remover tipo string do spread para garantir que apenas o código numérico seja enviado
+    const { tipo: _ignoredTipo, ...filtersWithoutTipo } = filters;
     const simpleFilters = {
-      ...filters,
+      ...filtersWithoutTipo,
       tipo: tipoValues.length > 0 ? tipoValues[0] : undefined,
     };
 
