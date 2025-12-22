@@ -120,15 +120,18 @@ export default function Imoveis() {
     searchParams.get('debug') === '1' ||
     searchParams.get('debug') === 'true';
 
-  // Build filters for API call
+  // Build filters for API call - use URL values directly for reliability
+  const valorMinFiltro = valorMinUrl ? Number(valorMinUrl) : (priceRange[0] > 0 ? priceRange[0] : undefined);
+  const valorMaxFiltro = valorMaxUrl ? Number(valorMaxUrl) : (priceRange[1] < 10000000 ? priceRange[1] : undefined);
+  
   const apiFilters = {
     finalidade: finalidadeCode,
     tipo: tipo || undefined,
     cidade: cidade || undefined,
     bairro: bairro || undefined,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
-    valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
-    valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
+    valorMin: valorMinFiltro,
+    valorMax: valorMaxFiltro,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
     limite: ITEMS_PER_PAGE,
     pagina: paginaAtual,
@@ -142,8 +145,8 @@ export default function Imoveis() {
       cidade,
       bairro,
       condominiosCodes,
-      priceRange[0],
-      priceRange[1],
+      valorMinFiltro,
+      valorMaxFiltro,
       ordenar,
       paginaAtual,
     ]
@@ -164,8 +167,8 @@ export default function Imoveis() {
     cidade: cidade || undefined,
     bairro: bairro || undefined,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
-    valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
-    valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
+    valorMin: valorMinFiltro,
+    valorMax: valorMaxFiltro,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
   };
 
