@@ -1,19 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyGridSkeleton } from '@/components/PropertyCardSkeleton';
+import { PropertyMap } from '@/components/PropertyMap';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
+import { useImoveisMap } from '@/hooks/useImoveisMap';
 import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
 export default function Imoveis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
 
   // Get filter values from URL
@@ -112,6 +115,21 @@ export default function Imoveis() {
   };
 
   const { data: imoveisData, isLoading, error } = useImoveis(apiFilters);
+
+  // Build filters for map (without pagination)
+  const mapFilters = {
+    finalidade: finalidadeCode,
+    tipo: tipo || undefined,
+    cidade: cidade || undefined,
+    bairro: bairro || undefined,
+    codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
+    valorMin: priceRange[0] > 0 ? priceRange[0] : undefined,
+    valorMax: priceRange[1] < 10000000 ? priceRange[1] : undefined,
+    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
+  };
+
+  // Fetch all properties for map view (only when map is active)
+  const { data: mapProperties = [], isLoading: isLoadingMap } = useImoveisMap(mapFilters, viewMode === 'map');
   
   // Filtrar propriedades por busca de texto (local)
   const filteredProperties = useMemo(() => {
@@ -270,7 +288,33 @@ export default function Imoveis() {
               </p>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* View Mode Toggle */}
+              <div className="hidden sm:flex items-center bg-secondary rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    viewMode === 'list'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                  Lista
+                </button>
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    viewMode === 'map'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <MapIcon className="h-4 w-4" />
+                  Mapa
+                </button>
+              </div>
+
               {/* Sort */}
               <Select value={ordenar} onValueChange={(v) => updateFilter('ordenar', v)}>
                 <SelectTrigger className="w-[180px] bg-secondary border-border">
@@ -469,62 +513,101 @@ export default function Imoveis() {
               </div>
             </aside>
 
-            {/* Property Grid */}
+            {/* Property Grid or Map */}
             <div className="flex-1">
-              {isLoading ? (
-                <PropertyGridSkeleton count={6} />
-              ) : properties.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {properties.map((property, index) => (
-                      <div
-                        key={property.codigo}
-                        className="animate-slide-up"
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <PropertyCard property={property} />
-                      </div>
-                    ))}
-                  </div>
+              {/* Mobile View Mode Toggle */}
+              <div className="flex sm:hidden items-center justify-center mb-6">
+                <div className="flex items-center bg-secondary rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      viewMode === 'list'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <List className="h-4 w-4" />
+                    Lista
+                  </button>
+                  <button
+                    onClick={() => setViewMode('map')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      viewMode === 'map'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <MapIcon className="h-4 w-4" />
+                    Mapa
+                  </button>
+                </div>
+              </div>
 
-                  {/* Pagination Controls */}
-                  {(hasPreviousPage || hasMorePages) && (
-                    <div className="flex items-center justify-center gap-4 mt-12">
-                      <Button
-                        variant="outline"
-                        onClick={() => goToPage(paginaAtual - 1)}
-                        disabled={!hasPreviousPage}
-                        className="gap-2"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Anterior
-                      </Button>
-                      
-                      <span className="px-4 py-2 rounded-lg bg-secondary text-foreground font-medium">
-                        Página {paginaAtual} de {totalPages}
-                      </span>
-                      
-                      <Button
-                        variant="outline"
-                        onClick={() => goToPage(paginaAtual + 1)}
-                        disabled={!hasMorePages}
-                        className="gap-2"
-                      >
-                        Próxima
-                        <ChevronRight className="h-4 w-4" />
+              {viewMode === 'map' ? (
+                // Map View
+                <PropertyMap 
+                  properties={mapProperties} 
+                  isLoading={isLoadingMap} 
+                />
+              ) : (
+                // List View
+                <>
+                  {isLoading ? (
+                    <PropertyGridSkeleton count={6} />
+                  ) : properties.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {properties.map((property, index) => (
+                          <div
+                            key={property.codigo}
+                            className="animate-slide-up"
+                            style={{ animationDelay: `${index * 50}ms` }}
+                          >
+                            <PropertyCard property={property} />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {(hasPreviousPage || hasMorePages) && (
+                        <div className="flex items-center justify-center gap-4 mt-12">
+                          <Button
+                            variant="outline"
+                            onClick={() => goToPage(paginaAtual - 1)}
+                            disabled={!hasPreviousPage}
+                            className="gap-2"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Anterior
+                          </Button>
+                          
+                          <span className="px-4 py-2 rounded-lg bg-secondary text-foreground font-medium">
+                            Página {paginaAtual} de {totalPages}
+                          </span>
+                          
+                          <Button
+                            variant="outline"
+                            onClick={() => goToPage(paginaAtual + 1)}
+                            disabled={!hasMorePages}
+                            className="gap-2"
+                          >
+                            Próxima
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-20">
+                      <p className="text-xl text-muted-foreground mb-4">
+                        Nenhum imóvel encontrado com os filtros selecionados.
+                      </p>
+                      <Button variant="goldOutline" onClick={clearFilters}>
+                        Limpar Filtros
                       </Button>
                     </div>
                   )}
                 </>
-              ) : (
-                <div className="text-center py-20">
-                  <p className="text-xl text-muted-foreground mb-4">
-                    Nenhum imóvel encontrado com os filtros selecionados.
-                  </p>
-                  <Button variant="goldOutline" onClick={clearFilters}>
-                    Limpar Filtros
-                  </Button>
-                </div>
               )}
             </div>
           </div>
