@@ -63,7 +63,7 @@ export function PropertyTypesSection() {
             <ScrollReveal key={item.title} variant="fade-up" delay={index * 0.1}>
               <Link
                 to={item.href}
-                className="group relative rounded-2xl overflow-hidden card-luxury block"
+                className="group relative rounded-full overflow-hidden card-luxury block"
               >
                 {/* Background Image */}
                 <div className="aspect-square relative">
@@ -72,7 +72,7 @@ export function PropertyTypesSection() {
                     alt={item.title}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent rounded-full" />
                 </div>
 
                 {/* Content */}
