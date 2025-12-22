@@ -248,13 +248,29 @@ export default function ImovelDetail() {
 
               {/* Location Map */}
               {property.latitude && property.longitude && 
-               property.latitude !== 0 && property.longitude !== 0 && (
+               property.latitude !== 0 && property.longitude !== 0 ? (
                 <PropertyLocationMap
                   latitude={property.latitude}
                   longitude={property.longitude}
                   propertyTitle={property.titulo || 'Imóvel'}
                   address={property.endereco}
                 />
+              ) : (
+                <div className="bg-card rounded-xl border border-border p-8 text-center">
+                  <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg font-heading font-semibold text-foreground mb-2">
+                    Localização não disponível
+                  </h3>
+                  <p className="text-muted-foreground text-sm">
+                    O mapa deste imóvel ainda não está disponível.
+                    {property.endereco && (
+                      <>
+                        <br />
+                        <span className="mt-2 block">Endereço: {property.endereco}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
               )}
             </div>
 
