@@ -160,8 +160,8 @@ serve(async (req) => {
           numeropagina: pagina,
           numeroregistros,
           
-          // Tipo de imóvel - CORREÇÃO: usar codigoTipo (não "tipo")
-          codigoTipo: typeof params?.tipo === 'number' ? params.tipo : undefined,
+          // Tipo de imóvel - aceita número, string numérica ou lista separada por vírgula
+          codigoTipo: params?.codigoTipo || (typeof params?.tipo === 'number' ? params.tipo : undefined),
           
           // Localização
           codigocidade: params?.codigoCidade,
