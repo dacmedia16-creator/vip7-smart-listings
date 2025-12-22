@@ -63,7 +63,7 @@ export function PropertyTypesSection() {
             <ScrollReveal key={item.title} variant="fade-up" delay={index * 0.1}>
               <Link
                 to={item.href}
-                className="group relative rounded-full overflow-hidden card-luxury block"
+                className="group relative rounded-full overflow-hidden card-luxury block shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-shadow duration-500"
               >
                 {/* Background Image */}
                 <div className="aspect-square relative">
