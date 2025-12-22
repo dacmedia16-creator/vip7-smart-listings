@@ -1,38 +1,42 @@
+import * as React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function PropertyCardSkeleton() {
-  return (
-    <div className="rounded-xl overflow-hidden bg-card border border-border">
-      {/* Image skeleton */}
-      <Skeleton className="aspect-[4/3] w-full" />
-      
-      {/* Content skeleton */}
-      <div className="p-4 space-y-3">
-        {/* Badge */}
-        <Skeleton className="h-5 w-16 rounded-full" />
+export const PropertyCardSkeleton = React.forwardRef<HTMLDivElement>(
+  (_, ref) => {
+    return (
+      <div ref={ref} className="rounded-xl overflow-hidden bg-card border border-border">
+        {/* Image skeleton */}
+        <Skeleton className="aspect-[4/3] w-full" />
         
-        {/* Title */}
-        <Skeleton className="h-6 w-3/4" />
-        
-        {/* Location */}
-        <Skeleton className="h-4 w-1/2" />
-        
-        {/* Features */}
-        <div className="flex gap-3 pt-2">
-          <Skeleton className="h-4 w-12" />
-          <Skeleton className="h-4 w-12" />
-          <Skeleton className="h-4 w-12" />
-        </div>
-        
-        {/* Price */}
-        <div className="pt-2 flex items-center justify-between">
-          <Skeleton className="h-6 w-28" />
-          <Skeleton className="h-8 w-20 rounded-lg" />
+        {/* Content skeleton */}
+        <div className="p-4 space-y-3">
+          {/* Badge */}
+          <Skeleton className="h-5 w-16 rounded-full" />
+          
+          {/* Title */}
+          <Skeleton className="h-6 w-3/4" />
+          
+          {/* Location */}
+          <Skeleton className="h-4 w-1/2" />
+          
+          {/* Features */}
+          <div className="flex gap-3 pt-2">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-4 w-12" />
+          </div>
+          
+          {/* Price */}
+          <div className="pt-2 flex items-center justify-between">
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="h-8 w-20 rounded-lg" />
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
+PropertyCardSkeleton.displayName = 'PropertyCardSkeleton';
 
 export function PropertyGridSkeleton({ count = 6 }: { count?: number }) {
   return (
