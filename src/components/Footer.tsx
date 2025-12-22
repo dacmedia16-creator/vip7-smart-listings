@@ -12,7 +12,7 @@ const quickLinks = [
 ];
 
 const socialLinks = [
-  { name: 'Instagram', icon: Instagram, href: 'https://www.instagram.com/denisfabiooficial/' },
+  { name: 'Instagram', icon: Instagram, href: 'https://www.instagram.com/vip7imoveis/' },
   { name: 'Facebook', icon: Facebook, href: 'https://www.facebook.com/vip7imoveis' },
   { name: 'YouTube', icon: Youtube, href: 'https://www.youtube.com/@vip7imoveis' },
 ];
