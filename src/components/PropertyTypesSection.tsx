@@ -58,7 +58,7 @@ export function PropertyTypesSection() {
         </ScrollReveal>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 max-w-4xl mx-auto">
           {propertyTypes.map((item, index) => (
             <ScrollReveal key={item.title} variant="fade-up" delay={index * 0.1}>
               <Link
