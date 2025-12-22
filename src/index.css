@@ -463,3 +463,89 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px hsla(42, 75%, 50%, 0.3);
 }
+
+/* Property Location Map Styles */
+.property-main-marker {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.property-main-marker .marker-pulse {
+  position: absolute;
+  inset: 0;
+  background: hsla(42, 75%, 50%, 0.3);
+  border-radius: 50%;
+  animation: pulse-marker 2s ease-out infinite;
+}
+
+.property-main-marker .marker-pin {
+  position: absolute;
+  inset: 8px;
+  background: linear-gradient(135deg, hsl(42, 75%, 50%) 0%, hsl(45, 70%, 58%) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(225, 20%, 3%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes pulse-marker {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.property-location-popup .mapboxgl-popup-content {
+  padding: 0 !important;
+}
+
+.location-popup-content {
+  padding: 0.75rem 1rem;
+}
+
+.location-popup-content h4 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(45, 15%, 92%);
+  margin: 0 0 0.25rem 0;
+}
+
+.location-popup-content p {
+  font-size: 0.75rem;
+  color: hsl(225, 10%, 50%);
+  margin: 0;
+}
+
+.poi-popup .mapboxgl-popup-content {
+  padding: 0.5rem 0.75rem !important;
+  min-width: auto;
+}
+
+.poi-popup-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.poi-popup-content .poi-icon {
+  font-size: 1.25rem;
+}
+
+.poi-popup-content strong {
+  font-size: 0.75rem;
+  color: hsl(45, 15%, 92%);
+  display: block;
+}
+
+.poi-popup-content .poi-distance {
+  font-size: 0.625rem;
+  color: hsl(42, 75%, 50%);
+}
