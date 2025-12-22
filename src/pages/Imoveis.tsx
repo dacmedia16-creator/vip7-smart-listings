@@ -234,8 +234,11 @@ export default function Imoveis() {
 
   const getPageTitle = () => {
     const parts = [];
-    if (tipo === 'casa') parts.push('Casas');
-    else if (tipo === 'apartamento') parts.push('Apartamentos');
+    const tipoLower = tipo?.toLowerCase();
+    if (tipoLower === 'casa') parts.push('Casas');
+    else if (tipoLower === 'apartamento') parts.push('Apartamentos');
+    else if (tipoLower === 'terreno') parts.push('Terrenos');
+    else if (tipoLower === 'comercial') parts.push('Imóveis Comerciais');
     else parts.push('Imóveis');
 
     if (finalidade === 'venda') parts.push('à Venda');
@@ -420,10 +423,10 @@ export default function Imoveis() {
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border">
                       <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="casa">Casa</SelectItem>
-                      <SelectItem value="apartamento">Apartamento</SelectItem>
-                      <SelectItem value="terreno">Terreno</SelectItem>
-                      <SelectItem value="comercial">Comercial</SelectItem>
+                      <SelectItem value="Casa">Casa</SelectItem>
+                      <SelectItem value="Apartamento">Apartamento</SelectItem>
+                      <SelectItem value="Terreno">Terreno</SelectItem>
+                      <SelectItem value="Comercial">Comercial</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
