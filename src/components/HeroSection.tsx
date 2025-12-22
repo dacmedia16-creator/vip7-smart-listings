@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown } from 'lucide-react';
+import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -21,6 +21,7 @@ export function HeroSection() {
   const [bairro, setBairro] = useState<string>('');
   const [condominiosCodes, setCondominiosCodes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
+  const [codigoImovel, setCodigoImovel] = useState<string>('');
 
   const finalidadeCode = getFinalidadeCode(finalidade);
   
@@ -68,6 +69,13 @@ export function HeroSection() {
 
   const handleSliderChange = (values: number[]) => {
     setPriceRange([values[0], values[1]]);
+  };
+
+  const handleSearchByCodigo = () => {
+    const codigo = codigoImovel.trim().replace(/\D/g, '');
+    if (codigo) {
+      navigate(`/imovel/${codigo}`);
+    }
   };
 
   const handleSearch = () => {
@@ -267,6 +275,35 @@ export function HeroSection() {
                 onValueChange={handleSliderChange}
                 className="w-full"
               />
+            </div>
+
+            {/* Search by Code */}
+            <div className="mb-6 p-4 bg-secondary/30 rounded-xl border border-border/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Hash className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Busca por Código</span>
+              </div>
+              <div className="flex gap-3">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ex: 2138"
+                  value={codigoImovel}
+                  onChange={(e) => setCodigoImovel(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={(e) => e.key === 'Enter' && codigoImovel.trim() && handleSearchByCodigo()}
+                  className="bg-secondary/50 border-border/50 h-10 rounded-xl hover:border-primary/50 transition-colors flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  size="default"
+                  onClick={handleSearchByCodigo}
+                  disabled={!codigoImovel.trim()}
+                  className="h-10 px-4 rounded-xl border-primary/50 hover:bg-primary/10"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Ir
+                </Button>
+              </div>
             </div>
 
             {/* Search Button */}
