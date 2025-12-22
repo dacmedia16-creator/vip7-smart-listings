@@ -189,7 +189,7 @@ export default function Imoveis() {
   }, [mapProperties, matchesTipoFiltro]);
 
   const properties = filteredProperties;
-  const totalImoveis = busca.trim() || tipoFiltroLower ? filteredProperties.length : (imoveisData?.quantidade || 0);
+  const totalImoveis = busca.trim() ? filteredProperties.length : (imoveisData?.quantidade || 0);
   const totalPages = Math.ceil(totalImoveis / ITEMS_PER_PAGE);
 
   // Determina se há mais páginas baseado no total real
