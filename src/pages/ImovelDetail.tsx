@@ -19,6 +19,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PropertyGallery } from '@/components/PropertyGallery';
+import { PropertyLocationMap } from '@/components/PropertyLocationMap';
 import { useImovelDetalhes } from '@/hooks/useImoveis';
 import { formatPropertyValue } from '@/services/imoviewApi';
 import { generatePropertyWhatsAppMessage, generateWhatsAppLink } from '@/lib/formatters';
@@ -244,6 +245,17 @@ export default function ImovelDetail() {
                   </div>
                 )}
               </div>
+
+              {/* Location Map */}
+              {property.latitude && property.longitude && 
+               property.latitude !== 0 && property.longitude !== 0 && (
+                <PropertyLocationMap
+                  latitude={property.latitude}
+                  longitude={property.longitude}
+                  propertyTitle={property.titulo || 'Imóvel'}
+                  address={property.endereco}
+                />
+              )}
             </div>
 
             {/* Sidebar */}
