@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Home, 
   MapPin, 
@@ -79,38 +80,46 @@ export default function Avaliacao() {
   const onSubmit = async (data: AvaliacaoFormData) => {
     setIsSubmitting(true);
     
-    // Formatar mensagem para WhatsApp
-    const mensagem = `🏠 *Solicitação de Avaliação de Imóvel*
+    try {
+      const { error } = await supabase.functions.invoke('send-avaliacao-email', {
+        body: {
+          nome: data.nome,
+          email: data.email,
+          telefone: data.telefone,
+          tipoImovel: data.tipoImovel,
+          finalidade: data.finalidade,
+          endereco: data.endereco,
+          bairro: data.bairro,
+          cidade: data.cidade,
+          areaTotal: data.areaTotal,
+          areaConstruida: data.areaConstruida,
+          quartos: data.quartos,
+          banheiros: data.banheiros,
+          vagas: data.vagas,
+          observacoes: data.descricao,
+        },
+      });
 
-*Dados do Proprietário:*
-• Nome: ${data.nome}
-• Email: ${data.email}
-• Telefone: ${data.telefone}
+      if (error) {
+        throw error;
+      }
 
-*Dados do Imóvel:*
-• Tipo: ${data.tipoImovel}
-• Finalidade: ${data.finalidade}
-• Endereço: ${data.endereco}
-• Bairro: ${data.bairro}
-• Cidade: ${data.cidade}
-${data.areaTotal ? `• Área Total: ${data.areaTotal} m²` : ''}
-${data.areaConstruida ? `• Área Construída: ${data.areaConstruida} m²` : ''}
-${data.quartos ? `• Quartos: ${data.quartos}` : ''}
-${data.banheiros ? `• Banheiros: ${data.banheiros}` : ''}
-${data.vagas ? `• Vagas: ${data.vagas}` : ''}
-${data.descricao ? `\n*Observações:*\n${data.descricao}` : ''}`;
+      toast({
+        title: 'Solicitação enviada com sucesso!',
+        description: 'Entraremos em contato em até 24 horas.',
+      });
 
-    const whatsappUrl = `https://wa.me/551535008641?text=${encodeURIComponent(mensagem)}`;
-    
-    toast({
-      title: 'Redirecionando para WhatsApp',
-      description: 'Você será direcionado para enviar sua solicitação.',
-    });
-
-    setTimeout(() => {
-      window.open(whatsappUrl, '_blank');
+      form.reset();
+    } catch (error: any) {
+      console.error('Error sending avaliacao:', error);
+      toast({
+        title: 'Erro ao enviar',
+        description: 'Tente novamente ou entre em contato pelo WhatsApp.',
+        variant: 'destructive',
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 500);
+    }
   };
 
   return (
@@ -447,7 +456,7 @@ ${data.descricao ? `\n*Observações:*\n${data.descricao}` : ''}`;
                           {isSubmitting ? 'Enviando...' : 'Solicitar Avaliação Gratuita'}
                         </Button>
                         <p className="text-center text-sm text-muted-foreground mt-4">
-                          Ao enviar, você será direcionado ao WhatsApp para confirmar sua solicitação
+                          Seus dados serão enviados diretamente para nossa equipe
                         </p>
                       </div>
                     </form>
