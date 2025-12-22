@@ -30,7 +30,11 @@ export interface ImoviewProperty {
 
 export interface ImoviewFilters {
   finalidade?: number; // 1 = Aluguel, 2 = Venda (conforme API Imoview)
-  tipo?: string;
+  /**
+   * A API do Imoview filtra melhor por CÓDIGO do tipo (ex: 1=Casa, 2=Apartamento).
+   * Mantemos string | number para compatibilidade com a UI baseada em texto.
+   */
+  tipo?: string | number;
   cidade?: string;
   bairro?: string;
   codigoCondominio?: number; // Código numérico do condomínio (single)
