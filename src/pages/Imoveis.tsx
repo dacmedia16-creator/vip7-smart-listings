@@ -17,7 +17,6 @@ export default function Imoveis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
 
   // Get filter values from URL
   const finalidade = searchParams.get('finalidade') || '';
@@ -28,6 +27,22 @@ export default function Imoveis() {
   const ordenar = searchParams.get('ordenar') || 'recentes';
   const paginaAtual = Number(searchParams.get('pagina')) || 1;
   const busca = searchParams.get('busca') || '';
+  const valorMinUrl = searchParams.get('valorMin');
+  const valorMaxUrl = searchParams.get('valorMax');
+
+  // Initialize priceRange from URL values
+  const [priceRange, setPriceRange] = useState<[number, number]>(() => {
+    const min = valorMinUrl ? Number(valorMinUrl) : 0;
+    const max = valorMaxUrl ? Number(valorMaxUrl) : 10000000;
+    return [min, max];
+  });
+
+  // Sync priceRange when URL changes (e.g., navigation from HeroSection)
+  useEffect(() => {
+    const min = valorMinUrl ? Number(valorMinUrl) : 0;
+    const max = valorMaxUrl ? Number(valorMaxUrl) : 10000000;
+    setPriceRange([min, max]);
+  }, [valorMinUrl, valorMaxUrl]);
 
   // Estado local para o campo de busca (debounced)
   const [searchInput, setSearchInput] = useState(busca);
@@ -567,6 +582,22 @@ export default function Imoveis() {
                     <Slider
                       value={priceRange}
                       onValueChange={(v) => setPriceRange(v as [number, number])}
+                      onValueCommit={(v) => {
+                        const values = v as [number, number];
+                        const newParams = new URLSearchParams(searchParams);
+                        if (values[0] > 0) {
+                          newParams.set('valorMin', String(values[0]));
+                        } else {
+                          newParams.delete('valorMin');
+                        }
+                        if (values[1] < 10000000) {
+                          newParams.set('valorMax', String(values[1]));
+                        } else {
+                          newParams.delete('valorMax');
+                        }
+                        newParams.delete('pagina');
+                        setSearchParams(newParams);
+                      }}
                       min={0}
                       max={10000000}
                       step={100000}
