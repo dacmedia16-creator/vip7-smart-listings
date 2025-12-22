@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { FloatingAvaliacaoButton } from '@/components/FloatingAvaliacaoButton';
 
 interface LayoutProps {
   children: ReactNode;
@@ -15,6 +16,7 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       <Footer />
+      <FloatingAvaliacaoButton />
       <WhatsAppButton />
     </div>
   );
