@@ -117,8 +117,8 @@ export default function Contato() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Endereço</h3>
                     <p className="text-muted-foreground">
-                      Av. Antônio Carlos Comitre, 1500<br />
-                      Sorocaba - SP, 18047-620
+                      Rua Horacio Cenci, 9 - Parque Campolim<br />
+                      Sorocaba - SP, 18047-800
                     </p>
                   </div>
                 </div>
@@ -141,8 +141,8 @@ export default function Contato() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">E-mail</h3>
-                    <a href="mailto:contato@vip7imoveis.com.br" className="text-muted-foreground hover:text-primary transition-colors">
-                      contato@vip7imoveis.com.br
+                    <a href="mailto:denissouza@vip7imoveis.com.br" className="text-muted-foreground hover:text-primary transition-colors">
+                      denissouza@vip7imoveis.com.br
                     </a>
                   </div>
                 </div>
