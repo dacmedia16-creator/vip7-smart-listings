@@ -249,7 +249,19 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
 export async function detalhesImovel(codigo: string | number): Promise<ImoviewProperty | null> {
   try {
-    const data = await callImoviewApi<ImoviewProperty>('detalhesImovel', { codigo });
+    // Converter para número se for string
+    const codigoNumerico = typeof codigo === 'string' ? parseInt(codigo, 10) : codigo;
+    console.log('[imoview-service] detalhesImovel - codigo:', codigo, '-> codigoNumerico:', codigoNumerico);
+    
+    const data = await callImoviewApi<ImoviewProperty>('detalhesImovel', { codigo: codigoNumerico });
+    console.log('[imoview-service] detalhesImovel - response:', data);
+    
+    // Verificar se a resposta é válida
+    if (!data || typeof data !== 'object') {
+      console.error('[imoview-service] detalhesImovel - resposta inválida:', data);
+      return null;
+    }
+    
     return data;
   } catch (error) {
     console.error('[imoview-service] detalhesImovel error:', error);
