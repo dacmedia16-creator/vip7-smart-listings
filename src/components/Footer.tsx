@@ -87,8 +87,8 @@ export function Footer() {
                     <MapPin className="h-4 w-4 text-primary" />
                   </div>
                   <span className="text-muted-foreground text-sm leading-relaxed">
-                    Av. Antônio Carlos Comitre, 1500<br />
-                    Sorocaba - SP, 18047-620
+                    Rua Horacio Cenci, 9 - Parque Campolim<br />
+                    Sorocaba - SP, 18047-800
                   </span>
                 </li>
                 <li className="flex items-center gap-4">
@@ -100,7 +100,6 @@ export function Footer() {
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
                     (15) 3500-8641
-                    (15) 99999-9999
                   </a>
                 </li>
                 <li className="flex items-center gap-4">
@@ -108,10 +107,10 @@ export function Footer() {
                     <Mail className="h-4 w-4 text-primary" />
                   </div>
                   <a
-                    href="mailto:contato@vip7imoveis.com.br"
+                    href="mailto:denissouza@vip7imoveis.com.br"
                     className="text-muted-foreground hover:text-primary transition-colors text-sm"
                   >
-                    contato@vip7imoveis.com.br
+                    denissouza@vip7imoveis.com.br
                   </a>
                 </li>
               </ul>
