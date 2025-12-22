@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, Instagram, Facebook, Linkedin, Sparkles } from 'lucide-react';
+import { MapPin, Phone, Mail, Instagram, Facebook, Youtube, Sparkles } from 'lucide-react';
 import logoVip7 from '@/assets/logo-vip7.png';
 
 const quickLinks = [
@@ -12,9 +12,9 @@ const quickLinks = [
 ];
 
 const socialLinks = [
-  { name: 'Instagram', icon: Instagram, href: '#' },
-  { name: 'Facebook', icon: Facebook, href: '#' },
-  { name: 'LinkedIn', icon: Linkedin, href: '#' },
+  { name: 'Instagram', icon: Instagram, href: 'https://www.instagram.com/denisfabiooficial/' },
+  { name: 'Facebook', icon: Facebook, href: 'https://www.facebook.com/vip7imoveis' },
+  { name: 'YouTube', icon: Youtube, href: 'https://www.youtube.com/@vip7imoveis' },
 ];
 
 export function Footer() {
