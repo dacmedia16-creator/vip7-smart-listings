@@ -153,23 +153,31 @@ serve(async (req) => {
         // Log do tipo recebido para debug
         console.log(`[imoview-api] listarImoveis - tipo recebido: ${params?.tipo} (${typeof params?.tipo})`);
         
-        // Formato correto baseado na API Imoview (algumas contas usam numeroPagina/numeroRegistros)
+        // Nomes de parâmetros conforme documentação da API Imoview
         const listarImoveisBody: Record<string, unknown> = {
+          // Obrigatórios
           finalidade: params?.finalidade,
-          tipo: typeof params?.tipo === 'number' ? params.tipo : undefined, // Apenas aceitar códigos numéricos
-          cidade: params?.cidade,
-          bairro: params?.bairro,
-          valorMinimo: params?.valorMin,
-          valorMaximo: params?.valorMax,
-          qtdeQuartos: params?.dormitorios,
-          qtdeSuites: params?.suites,
-          qtdeVagas: params?.vagas,
-          // Enviar ambos para garantir paginação
-          pagina,
-          numeroPagina: pagina,
+          numeropagina: pagina,
           numeroregistros,
-          numeroRegistros: numeroregistros,
-          ordenarPor: params?.ordenarPor,
+          
+          // Tipo de imóvel - CORREÇÃO: usar codigoTipo (não "tipo")
+          codigoTipo: typeof params?.tipo === 'number' ? params.tipo : undefined,
+          
+          // Localização
+          codigocidade: params?.codigoCidade,
+          codigosbairros: params?.bairro,
+          
+          // Valores
+          valorde: params?.valorMin,
+          valorate: params?.valorMax,
+          
+          // Quartos/Vagas/Suítes
+          numeroquartos: params?.dormitorios,
+          numerosuite: params?.suites,
+          numerovagas: params?.vagas,
+          
+          // Ordenação
+          ordenacao: params?.ordenarPor,
         };
 
         // Suporte a código numérico de condomínio (codigocondominio)
