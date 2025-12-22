@@ -52,13 +52,13 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex lg:items-center lg:gap-8">
+          <div className="hidden lg:flex lg:items-center lg:gap-5">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "text-xs tracking-[0.15em] font-medium transition-all duration-300 relative group py-2",
+                  "text-[11px] tracking-[0.12em] font-medium transition-all duration-300 relative group py-2",
                   isActive(item.href)
                     ? "text-primary"
                     : "text-foreground/70 hover:text-foreground"
