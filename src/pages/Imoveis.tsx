@@ -114,6 +114,13 @@ export default function Imoveis() {
     pagina: paginaAtual,
   };
 
+  // Dev-only: log dos filtros sendo enviados para a API
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[Imoveis] Filtros da API:', JSON.stringify(apiFilters, null, 2));
+    }
+  }, [JSON.stringify(apiFilters)]);
+
   const { data: imoveisData, isLoading, error } = useImoveis(apiFilters);
 
   // Build filters for map (without pagination)
@@ -337,6 +344,15 @@ export default function Imoveis() {
               <p className="text-muted-foreground">
                 {isLoading ? 'Carregando...' : `${totalImoveis} imóveis encontrados`}
               </p>
+              {/* Dev-only: mostrar filtros ativos */}
+              {import.meta.env.DEV && (
+                <details className="mt-2 text-xs text-muted-foreground/70 font-mono">
+                  <summary className="cursor-pointer hover:text-muted-foreground">🔧 Debug: filtros</summary>
+                  <pre className="mt-1 p-2 bg-secondary/50 rounded text-[10px] overflow-auto max-h-32">
+                    {JSON.stringify(apiFilters, null, 2)}
+                  </pre>
+                </details>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
