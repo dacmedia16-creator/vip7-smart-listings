@@ -220,33 +220,54 @@ export default function Imoveis() {
     [tipoFiltroLower]
   );
 
-  // Filtrar propriedades por tipo e busca de texto (local)
+  // Filtrar propriedades por tipo e busca de texto (local) + ordenar (cliente)
   const filteredProperties = useMemo(() => {
+    const applyOrdering = <T extends { valor?: number | null }>(arr: T[]) => {
+      if (ordenar === 'menor_preco') {
+        return [...arr].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));
+      }
+      if (ordenar === 'maior_preco') {
+        return [...arr].sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
+      }
+      return arr;
+    };
+
     let list = (imoveisData?.lista || []).filter((property) => matchesTipoFiltro(property.tipo));
 
-    if (!busca.trim()) return list;
+    if (busca.trim()) {
+      const searchLower = busca.toLowerCase().trim();
+      list = list.filter((property) => {
+        const searchableFields = [
+          property.titulo,
+          property.descricao,
+          property.endereco,
+          property.bairro,
+          property.cidade,
+          property.condominio,
+          property.tipo,
+          String(property.codigo),
+          String(property.codigoReferencia),
+        ].filter(Boolean);
 
-    const searchLower = busca.toLowerCase().trim();
-    return list.filter((property) => {
-      const searchableFields = [
-        property.titulo,
-        property.descricao,
-        property.endereco,
-        property.bairro,
-        property.cidade,
-        property.condominio,
-        property.tipo,
-        String(property.codigo),
-        String(property.codigoReferencia),
-      ].filter(Boolean);
+        return searchableFields.some((field) => String(field).toLowerCase().includes(searchLower));
+      });
+    }
 
-      return searchableFields.some((field) => String(field).toLowerCase().includes(searchLower));
-    });
-  }, [imoveisData?.lista, busca, matchesTipoFiltro]);
+    return applyOrdering(list);
+  }, [imoveisData?.lista, busca, matchesTipoFiltro, ordenar]);
 
   const filteredMapProperties = useMemo(() => {
-    return (mapProperties || []).filter((property) => matchesTipoFiltro(property.tipo));
-  }, [mapProperties, matchesTipoFiltro]);
+    const list = (mapProperties || []).filter((property) => matchesTipoFiltro(property.tipo));
+
+    if (ordenar === 'menor_preco') {
+      return [...list].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));
+    }
+    if (ordenar === 'maior_preco') {
+      return [...list].sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
+    }
+
+    return list;
+  }, [mapProperties, matchesTipoFiltro, ordenar]);
 
   const properties = filteredProperties;
   const totalImoveis = busca.trim() ? filteredProperties.length : (imoveisData?.quantidade || 0);
