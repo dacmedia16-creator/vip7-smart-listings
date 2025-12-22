@@ -66,7 +66,7 @@ export function PropertyTypesSection() {
                 className="group relative rounded-2xl overflow-hidden card-luxury block"
               >
                 {/* Background Image */}
-                <div className="aspect-[3/4] relative">
+                <div className="aspect-[4/5] relative">
                   <img
                     src={item.image}
                     alt={item.title}
