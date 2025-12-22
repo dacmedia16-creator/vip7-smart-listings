@@ -581,7 +581,66 @@ export default function Imoveis() {
                 {/* Price Range */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Faixa de Preço</h3>
-                  <div className="px-2">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs text-muted-foreground mb-1 block">Mínimo</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={priceRange[0] > 0 ? priceRange[0].toLocaleString('pt-BR') : ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const numValue = value ? Number(value) : 0;
+                              setPriceRange([numValue, priceRange[1]]);
+                            }}
+                            onBlur={() => {
+                              const newParams = new URLSearchParams(searchParams);
+                              if (priceRange[0] > 0) {
+                                newParams.set('valorMin', String(priceRange[0]));
+                              } else {
+                                newParams.delete('valorMin');
+                              }
+                              newParams.delete('pagina');
+                              setSearchParams(newParams);
+                            }}
+                            className="pl-9 bg-secondary border-border"
+                          />
+                        </div>
+                      </div>
+                      <span className="text-muted-foreground mt-5">-</span>
+                      <div className="flex-1">
+                        <label className="text-xs text-muted-foreground mb-1 block">Máximo</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="Sem limite"
+                            value={priceRange[1] < 10000000 ? priceRange[1].toLocaleString('pt-BR') : ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const numValue = value ? Number(value) : 10000000;
+                              setPriceRange([priceRange[0], numValue]);
+                            }}
+                            onBlur={() => {
+                              const newParams = new URLSearchParams(searchParams);
+                              if (priceRange[1] < 10000000) {
+                                newParams.set('valorMax', String(priceRange[1]));
+                              } else {
+                                newParams.delete('valorMax');
+                              }
+                              newParams.delete('pagina');
+                              setSearchParams(newParams);
+                            }}
+                            className="pl-9 bg-secondary border-border"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <Slider
                       value={priceRange}
                       onValueChange={(v) => setPriceRange(v as [number, number])}
@@ -604,12 +663,8 @@ export default function Imoveis() {
                       min={0}
                       max={10000000}
                       step={100000}
-                      className="my-4"
+                      className="mt-2"
                     />
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{formatPriceLabel(priceRange[0])}</span>
-                      <span>{formatPriceLabel(priceRange[1])}</span>
-                    </div>
                   </div>
                 </div>
 
