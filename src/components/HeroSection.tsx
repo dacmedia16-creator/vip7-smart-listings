@@ -188,6 +188,7 @@ export function HeroSection() {
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
                   <SelectItem value="casa">Casa</SelectItem>
+                  <SelectItem value="casa_condominio">Casa de Condomínio</SelectItem>
                   <SelectItem value="apartamento">Apartamento</SelectItem>
                   <SelectItem value="terreno">Terreno</SelectItem>
                   <SelectItem value="comercial">Comercial</SelectItem>

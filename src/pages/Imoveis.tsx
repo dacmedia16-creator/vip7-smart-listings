@@ -184,6 +184,12 @@ export default function Imoveis() {
       if (!tipoFiltroLower) return true;
       const t = (propertyTipo ?? '').toLowerCase();
 
+      // Casa de Condomínio: casa em condomínio fechado
+      if (tipoFiltroLower === 'casa_condominio') {
+        return t.includes('casa') && (t.includes('condomínio') || t.includes('condominio'));
+      }
+
+      // Casa (excluindo casas de condomínio se for filtro específico)
       if (tipoFiltroLower === 'casa') return t.includes('casa');
 
       // Apartamento: inclui variações comuns que não contém a palavra "apartamento"
@@ -546,6 +552,7 @@ export default function Imoveis() {
                     <SelectContent className="bg-card border-border">
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="Casa">Casa</SelectItem>
+                      <SelectItem value="casa_condominio">Casa de Condomínio</SelectItem>
                       <SelectItem value="Apartamento">Apartamento</SelectItem>
                       <SelectItem value="Terreno">Terreno</SelectItem>
                       <SelectItem value="Comercial">Comercial</SelectItem>
