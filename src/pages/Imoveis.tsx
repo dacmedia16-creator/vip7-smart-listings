@@ -100,6 +100,11 @@ export default function Imoveis() {
 
   const ITEMS_PER_PAGE = 20;
 
+  const debugEnabled =
+    import.meta.env.DEV ||
+    searchParams.get('debug') === '1' ||
+    searchParams.get('debug') === 'true';
+
   // Build filters for API call
   const apiFilters = {
     finalidade: finalidadeCode,
@@ -114,12 +119,26 @@ export default function Imoveis() {
     pagina: paginaAtual,
   };
 
-  // Dev-only: log dos filtros sendo enviados para a API
+  const apiFiltersDebug = useMemo(
+    () => JSON.stringify(apiFilters, null, 2),
+    [
+      finalidadeCode,
+      tipo,
+      cidade,
+      bairro,
+      condominiosCodes,
+      priceRange[0],
+      priceRange[1],
+      ordenar,
+      paginaAtual,
+    ]
+  );
+
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('[Imoveis] Filtros da API:', JSON.stringify(apiFilters, null, 2));
+    if (debugEnabled) {
+      console.log('[Imoveis] Filtros da API:', apiFiltersDebug);
     }
-  }, [JSON.stringify(apiFilters)]);
+  }, [debugEnabled, apiFiltersDebug]);
 
   const { data: imoveisData, isLoading, error } = useImoveis(apiFilters);
 
@@ -344,12 +363,12 @@ export default function Imoveis() {
               <p className="text-muted-foreground">
                 {isLoading ? 'Carregando...' : `${totalImoveis} imóveis encontrados`}
               </p>
-              {/* Dev-only: mostrar filtros ativos */}
-              {import.meta.env.DEV && (
+              {/* Debug (dev ou ativado via ?debug=1) */}
+              {debugEnabled && (
                 <details className="mt-2 text-xs text-muted-foreground/70 font-mono">
-                  <summary className="cursor-pointer hover:text-muted-foreground">🔧 Debug: filtros</summary>
+                  <summary className="cursor-pointer hover:text-muted-foreground">Debug: filtros</summary>
                   <pre className="mt-1 p-2 bg-secondary/50 rounded text-[10px] overflow-auto max-h-32">
-                    {JSON.stringify(apiFilters, null, 2)}
+                    {apiFiltersDebug}
                   </pre>
                 </details>
               )}
