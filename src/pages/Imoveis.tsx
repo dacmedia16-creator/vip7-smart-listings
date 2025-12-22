@@ -39,6 +39,18 @@ export default function Imoveis() {
 
   const finalidadeCode = getFinalidadeCode(finalidade);
 
+  // A API do Imoview filtra por tipo usando CÓDIGO (ex: 1=Casa, 2=Apartamento).
+  // Para os cards (Casa/Apartamento) isso evita "sumir" imóveis por filtro aplicado só no front.
+  const tipoForApi = useMemo(() => {
+    const t = tipo.trim().toLowerCase();
+    if (!t) return undefined;
+    if (t === 'casa') return 1;
+    if (t === 'apartamento') return 2;
+    if (t === 'terreno') return 19;
+    // Fallback: manter string para não quebrar outros tipos
+    return tipo;
+  }, [tipo]);
+
   // Fetch data from API
   const { data: cidades = [] } = useCidades(finalidadeCode);
   const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
@@ -54,7 +66,7 @@ export default function Imoveis() {
 
     const fetchCounts = async () => {
       setIsLoadingContagem(true);
-      
+
       // Limitar a 30 condomínios para performance
       const condominiosToFetch = condominios.slice(0, 30).filter(
         (c) => condominiosContagem[c.codigo] === undefined
@@ -103,7 +115,7 @@ export default function Imoveis() {
   // Build filters for API call
   const apiFilters = {
     finalidade: finalidadeCode,
-    tipo: tipo || undefined,
+    tipo: tipoForApi,
     cidade: cidade || undefined,
     bairro: bairro || undefined,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
@@ -119,7 +131,7 @@ export default function Imoveis() {
   // Build filters for map (without pagination)
   const mapFilters = {
     finalidade: finalidadeCode,
-    tipo: tipo || undefined,
+    tipo: tipoForApi,
     cidade: cidade || undefined,
     bairro: bairro || undefined,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
