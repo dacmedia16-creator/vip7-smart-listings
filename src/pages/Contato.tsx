@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { ContactMap } from '@/components/ContactMap';
 
 export default function Contato() {
   const { toast } = useToast();
@@ -161,10 +162,8 @@ export default function Contato() {
                 </div>
               </div>
 
-              {/* Map Placeholder */}
-              <div className="bg-card rounded-xl border border-border h-64 flex items-center justify-center">
-                <p className="text-muted-foreground">Mapa em breve</p>
-              </div>
+              {/* Interactive Map */}
+              <ContactMap />
             </div>
           </div>
         </div>
