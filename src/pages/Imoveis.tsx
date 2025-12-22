@@ -39,18 +39,6 @@ export default function Imoveis() {
 
   const finalidadeCode = getFinalidadeCode(finalidade);
 
-  // A API do Imoview filtra por tipo usando CÓDIGO (ex: 1=Casa, 2=Apartamento).
-  // Para os cards (Casa/Apartamento) isso evita "sumir" imóveis por filtro aplicado só no front.
-  const tipoForApi = useMemo(() => {
-    const t = tipo.trim().toLowerCase();
-    if (!t) return undefined;
-    if (t === 'casa') return 1;
-    if (t === 'apartamento') return 2;
-    if (t === 'terreno') return 19;
-    // Fallback: manter string para não quebrar outros tipos
-    return tipo;
-  }, [tipo]);
-
   // Fetch data from API
   const { data: cidades = [] } = useCidades(finalidadeCode);
   const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
@@ -115,7 +103,7 @@ export default function Imoveis() {
   // Build filters for API call
   const apiFilters = {
     finalidade: finalidadeCode,
-    tipo: tipoForApi,
+    tipo: tipo || undefined,
     cidade: cidade || undefined,
     bairro: bairro || undefined,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
@@ -131,7 +119,7 @@ export default function Imoveis() {
   // Build filters for map (without pagination)
   const mapFilters = {
     finalidade: finalidadeCode,
-    tipo: tipoForApi,
+    tipo: tipo || undefined,
     cidade: cidade || undefined,
     bairro: bairro || undefined,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
@@ -152,18 +140,34 @@ export default function Imoveis() {
       if (!tipoFiltroLower) return true;
       const t = (propertyTipo ?? '').toLowerCase();
 
-      // Casa deve incluir variações como "Casa de Condomínio"
       if (tipoFiltroLower === 'casa') return t.includes('casa');
 
-      // Apartamento
-      if (tipoFiltroLower === 'apartamento') return t.includes('apartamento');
+      // Apartamento: inclui variações comuns que não contém a palavra "apartamento"
+      if (tipoFiltroLower === 'apartamento') {
+        return (
+          t.includes('apartamento') ||
+          t.includes('cobertura') ||
+          t.includes('studio') ||
+          t.includes('flat')
+        );
+      }
 
       // Terreno / Lote
       if (tipoFiltroLower === 'terreno') return t.includes('terreno') || t.includes('lote');
 
       // Comercial (variações comuns)
       if (tipoFiltroLower === 'comercial') {
-        return t.includes('comercial') || t.includes('loja') || t.includes('sala');
+        return (
+          t.includes('comercial') ||
+          t.includes('loja') ||
+          t.includes('sala') ||
+          t.includes('galp') ||
+          t.includes('barrac') ||
+          t.includes('predio') ||
+          t.includes('prédio') ||
+          t.includes('area') ||
+          t.includes('área')
+        );
       }
 
       // Fallback: contém o texto do filtro
