@@ -150,10 +150,13 @@ serve(async (req) => {
         const pagina = Number(params?.pagina ?? 1);
         const numeroregistros = Math.min(Number(params?.limite ?? 20), 20); // API Imoview limita a 20 registros
 
+        // Log do tipo recebido para debug
+        console.log(`[imoview-api] listarImoveis - tipo recebido: ${params?.tipo} (${typeof params?.tipo})`);
+        
         // Formato correto baseado na API Imoview (algumas contas usam numeroPagina/numeroRegistros)
         const listarImoveisBody: Record<string, unknown> = {
           finalidade: params?.finalidade,
-          tipo: params?.tipo,
+          tipo: typeof params?.tipo === 'number' ? params.tipo : undefined, // Apenas aceitar códigos numéricos
           cidade: params?.cidade,
           bairro: params?.bairro,
           valorMinimo: params?.valorMin,
