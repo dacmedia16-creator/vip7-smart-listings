@@ -42,23 +42,27 @@ export function HeroSection() {
     return `R$ ${(value / 1000).toFixed(0)} mil`;
   };
 
+  // Validation: check if min > max (invalid state)
+  const isPriceRangeInvalid = priceRange[0] > priceRange[1];
+
   const priceRangeLabel = useMemo(() => {
     const [min, max] = priceRange;
+    if (isPriceRangeInvalid) return 'Faixa inválida';
     if (min === PRICE_MIN && max === PRICE_MAX) return 'Qualquer valor';
     if (min === PRICE_MIN) return `Até ${formatPrice(max)}`;
     if (max === PRICE_MAX) return `A partir de ${formatPrice(min)}`;
     return `${formatPrice(min)} – ${formatPrice(max)}`;
-  }, [priceRange]);
+  }, [priceRange, isPriceRangeInvalid]);
 
   const handleMinInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
-    const num = raw === '' ? PRICE_MIN : Math.min(Number(raw), priceRange[1]);
+    const num = raw === '' ? PRICE_MIN : Number(raw);
     setPriceRange([num, priceRange[1]]);
   };
 
   const handleMaxInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
-    const num = raw === '' ? PRICE_MAX : Math.max(Number(raw), priceRange[0]);
+    const num = raw === '' ? PRICE_MAX : Number(raw);
     setPriceRange([priceRange[0], num]);
   };
 
@@ -210,36 +214,50 @@ export function HeroSection() {
             {/* Price Range Filter */}
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <DollarSign className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Faixa de Preço</span>
-                <span className="ml-auto text-sm text-primary font-medium">{priceRangeLabel}</span>
+                <DollarSign className={cn("h-4 w-4", isPriceRangeInvalid ? "text-destructive" : "text-primary")} />
+                <span className={cn("text-sm font-medium", isPriceRangeInvalid ? "text-destructive" : "text-foreground")}>Faixa de Preço</span>
+                <span className={cn("ml-auto text-sm font-medium", isPriceRangeInvalid ? "text-destructive" : "text-primary")}>{priceRangeLabel}</span>
               </div>
               
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex-1">
-                  <label className="text-xs text-muted-foreground mb-1 block">Mínimo</label>
+                  <label className={cn("text-xs mb-1 block", isPriceRangeInvalid ? "text-destructive" : "text-muted-foreground")}>Mínimo</label>
                   <Input
                     type="text"
                     inputMode="numeric"
                     placeholder="R$ 0"
                     value={priceRange[0] === PRICE_MIN ? '' : priceRange[0].toLocaleString('pt-BR')}
                     onChange={handleMinInputChange}
-                    className="bg-secondary/50 border-border/50 h-10 rounded-xl hover:border-primary/50 transition-colors"
+                    className={cn(
+                      "bg-secondary/50 h-10 rounded-xl transition-colors",
+                      isPriceRangeInvalid 
+                        ? "border-destructive focus-visible:ring-destructive" 
+                        : "border-border/50 hover:border-primary/50"
+                    )}
                   />
                 </div>
-                <span className="text-muted-foreground mt-5">–</span>
+                <span className={cn("mt-5", isPriceRangeInvalid ? "text-destructive" : "text-muted-foreground")}>–</span>
                 <div className="flex-1">
-                  <label className="text-xs text-muted-foreground mb-1 block">Máximo</label>
+                  <label className={cn("text-xs mb-1 block", isPriceRangeInvalid ? "text-destructive" : "text-muted-foreground")}>Máximo</label>
                   <Input
                     type="text"
                     inputMode="numeric"
                     placeholder="Sem limite"
                     value={priceRange[1] === PRICE_MAX ? '' : priceRange[1].toLocaleString('pt-BR')}
                     onChange={handleMaxInputChange}
-                    className="bg-secondary/50 border-border/50 h-10 rounded-xl hover:border-primary/50 transition-colors"
+                    className={cn(
+                      "bg-secondary/50 h-10 rounded-xl transition-colors",
+                      isPriceRangeInvalid 
+                        ? "border-destructive focus-visible:ring-destructive" 
+                        : "border-border/50 hover:border-primary/50"
+                    )}
                   />
                 </div>
               </div>
+              
+              {isPriceRangeInvalid && (
+                <p className="text-xs text-destructive mb-3">O valor mínimo não pode ser maior que o máximo</p>
+              )}
 
               <Slider
                 value={priceRange}
@@ -257,6 +275,7 @@ export function HeroSection() {
               size="lg" 
               className="w-full group"
               onClick={handleSearch}
+              disabled={isPriceRangeInvalid}
             >
               <Search className="h-5 w-5 mr-2" />
               Buscar Imóveis
