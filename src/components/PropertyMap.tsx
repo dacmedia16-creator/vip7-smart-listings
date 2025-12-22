@@ -1,9 +1,15 @@
-import React, { useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import * as turf from '@turf/turf';
+import type { Feature, Polygon } from 'geojson';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { ImoviewProperty } from '@/services/imoviewApi';
 import { formatPropertyValue } from '@/services/imoviewApi';
 import { useNavigate } from 'react-router-dom';
+import { Pencil, Square, Trash2, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Mapbox public token
 mapboxgl.accessToken = 'pk.eyJ1IjoiZGFjbWVkaWExNiIsImEiOiJjbWpnZXFyanUwcnd2M2RvbjFwbjlqcWhvIn0.t5x9PadkXW-3tX-zSdvJ-g';
@@ -11,14 +17,21 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZGFjbWVkaWExNiIsImEiOiJjbWpnZXFyanUwcnd2M2Rvb
 interface PropertyMapProps {
   properties: ImoviewProperty[];
   isLoading?: boolean;
+  onAreaFilter?: (filteredProperties: ImoviewProperty[] | null) => void;
 }
 
-export function PropertyMap({ properties, isLoading }: PropertyMapProps) {
+export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const draw = useRef<MapboxDraw | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const navigate = useNavigate();
+  
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawMode, setDrawMode] = useState<'polygon' | 'rectangle' | null>(null);
+  const [hasArea, setHasArea] = useState(false);
+  const [filteredCount, setFilteredCount] = useState<number | null>(null);
 
   // Filter properties with valid coordinates
   const propertiesWithCoords = useMemo(() => {
@@ -58,6 +71,86 @@ export function PropertyMap({ properties, isLoading }: PropertyMapProps) {
     `;
   }, []);
 
+  // Filter properties by polygon
+  const filterPropertiesByPolygon = useCallback((polygon: Feature<Polygon>) => {
+    const filtered = propertiesWithCoords.filter(property => {
+      if (!property.latitude || !property.longitude) return false;
+      const point = turf.point([property.longitude, property.latitude]);
+      return turf.booleanPointInPolygon(point, polygon);
+    });
+    return filtered;
+  }, [propertiesWithCoords]);
+
+  // Update markers visibility based on filter
+  const updateMarkersVisibility = useCallback((filteredIds: Set<number> | null) => {
+    markersRef.current.forEach((marker, index) => {
+      const property = propertiesWithCoords[index];
+      if (!property) return;
+      
+      const el = marker.getElement();
+      if (filteredIds === null) {
+        el.style.opacity = '1';
+        el.style.pointerEvents = 'auto';
+      } else if (filteredIds.has(property.codigo)) {
+        el.style.opacity = '1';
+        el.style.pointerEvents = 'auto';
+      } else {
+        el.style.opacity = '0.25';
+        el.style.pointerEvents = 'none';
+      }
+    });
+  }, [propertiesWithCoords]);
+
+  // Handle draw events
+  const handleDrawCreate = useCallback((e: any) => {
+    const data = draw.current?.getAll();
+    if (!data?.features?.length) return;
+
+    // Keep only the latest polygon
+    if (data.features.length > 1) {
+      const lastFeature = data.features[data.features.length - 1];
+      draw.current?.deleteAll();
+      draw.current?.add(lastFeature);
+    }
+
+    const feature = data.features[data.features.length - 1];
+    if (feature.geometry.type === 'Polygon') {
+      const filtered = filterPropertiesByPolygon(feature as Feature<Polygon>);
+      const filteredIds = new Set(filtered.map(p => p.codigo));
+      
+      setFilteredCount(filtered.length);
+      setHasArea(true);
+      setIsDrawing(false);
+      setDrawMode(null);
+      updateMarkersVisibility(filteredIds);
+      onAreaFilter?.(filtered);
+    }
+  }, [filterPropertiesByPolygon, updateMarkersVisibility, onAreaFilter]);
+
+  const handleDrawUpdate = useCallback((e: any) => {
+    const data = draw.current?.getAll();
+    if (!data?.features?.length) return;
+
+    const feature = data.features[0];
+    if (feature.geometry.type === 'Polygon') {
+      const filtered = filterPropertiesByPolygon(feature as Feature<Polygon>);
+      const filteredIds = new Set(filtered.map(p => p.codigo));
+      
+      setFilteredCount(filtered.length);
+      updateMarkersVisibility(filteredIds);
+      onAreaFilter?.(filtered);
+    }
+  }, [filterPropertiesByPolygon, updateMarkersVisibility, onAreaFilter]);
+
+  const handleDrawDelete = useCallback(() => {
+    setHasArea(false);
+    setFilteredCount(null);
+    setIsDrawing(false);
+    setDrawMode(null);
+    updateMarkersVisibility(null);
+    onAreaFilter?.(null);
+  }, [updateMarkersVisibility, onAreaFilter]);
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -77,6 +170,69 @@ export function PropertyMap({ properties, isLoading }: PropertyMapProps) {
       'top-right'
     );
 
+    // Initialize MapboxDraw
+    draw.current = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {},
+      styles: [
+        // Polygon fill
+        {
+          id: 'gl-draw-polygon-fill',
+          type: 'fill',
+          filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
+          paint: {
+            'fill-color': '#d4a853',
+            'fill-outline-color': '#d4a853',
+            'fill-opacity': 0.15
+          }
+        },
+        // Polygon stroke
+        {
+          id: 'gl-draw-polygon-stroke-active',
+          type: 'line',
+          filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#d4a853',
+            'line-dasharray': [0.2, 2],
+            'line-width': 3
+          }
+        },
+        // Vertex points
+        {
+          id: 'gl-draw-polygon-and-line-vertex-active',
+          type: 'circle',
+          filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
+          paint: {
+            'circle-radius': 6,
+            'circle-color': '#fff',
+            'circle-stroke-color': '#d4a853',
+            'circle-stroke-width': 2
+          }
+        },
+        // Midpoints
+        {
+          id: 'gl-draw-polygon-midpoint',
+          type: 'circle',
+          filter: ['all', ['==', '$type', 'Point'], ['==', 'meta', 'midpoint']],
+          paint: {
+            'circle-radius': 4,
+            'circle-color': '#d4a853'
+          }
+        }
+      ]
+    });
+
+    map.current.addControl(draw.current as any);
+
+    // Draw event listeners
+    map.current.on('draw.create', handleDrawCreate);
+    map.current.on('draw.update', handleDrawUpdate);
+    map.current.on('draw.delete', handleDrawDelete);
+
     // Handle popup button clicks
     map.current.on('click', (e) => {
       const target = e.originalEvent.target as HTMLElement;
@@ -91,8 +247,9 @@ export function PropertyMap({ properties, isLoading }: PropertyMapProps) {
     return () => {
       map.current?.remove();
       map.current = null;
+      draw.current = null;
     };
-  }, [navigate]);
+  }, [navigate, handleDrawCreate, handleDrawUpdate, handleDrawDelete]);
 
   // Update markers when properties change
   useEffect(() => {
@@ -128,7 +285,7 @@ export function PropertyMap({ properties, isLoading }: PropertyMapProps) {
         border-radius: 50%;
         cursor: pointer;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        transition: transform 0.2s ease;
+        transition: transform 0.2s ease, opacity 0.3s ease;
       `;
 
       el.addEventListener('mouseenter', () => {
@@ -159,23 +316,128 @@ export function PropertyMap({ properties, isLoading }: PropertyMapProps) {
     // Fit map to show all markers
     if (propertiesWithCoords.length > 0) {
       map.current.fitBounds(bounds, {
-        padding: { top: 50, bottom: 50, left: 50, right: 50 },
+        padding: { top: 100, bottom: 50, left: 50, right: 50 },
         maxZoom: 15,
         duration: 1000,
       });
     }
   }, [propertiesWithCoords, createPopupContent]);
 
+  // Handle drawing mode changes
+  const startDrawPolygon = () => {
+    if (!draw.current) return;
+    draw.current.deleteAll();
+    draw.current.changeMode('draw_polygon');
+    setIsDrawing(true);
+    setDrawMode('polygon');
+    setHasArea(false);
+    setFilteredCount(null);
+    updateMarkersVisibility(null);
+    onAreaFilter?.(null);
+  };
+
+  const startDrawRectangle = () => {
+    if (!draw.current) return;
+    draw.current.deleteAll();
+    // MapboxDraw doesn't have a built-in rectangle mode, so we use polygon
+    draw.current.changeMode('draw_polygon');
+    setIsDrawing(true);
+    setDrawMode('rectangle');
+    setHasArea(false);
+    setFilteredCount(null);
+    updateMarkersVisibility(null);
+    onAreaFilter?.(null);
+  };
+
+  const clearArea = () => {
+    if (!draw.current) return;
+    draw.current.deleteAll();
+    handleDrawDelete();
+  };
+
+  const cancelDrawing = () => {
+    if (!draw.current) return;
+    draw.current.changeMode('simple_select');
+    setIsDrawing(false);
+    setDrawMode(null);
+  };
+
   return (
     <div className="relative w-full h-[600px] lg:h-[700px] rounded-xl overflow-hidden border border-border">
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {/* Properties count overlay */}
-      <div className="absolute top-4 left-4 z-10 bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border shadow-lg">
-        <p className="text-sm text-foreground">
-          <span className="font-semibold text-primary">{propertiesWithCoords.length}</span>
-          <span className="text-muted-foreground"> de {properties.length} imóveis no mapa</span>
-        </p>
+      {/* Drawing toolbar */}
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+        {/* Properties count */}
+        <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border shadow-lg">
+          {hasArea && filteredCount !== null ? (
+            <p className="text-sm text-foreground">
+              <span className="font-semibold text-primary">{filteredCount}</span>
+              <span className="text-muted-foreground"> de {propertiesWithCoords.length} imóveis na área</span>
+            </p>
+          ) : (
+            <p className="text-sm text-foreground">
+              <span className="font-semibold text-primary">{propertiesWithCoords.length}</span>
+              <span className="text-muted-foreground"> de {properties.length} imóveis no mapa</span>
+            </p>
+          )}
+        </div>
+
+        {/* Draw controls */}
+        <div className="bg-card/90 backdrop-blur-sm rounded-lg p-2 border border-border shadow-lg">
+          <div className="flex items-center gap-1">
+            {!isDrawing ? (
+              <>
+                <Button
+                  variant={hasArea ? "outline" : "secondary"}
+                  size="sm"
+                  onClick={startDrawPolygon}
+                  className="gap-1.5"
+                  title="Desenhar área livre"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Desenhar</span>
+                </Button>
+                <Button
+                  variant={hasArea ? "outline" : "secondary"}
+                  size="sm"
+                  onClick={startDrawRectangle}
+                  className="gap-1.5"
+                  title="Desenhar retângulo"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Retângulo</span>
+                </Button>
+                {hasArea && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={clearArea}
+                    className="gap-1.5"
+                    title="Limpar área"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Limpar</span>
+                  </Button>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground px-2">
+                  Clique no mapa para desenhar...
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={cancelDrawing}
+                  title="Cancelar"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Legend */}
@@ -191,6 +453,17 @@ export function PropertyMap({ properties, isLoading }: PropertyMapProps) {
           </div>
         </div>
       </div>
+
+      {/* Drawing mode indicator */}
+      {isDrawing && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+          <div className="bg-primary/90 text-primary-foreground px-6 py-3 rounded-full shadow-lg animate-pulse">
+            <span className="text-sm font-medium">
+              {drawMode === 'polygon' ? 'Clique para criar pontos, duplo-clique para finalizar' : 'Clique e arraste para criar área'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Loading overlay */}
       {isLoading && (

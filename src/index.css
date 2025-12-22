@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* MapboxDraw custom styles */
+.mapboxgl-ctrl-group {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: var(--radius) !important;
+}
+
+.mapboxgl-ctrl-group button {
+  background-color: transparent !important;
+}
+
+.mapboxgl-ctrl-group button:hover {
+  background-color: hsl(var(--secondary)) !important;
+}
+
+/* Cursor when drawing */
+.mapboxgl-canvas-container.mode-draw_polygon,
+.mapboxgl-canvas-container.mode-draw_polygon .mapboxgl-canvas {
+  cursor: crosshair !important;
+}
+
 @layer base {
   :root {
     /* Core - Ultra Dark Premium */
