@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -131,13 +131,43 @@ export default function Imoveis() {
   // Fetch all properties for map view (only when map is active)
   const { data: mapProperties = [], isLoading: isLoadingMap } = useImoveisMap(mapFilters, viewMode === 'map');
   
-  // Filtrar propriedades por busca de texto (local)
+  // Normalizar filtro de tipo para garantir que sempre seja aplicado (mesmo se a API ignorar)
+  const tipoFiltro = tipo.trim();
+  const tipoFiltroLower = tipoFiltro.toLowerCase();
+
+  const matchesTipoFiltro = useCallback(
+    (propertyTipo?: string) => {
+      if (!tipoFiltroLower) return true;
+      const t = (propertyTipo ?? '').toLowerCase();
+
+      // Casa deve incluir variações como "Casa de Condomínio"
+      if (tipoFiltroLower === 'casa') return t.includes('casa');
+
+      // Apartamento
+      if (tipoFiltroLower === 'apartamento') return t.includes('apartamento');
+
+      // Terreno / Lote
+      if (tipoFiltroLower === 'terreno') return t.includes('terreno') || t.includes('lote');
+
+      // Comercial (variações comuns)
+      if (tipoFiltroLower === 'comercial') {
+        return t.includes('comercial') || t.includes('loja') || t.includes('sala');
+      }
+
+      // Fallback: contém o texto do filtro
+      return t.includes(tipoFiltroLower);
+    },
+    [tipoFiltroLower]
+  );
+
+  // Filtrar propriedades por tipo e busca de texto (local)
   const filteredProperties = useMemo(() => {
-    const rawList = imoveisData?.lista || [];
-    if (!busca.trim()) return rawList;
-    
+    let list = (imoveisData?.lista || []).filter((property) => matchesTipoFiltro(property.tipo));
+
+    if (!busca.trim()) return list;
+
     const searchLower = busca.toLowerCase().trim();
-    return rawList.filter((property) => {
+    return list.filter((property) => {
       const searchableFields = [
         property.titulo,
         property.descricao,
@@ -149,15 +179,17 @@ export default function Imoveis() {
         String(property.codigo),
         String(property.codigoReferencia),
       ].filter(Boolean);
-      
-      return searchableFields.some((field) => 
-        String(field).toLowerCase().includes(searchLower)
-      );
+
+      return searchableFields.some((field) => String(field).toLowerCase().includes(searchLower));
     });
-  }, [imoveisData?.lista, busca]);
+  }, [imoveisData?.lista, busca, matchesTipoFiltro]);
+
+  const filteredMapProperties = useMemo(() => {
+    return (mapProperties || []).filter((property) => matchesTipoFiltro(property.tipo));
+  }, [mapProperties, matchesTipoFiltro]);
 
   const properties = filteredProperties;
-  const totalImoveis = busca.trim() ? filteredProperties.length : (imoveisData?.quantidade || 0);
+  const totalImoveis = busca.trim() || tipoFiltroLower ? filteredProperties.length : (imoveisData?.quantidade || 0);
   const totalPages = Math.ceil(totalImoveis / ITEMS_PER_PAGE);
 
   // Determina se há mais páginas baseado no total real
@@ -549,7 +581,7 @@ export default function Imoveis() {
               {viewMode === 'map' ? (
                 // Map View
                 <PropertyMap 
-                  properties={mapProperties} 
+                  properties={filteredMapProperties} 
                   isLoading={isLoadingMap} 
                 />
               ) : (
