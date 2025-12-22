@@ -107,24 +107,37 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       comercial: [6, 8, 11, 23, 26], // Sala, Prédio, Galpão, Área, Barracão
     };
 
-    const tipoValues: Array<string | number | undefined> = (() => {
+    // Converter tipo para códigos numéricos
+    const tipoValues: Array<number> = (() => {
       if (typeof filters.tipo === 'number') return [filters.tipo];
       if (typeof filters.tipo === 'string') {
-        if (tipoNormalized && TIPO_GROUP_CODES[tipoNormalized]) return TIPO_GROUP_CODES[tipoNormalized];
-        const trimmed = filters.tipo.trim();
-        return trimmed ? [trimmed] : [undefined];
+        if (tipoNormalized && TIPO_GROUP_CODES[tipoNormalized]) {
+          return TIPO_GROUP_CODES[tipoNormalized];
+        }
+        // Se for uma string que não está no mapa, tentar parsear como número
+        const parsed = parseInt(filters.tipo, 10);
+        if (!isNaN(parsed)) return [parsed];
+        // String desconhecida - não aplicar filtro de tipo
+        console.log(`[imoview-service] Tipo desconhecido: "${filters.tipo}" - ignorando filtro de tipo`);
+        return [];
       }
-      return [undefined];
+      return [];
     })();
 
-    const needsMultiFetch = condominiosSelecionados.length > 0 || (tipoValues.filter(Boolean).length > 1);
+    console.log(`[imoview-service] Tipo original: "${filters.tipo}" -> Códigos: [${tipoValues.join(', ')}]`);
+
+    // Sempre usar multi-fetch se:
+    // 1. Há condomínios selecionados (para buscar em cada um)
+    // 2. Há múltiplos códigos de tipo (ex: Apartamento = 2, 12, 18, 21, 22, 25)
+    // 3. Há pelo menos um código de tipo (para garantir que sempre passamos número, não string)
+    const needsMultiFetch = condominiosSelecionados.length > 0 || tipoValues.length > 0;
 
     // Se houver 1+ condomínios OU múltiplos tipos (ex: Apartamento inclui Cobertura/Flat/Studio...), paginar e combinar manualmente.
     if (needsMultiFetch) {
       const PAGE_SIZE = 20;
       const MAX_PAGES = 200;
 
-      const fetchAll = async (codigoCondominio?: number, tipo?: string | number) => {
+      const fetchAll = async (codigoCondominio?: number, tipo?: number) => {
         const all: ImoviewProperty[] = [];
         const seen = new Set<number>();
         let pagina = 1;
@@ -171,16 +184,17 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       };
 
       const condominiosLoop = condominiosSelecionados.length > 0 ? condominiosSelecionados : [undefined];
-      const tiposLoop = tipoValues.length > 0 ? tipoValues : [undefined];
+      // Se tipoValues estiver vazio, passar undefined para não filtrar por tipo
+      const tiposLoop: Array<number | undefined> = tipoValues.length > 0 ? tipoValues : [undefined];
 
       const combinedList: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
 
       // Processar em lotes para não explodir requisições simultâneas
-      const combos: Array<{ codigoCondominio?: number; tipo?: string | number }> = [];
+      const combos: Array<{ codigoCondominio?: number; tipo?: number }> = [];
       for (const codigoCondominio of condominiosLoop) {
         for (const tipo of tiposLoop) {
-          combos.push({ codigoCondominio, tipo: tipo as string | number | undefined });
+          combos.push({ codigoCondominio, tipo });
         }
       }
 
