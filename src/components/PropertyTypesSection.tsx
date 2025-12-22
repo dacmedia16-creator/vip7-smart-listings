@@ -76,25 +76,18 @@ export function PropertyTypesSection() {
                 </div>
 
                 {/* Content */}
-                <div className="absolute inset-0 flex flex-col justify-end p-6">
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                   {/* Icon */}
-                  <div className="mb-auto pt-4 flex justify-between items-start">
-                    <div className="p-3 rounded-xl glass-luxury group-hover:bg-primary/20 transition-colors duration-500">
-                      <item.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="w-10 h-10 rounded-full glass-luxury flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
-                      <ArrowUpRight className="h-5 w-5 text-primary" />
-                    </div>
+                  <div className="p-3 rounded-full glass-luxury group-hover:bg-primary/20 transition-colors duration-500 mb-3">
+                    <item.icon className="h-6 w-6 text-primary" />
                   </div>
 
-                  <div>
-                    <h3 className="text-xl font-heading font-bold text-foreground mb-2 group-hover:text-primary transition-colors duration-300">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
+                  <h3 className="text-lg font-heading font-bold text-foreground mb-1 group-hover:text-primary transition-colors duration-300">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {item.description}
+                  </p>
                 </div>
               </Link>
             </ScrollReveal>
