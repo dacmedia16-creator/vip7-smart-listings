@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { getFinalidadeCode } from '@/services/imoviewApi';
+
+const PRICE_MIN = 0;
+const PRICE_MAX = 10000000;
+const PRICE_STEP = 50000;
 
 export function HeroSection() {
   const navigate = useNavigate();
@@ -14,7 +20,7 @@ export function HeroSection() {
   const [cidade, setCidade] = useState<string>('');
   const [bairro, setBairro] = useState<string>('');
   const [condominiosCodes, setCondominiosCodes] = useState<string[]>([]);
-  const [faixaPreco, setFaixaPreco] = useState<string>('');
+  const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
 
   const finalidadeCode = getFinalidadeCode(finalidade);
   
@@ -28,6 +34,38 @@ export function HeroSection() {
     setCondominiosCodes([]);
   }, [cidade]);
 
+  // Format price for display
+  const formatPrice = (value: number) => {
+    if (value >= 1000000) {
+      return `R$ ${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1)} mi`;
+    }
+    return `R$ ${(value / 1000).toFixed(0)} mil`;
+  };
+
+  const priceRangeLabel = useMemo(() => {
+    const [min, max] = priceRange;
+    if (min === PRICE_MIN && max === PRICE_MAX) return 'Qualquer valor';
+    if (min === PRICE_MIN) return `Até ${formatPrice(max)}`;
+    if (max === PRICE_MAX) return `A partir de ${formatPrice(min)}`;
+    return `${formatPrice(min)} – ${formatPrice(max)}`;
+  }, [priceRange]);
+
+  const handleMinInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? PRICE_MIN : Math.min(Number(raw), priceRange[1]);
+    setPriceRange([num, priceRange[1]]);
+  };
+
+  const handleMaxInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? PRICE_MAX : Math.max(Number(raw), priceRange[0]);
+    setPriceRange([priceRange[0], num]);
+  };
+
+  const handleSliderChange = (values: number[]) => {
+    setPriceRange([values[0], values[1]]);
+  };
+
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (finalidade) params.set('finalidade', finalidade);
@@ -35,11 +73,8 @@ export function HeroSection() {
     if (cidade) params.set('cidade', cidade);
     if (bairro) params.set('bairro', bairro);
     if (condominiosCodes.length > 0) params.set('condominios', condominiosCodes.join(','));
-    if (faixaPreco) {
-      const [min, max] = faixaPreco.split('-');
-      if (min) params.set('valorMin', min);
-      if (max) params.set('valorMax', max);
-    }
+    if (priceRange[0] > PRICE_MIN) params.set('valorMin', String(priceRange[0]));
+    if (priceRange[1] < PRICE_MAX) params.set('valorMax', String(priceRange[1]));
     navigate(`/imoveis?${params.toString()}`);
   };
 
@@ -132,7 +167,7 @@ export function HeroSection() {
             </div>
 
             {/* Filters Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               {/* Tipo */}
               <Select value={tipo} onValueChange={setTipo}>
                 <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
@@ -170,21 +205,50 @@ export function HeroSection() {
                 triggerClassName="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors"
                 maxSelections={5}
               />
+            </div>
 
-              {/* Faixa de Preço */}
-              <Select value={faixaPreco} onValueChange={setFaixaPreco}>
-                <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
-                  <DollarSign className="h-4 w-4 text-primary mr-2" />
-                  <SelectValue placeholder="Valor" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="0-500000">Até R$ 500 mil</SelectItem>
-                  <SelectItem value="500000-1000000">R$ 500 mil - R$ 1 milhão</SelectItem>
-                  <SelectItem value="1000000-2000000">R$ 1 milhão - R$ 2 milhões</SelectItem>
-                  <SelectItem value="2000000-5000000">R$ 2 milhões - R$ 5 milhões</SelectItem>
-                  <SelectItem value="5000000-">Acima de R$ 5 milhões</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Price Range Filter */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Faixa de Preço</span>
+                <span className="ml-auto text-sm text-primary font-medium">{priceRangeLabel}</span>
+              </div>
+              
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Mínimo</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0"
+                    value={priceRange[0] === PRICE_MIN ? '' : priceRange[0].toLocaleString('pt-BR')}
+                    onChange={handleMinInputChange}
+                    className="bg-secondary/50 border-border/50 h-10 rounded-xl hover:border-primary/50 transition-colors"
+                  />
+                </div>
+                <span className="text-muted-foreground mt-5">–</span>
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Máximo</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Sem limite"
+                    value={priceRange[1] === PRICE_MAX ? '' : priceRange[1].toLocaleString('pt-BR')}
+                    onChange={handleMaxInputChange}
+                    className="bg-secondary/50 border-border/50 h-10 rounded-xl hover:border-primary/50 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <Slider
+                value={priceRange}
+                min={PRICE_MIN}
+                max={PRICE_MAX}
+                step={PRICE_STEP}
+                onValueChange={handleSliderChange}
+                className="w-full"
+              />
             </div>
 
             {/* Search Button */}
