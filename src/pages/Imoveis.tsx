@@ -100,8 +100,8 @@ export default function Imoveis() {
 
   const ITEMS_PER_PAGE = 20;
 
+  // Debug só ativado via ?debug=1 na URL
   const debugEnabled =
-    import.meta.env.DEV ||
     searchParams.get('debug') === '1' ||
     searchParams.get('debug') === 'true';
 
