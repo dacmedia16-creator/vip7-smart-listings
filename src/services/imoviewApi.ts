@@ -126,13 +126,10 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
     console.log(`[imoview-service] Tipo original: "${filters.tipo}" -> Códigos: [${tipoValues.join(', ')}]`);
 
-    // Sempre usar multi-fetch se:
-    // 1. Há condomínios selecionados (para buscar em cada um)
-    // 2. Há múltiplos códigos de tipo (ex: Apartamento = 2, 12, 18, 21, 22, 25)
-    // 3. Há pelo menos um código de tipo (para garantir que sempre passamos número, não string)
-    const needsMultiFetch = condominiosSelecionados.length > 0 || tipoValues.length > 0;
+    // Multi-fetch APENAS para múltiplos condomínios selecionados
+    // Para tipos, enviamos apenas o PRIMEIRO código numérico e confiamos na filtragem do cliente
+    const needsMultiFetch = condominiosSelecionados.length > 0;
 
-    // Se houver 1+ condomínios OU múltiplos tipos (ex: Apartamento inclui Cobertura/Flat/Studio...), paginar e combinar manualmente.
     if (needsMultiFetch) {
       const PAGE_SIZE = 20;
       const MAX_PAGES = 200;
@@ -183,25 +180,17 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         return all;
       };
 
-      const condominiosLoop = condominiosSelecionados.length > 0 ? condominiosSelecionados : [undefined];
-      // Se tipoValues estiver vazio, passar undefined para não filtrar por tipo
-      const tiposLoop: Array<number | undefined> = tipoValues.length > 0 ? tipoValues : [undefined];
+      const condominiosLoop = condominiosSelecionados;
+      // Para tipos, usar apenas o primeiro código se disponível
+      const tipoParaFiltro = tipoValues.length > 0 ? tipoValues[0] : undefined;
 
       const combinedList: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
 
-      // Processar em lotes para não explodir requisições simultâneas
-      const combos: Array<{ codigoCondominio?: number; tipo?: number }> = [];
-      for (const codigoCondominio of condominiosLoop) {
-        for (const tipo of tiposLoop) {
-          combos.push({ codigoCondominio, tipo });
-        }
-      }
-
       const batchSize = 6;
-      for (let i = 0; i < combos.length; i += batchSize) {
-        const batch = combos.slice(i, i + batchSize);
-        const results = await Promise.all(batch.map((c) => fetchAll(c.codigoCondominio, c.tipo)));
+      for (let i = 0; i < condominiosLoop.length; i += batchSize) {
+        const batch = condominiosLoop.slice(i, i + batchSize);
+        const results = await Promise.all(batch.map((condo) => fetchAll(condo, tipoParaFiltro)));
 
         for (const lista of results) {
           for (const imovel of lista) {
@@ -229,10 +218,18 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       return { lista: paginatedList, quantidade: combinedList.length };
     }
 
-    // Comportamento original (single tipo/sem condo)
+    // Chamada simples: enviar apenas o PRIMEIRO código numérico do tipo
+    // A filtragem refinada será feita no cliente via matchesTipoFiltro()
+    const simpleFilters = {
+      ...filters,
+      tipo: tipoValues.length > 0 ? tipoValues[0] : undefined,
+    };
+
+    console.log(`[imoview-service] Chamada simples com tipo: ${simpleFilters.tipo}`);
+
     const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
       'listarImoveis',
-      filters as Record<string, unknown>
+      simpleFilters as Record<string, unknown>
     );
     if (Array.isArray(data)) {
       return { lista: data, quantidade: data.length };
