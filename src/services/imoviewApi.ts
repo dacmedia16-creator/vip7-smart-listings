@@ -98,12 +98,33 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           ? [filters.codigoCondominio]
           : [];
 
-    // Se houver 1 ou mais condomínios, precisamos paginar manualmente porque a API limita 20 registros por requisição.
-    if (condominiosSelecionados.length > 0) {
+    // Mapear filtros de tipo "de vitrine" (Casa/Apartamento/Terreno/Comercial) para códigos reais do Imoview
+    const tipoNormalized = typeof filters.tipo === 'string' ? filters.tipo.trim().toLowerCase() : null;
+    const TIPO_GROUP_CODES: Record<string, number[]> = {
+      casa: [1, 28], // Casa, Casa de Condomínio
+      apartamento: [2, 12, 18, 21, 22, 25], // Apartamento, Flat, Cobertura, Garden, Studio, Duplex
+      terreno: [19, 4], // Terreno, Lote em condomínio
+      comercial: [6, 8, 11, 23, 26], // Sala, Prédio, Galpão, Área, Barracão
+    };
+
+    const tipoValues: Array<string | number | undefined> = (() => {
+      if (typeof filters.tipo === 'number') return [filters.tipo];
+      if (typeof filters.tipo === 'string') {
+        if (tipoNormalized && TIPO_GROUP_CODES[tipoNormalized]) return TIPO_GROUP_CODES[tipoNormalized];
+        const trimmed = filters.tipo.trim();
+        return trimmed ? [trimmed] : [undefined];
+      }
+      return [undefined];
+    })();
+
+    const needsMultiFetch = condominiosSelecionados.length > 0 || (tipoValues.filter(Boolean).length > 1);
+
+    // Se houver 1+ condomínios OU múltiplos tipos (ex: Apartamento inclui Cobertura/Flat/Studio...), paginar e combinar manualmente.
+    if (needsMultiFetch) {
       const PAGE_SIZE = 20;
       const MAX_PAGES = 200;
 
-      const fetchAllForCondominio = async (codigoCondominio: number) => {
+      const fetchAll = async (codigoCondominio?: number, tipo?: string | number) => {
         const all: ImoviewProperty[] = [];
         const seen = new Set<number>();
         let pagina = 1;
@@ -112,6 +133,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         for (;;) {
           const pageFilter = {
             ...filters,
+            tipo,
             codigoCondominio,
             codigosCondominio: undefined,
             limite: PAGE_SIZE,
@@ -148,17 +170,31 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         return all;
       };
 
-      const results = await Promise.all(condominiosSelecionados.map(fetchAllForCondominio));
+      const condominiosLoop = condominiosSelecionados.length > 0 ? condominiosSelecionados : [undefined];
+      const tiposLoop = tipoValues.length > 0 ? tipoValues : [undefined];
 
-      // Combinar resultados e remover duplicatas (entre condomínios)
-      const seenCodigos = new Set<number>();
       const combinedList: ImoviewProperty[] = [];
+      const seenCodigos = new Set<number>();
 
-      for (const lista of results) {
-        for (const imovel of lista) {
-          if (!seenCodigos.has(imovel.codigo)) {
-            seenCodigos.add(imovel.codigo);
-            combinedList.push(imovel);
+      // Processar em lotes para não explodir requisições simultâneas
+      const combos: Array<{ codigoCondominio?: number; tipo?: string | number }> = [];
+      for (const codigoCondominio of condominiosLoop) {
+        for (const tipo of tiposLoop) {
+          combos.push({ codigoCondominio, tipo: tipo as string | number | undefined });
+        }
+      }
+
+      const batchSize = 6;
+      for (let i = 0; i < combos.length; i += batchSize) {
+        const batch = combos.slice(i, i + batchSize);
+        const results = await Promise.all(batch.map((c) => fetchAll(c.codigoCondominio, c.tipo)));
+
+        for (const lista of results) {
+          for (const imovel of lista) {
+            if (!seenCodigos.has(imovel.codigo)) {
+              seenCodigos.add(imovel.codigo);
+              combinedList.push(imovel);
+            }
           }
         }
       }
@@ -179,14 +215,17 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       return { lista: paginatedList, quantidade: combinedList.length };
     }
 
-    // Comportamento original para single ou nenhum condomínio
-    const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>('listarImoveis', filters as Record<string, unknown>);
+    // Comportamento original (single tipo/sem condo)
+    const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
+      'listarImoveis',
+      filters as Record<string, unknown>
+    );
     if (Array.isArray(data)) {
       return { lista: data, quantidade: data.length };
     }
-    return { 
-      lista: data?.lista || [], 
-      quantidade: data?.quantidade || data?.lista?.length || 0 
+    return {
+      lista: data?.lista || [],
+      quantidade: data?.quantidade || data?.lista?.length || 0,
     };
   } catch (error) {
     console.error('[imoview-service] listarImoveis error:', error);
