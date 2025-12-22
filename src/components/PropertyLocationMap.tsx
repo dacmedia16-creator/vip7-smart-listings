@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { MapPin, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, Loader2, AlertCircle } from 'lucide-react';
 
 // Mapbox public token
 mapboxgl.accessToken = 'pk.eyJ1IjoiZGFjbWVkaWExNiIsImEiOiJjbWpnZXFyanUwcnd2M2RvbjFwbjlqcWhvIn0.t5x9PadkXW-3tX-zSdvJ-g';
@@ -15,10 +15,12 @@ interface PointOfInterest {
 }
 
 interface PropertyLocationMapProps {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   propertyTitle?: string;
   address?: string;
+  city?: string;
+  neighborhood?: string;
 }
 
 // POI categories and their icons/colors
@@ -31,29 +33,90 @@ const POI_CATEGORIES = [
   { type: 'pharmacy', label: 'Farmácias', icon: '💊', color: '#ec4899' },
 ];
 
+// Geocode an address using Mapbox API
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&country=BR&limit=1&language=pt`
+    );
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].center;
+      return { lat, lng };
+    }
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+}
+
 export function PropertyLocationMap({ 
   latitude, 
   longitude, 
   propertyTitle = 'Imóvel',
-  address 
+  address,
+  city,
+  neighborhood
 }: PropertyLocationMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [pois, setPois] = useState<PointOfInterest[]>([]);
   const [isLoadingPois, setIsLoadingPois] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    latitude && longitude && latitude !== 0 && longitude !== 0
+      ? { lat: latitude, lng: longitude }
+      : null
+  );
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodingFailed, setGeocodingFailed] = useState(false);
+  const [isApproximate, setIsApproximate] = useState(false);
+
+  // Geocode if coordinates are missing
+  useEffect(() => {
+    const doGeocode = async () => {
+      // If we already have coordinates, skip
+      if (coords) return;
+      
+      // Build address string for geocoding
+      const addressParts = [address, neighborhood, city].filter(Boolean);
+      if (addressParts.length === 0) {
+        setGeocodingFailed(true);
+        return;
+      }
+      
+      setIsGeocoding(true);
+      const fullAddress = addressParts.join(', ');
+      const result = await geocodeAddress(fullAddress);
+      
+      if (result) {
+        setCoords(result);
+        setIsApproximate(true); // Mark as approximate since it's geocoded
+      } else {
+        setGeocodingFailed(true);
+      }
+      setIsGeocoding(false);
+    };
+    
+    doGeocode();
+  }, [coords, address, city, neighborhood]);
 
   // Fetch nearby POIs
   useEffect(() => {
+    if (!coords) return;
+    
     const fetchPOIs = async () => {
       setIsLoadingPois(true);
       const allPois: PointOfInterest[] = [];
 
       try {
-        // Use Mapbox Geocoding API to find nearby places
         for (const category of POI_CATEGORIES) {
           const response = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${category.type}.json?proximity=${longitude},${latitude}&limit=3&access_token=${mapboxgl.accessToken}&language=pt`
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${category.type}.json?proximity=${coords.lng},${coords.lat}&limit=3&access_token=${mapboxgl.accessToken}&language=pt`
           );
           
           if (response.ok) {
@@ -61,9 +124,9 @@ export function PropertyLocationMap({
             
             for (const feature of data.features || []) {
               const [lng, lat] = feature.center;
-              const distance = calculateDistance(latitude, longitude, lat, lng);
+              const distance = calculateDistance(coords.lat, coords.lng, lat, lng);
               
-              if (distance <= 2000) { // Within 2km
+              if (distance <= 2000) {
                 allPois.push({
                   name: feature.text || feature.place_name,
                   type: category.type,
@@ -84,17 +147,17 @@ export function PropertyLocationMap({
     };
 
     fetchPOIs();
-  }, [latitude, longitude]);
+  }, [coords]);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current || map.current || !coords) return;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
-      center: [longitude, latitude],
-      zoom: 15,
+      center: [coords.lng, coords.lat],
+      zoom: isApproximate ? 14 : 15,
       pitch: 45,
     });
 
@@ -119,13 +182,14 @@ export function PropertyLocationMap({
     `;
 
     new mapboxgl.Marker({ element: propertyEl })
-      .setLngLat([longitude, latitude])
+      .setLngLat([coords.lng, coords.lat])
       .setPopup(
         new mapboxgl.Popup({ offset: 25, className: 'property-location-popup' })
           .setHTML(`
             <div class="location-popup-content">
               <h4>${propertyTitle}</h4>
               ${address ? `<p>${address}</p>` : ''}
+              ${isApproximate ? '<p class="approximate-note">📍 Localização aproximada</p>' : ''}
             </div>
           `)
       )
@@ -135,11 +199,11 @@ export function PropertyLocationMap({
       map.current?.remove();
       map.current = null;
     };
-  }, [latitude, longitude, propertyTitle, address]);
+  }, [coords, propertyTitle, address, isApproximate]);
 
   // Add POI markers when POIs are loaded
   useEffect(() => {
-    if (!map.current || pois.length === 0) return;
+    if (!map.current || pois.length === 0 || !coords) return;
 
     const markers: mapboxgl.Marker[] = [];
 
@@ -147,7 +211,6 @@ export function PropertyLocationMap({
       const category = POI_CATEGORIES.find(c => c.type === poi.type);
       if (!category) return;
 
-      // Filter by selected category
       if (selectedCategory && poi.type !== selectedCategory) return;
 
       const el = document.createElement('div');
@@ -200,11 +263,10 @@ export function PropertyLocationMap({
     return () => {
       markers.forEach(m => m.remove());
     };
-  }, [pois, selectedCategory]);
+  }, [pois, selectedCategory, coords]);
 
-  // Calculate distance between two points in meters
   function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371000; // Earth's radius in meters
+    const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
@@ -215,15 +277,47 @@ export function PropertyLocationMap({
     return R * c;
   }
 
-  // Format distance for display
   function formatDistance(meters: number): string {
-    if (meters < 1000) {
-      return `${Math.round(meters)}m`;
-    }
+    if (meters < 1000) return `${Math.round(meters)}m`;
     return `${(meters / 1000).toFixed(1)}km`;
   }
 
-  // Group POIs by category for display
+  // Loading state
+  if (isGeocoding) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-8 text-center">
+        <Loader2 className="h-12 w-12 mx-auto mb-4 text-primary animate-spin" />
+        <h3 className="text-lg font-heading font-semibold text-foreground mb-2">
+          Buscando localização...
+        </h3>
+        <p className="text-muted-foreground text-sm">
+          Geocodificando endereço do imóvel
+        </p>
+      </div>
+    );
+  }
+
+  // Failed to geocode
+  if (geocodingFailed || !coords) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-8 text-center">
+        <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+        <h3 className="text-lg font-heading font-semibold text-foreground mb-2">
+          Localização não disponível
+        </h3>
+        <p className="text-muted-foreground text-sm">
+          Não foi possível determinar a localização deste imóvel.
+          {address && (
+            <>
+              <br />
+              <span className="mt-2 block">Endereço: {address}</span>
+            </>
+          )}
+        </p>
+      </div>
+    );
+  }
+
   const groupedPois = POI_CATEGORIES.map(category => ({
     ...category,
     items: pois.filter(p => p.type === category.type),
@@ -231,13 +325,20 @@ export function PropertyLocationMap({
 
   const handleOpenMaps = () => {
     window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`,
+      `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`,
       '_blank'
     );
   };
 
   return (
     <div className="space-y-4">
+      {isApproximate && (
+        <div className="flex items-center gap-2 text-sm text-amber-500 bg-amber-500/10 rounded-lg px-4 py-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span>Localização aproximada baseada no endereço</span>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
           <MapPin className="h-6 w-6 text-primary" />
