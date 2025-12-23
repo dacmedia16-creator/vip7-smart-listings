@@ -115,6 +115,47 @@ export function useCondominiosSlim(cidade?: string, codigoCidade?: number, final
   });
 }
 
+// Buscar condomínios que têm imóveis nos bairros selecionados
+interface CondominioDoBairro {
+  codigo: number;
+  nome: string;
+  cidade: string;
+  quantidadeImoveis: number;
+}
+
+async function listarCondominiosPorBairro(
+  codigosBairros: number[],
+  codigoCidade?: number,
+  finalidade?: number
+): Promise<CondominioDoBairro[]> {
+  const { data, error } = await supabase.functions.invoke('imoview-api', {
+    body: {
+      action: 'listarCondominiosPorBairro',
+      params: { codigosBairros, codigoCidade, finalidade },
+    },
+  });
+
+  if (error) {
+    console.error('[useCondominiosPorBairro] Error:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export function useCondominiosPorBairro(
+  codigosBairros?: number[],
+  codigoCidade?: number,
+  finalidade?: number
+) {
+  return useQuery({
+    queryKey: ['condominios-por-bairro', codigosBairros, codigoCidade, finalidade],
+    queryFn: () => listarCondominiosPorBairro(codigosBairros!, codigoCidade, finalidade),
+    enabled: !!codigosBairros && codigosBairros.length > 0,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+}
+
 export function useTiposImoveis() {
   return useQuery({
     queryKey: ['tipos-imoveis'],

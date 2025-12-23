@@ -278,6 +278,83 @@ serve(async (req) => {
         });
       }
 
+      // ========= NOVO: Buscar condomínios que têm imóveis nos bairros selecionados =========
+      case 'listarCondominiosPorBairro': {
+        console.log('[imoview-api] listarCondominiosPorBairro params:', JSON.stringify(params));
+        
+        const codigosBairros = params?.codigosBairros as number[] | undefined;
+        const finalidade = params?.finalidade as number | undefined;
+        const codigoCidade = params?.codigoCidade as number | undefined;
+        
+        if (!codigosBairros || codigosBairros.length === 0) {
+          return new Response(JSON.stringify([]), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // Buscar imóveis nos bairros selecionados para identificar os condomínios
+        const condominiosEncontrados: Map<number, { codigo: number; nome: string; cidade: string; quantidadeImoveis: number }> = new Map();
+        
+        // Buscar imóveis em cada bairro (limitado para performance)
+        for (const codigoBairro of codigosBairros) {
+          console.log(`[imoview-api] Buscando imóveis no bairro ${codigoBairro}...`);
+          
+          const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'chave': IMOVIEW_API_KEY || '',
+            },
+            body: JSON.stringify(removeNullValues({
+              finalidade,
+              codigocidade: codigoCidade,
+              codigosbairros: String(codigoBairro),
+              numeropagina: 1,
+              numeroregistros: 100, // Buscar até 100 imóveis por bairro
+            })),
+          });
+          
+          if (!response.ok) {
+            console.error(`[imoview-api] Erro ao buscar imóveis do bairro ${codigoBairro}`);
+            continue;
+          }
+          
+          const data = await response.json();
+          const imoveis = Array.isArray(data) ? data : (data?.lista || []);
+          
+          // Extrair condomínios únicos dos imóveis encontrados
+          for (const imovel of imoveis) {
+            const codigoCondominio = Number(imovel.codigocondominio || imovel.codigoCondominio);
+            const nomeCondominio = String(imovel.nomecondominio || imovel.condominio || '').trim();
+            const cidadeImovel = String(imovel.cidade || '').trim();
+            
+            if (codigoCondominio && nomeCondominio) {
+              const existing = condominiosEncontrados.get(codigoCondominio);
+              if (existing) {
+                existing.quantidadeImoveis++;
+              } else {
+                condominiosEncontrados.set(codigoCondominio, {
+                  codigo: codigoCondominio,
+                  nome: nomeCondominio,
+                  cidade: cidadeImovel,
+                  quantidadeImoveis: 1,
+                });
+              }
+            }
+          }
+        }
+        
+        // Converter para array e ordenar por nome
+        const resultado = Array.from(condominiosEncontrados.values())
+          .sort((a, b) => a.nome.localeCompare(b.nome));
+        
+        console.log(`[imoview-api] listarCondominiosPorBairro: encontrados ${resultado.length} condomínios nos bairros ${codigosBairros.join(',')}`);
+        
+        return new Response(JSON.stringify(resultado), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       case 'listarImoveis': {
         endpoint = '/Imovel/RetornarImoveisDisponiveis';
         method = 'POST';

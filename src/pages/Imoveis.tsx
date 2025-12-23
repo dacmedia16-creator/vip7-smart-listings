@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon, Plus, Building2 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyGridSkeleton } from '@/components/PropertyCardSkeleton';
@@ -11,7 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { BairroMultiSelect } from '@/components/BairroMultiSelect';
-import { useImoveis, useBairros, useCondominiosSlim } from '@/hooks/useImoveis';
+import { useImoveis, useBairros, useCondominiosSlim, useCondominiosPorBairro } from '@/hooks/useImoveis';
 import { useFiltrosIniciais } from '@/hooks/useFiltrosIniciais';
 import { useImoveisMap } from '@/hooks/useImoveisMap';
 import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
@@ -88,6 +88,13 @@ export default function Imoveis() {
     console.log(`[Imoveis] Bairros "${bairrosArray.join(', ')}" -> códigos: ${codigos.join(', ')}`);
     return codigos.length > 0 ? codigos : undefined;
   }, [bairrosArray, bairros]);
+
+  // Buscar condomínios que têm imóveis nos bairros selecionados
+  const { data: condominiosDoBairro = [], isLoading: isLoadingCondominiosDoBairro } = useCondominiosPorBairro(
+    codigosBairros,
+    codigoCidade,
+    finalidadeCode
+  );
 
   // Cache de contagens de imóveis por condomínio
   const [condominiosContagem, setCondominiosContagem] = useState<Record<number, number>>({});
@@ -651,6 +658,68 @@ export default function Imoveis() {
                 {/* Condomínios (Multi-Select) */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Condomínios</h3>
+                  
+                  {/* Mostrar condomínios dos bairros selecionados */}
+                  {condominiosDoBairro.length > 0 && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                        <Building2 className="h-4 w-4" />
+                        <span>Condomínios no{bairrosArray.length > 1 ? 's bairros' : ' bairro'}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {condominiosDoBairro.length} condomínio{condominiosDoBairro.length > 1 ? 's' : ''} encontrado{condominiosDoBairro.length > 1 ? 's' : ''} em {bairrosArray.join(', ')}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                        {condominiosDoBairro.map((cond) => {
+                          const isSelected = condominiosArray.includes(String(cond.codigo));
+                          return (
+                            <button
+                              key={cond.codigo}
+                              onClick={() => {
+                                if (isSelected) {
+                                  updateCondominios(condominiosArray.filter(c => c !== String(cond.codigo)));
+                                } else {
+                                  updateCondominios([...condominiosArray, String(cond.codigo)]);
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all ${
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-secondary text-secondary-foreground hover:bg-primary/20'
+                              }`}
+                            >
+                              {!isSelected && <Plus className="h-3 w-3" />}
+                              {cond.nome}
+                              <span className="opacity-70">({cond.quantidadeImoveis})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {condominiosDoBairro.length > 0 && condominiosDoBairro.some(c => !condominiosArray.includes(String(c.codigo))) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs"
+                          onClick={() => {
+                            const newCodigos = condominiosDoBairro
+                              .map(c => String(c.codigo))
+                              .filter(codigo => !condominiosArray.includes(codigo));
+                            updateCondominios([...condominiosArray, ...newCodigos].slice(0, 10));
+                          }}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Adicionar todos os condomínios do bairro
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  
+                  {isLoadingCondominiosDoBairro && bairrosArray.length > 0 && (
+                    <div className="bg-secondary/50 rounded-lg p-3 text-sm text-muted-foreground animate-pulse">
+                      Buscando condomínios nos bairros...
+                    </div>
+                  )}
+                  
                   <CondominioMultiSelect
                     condominios={condominiosComContagem}
                     values={condominiosArray}
