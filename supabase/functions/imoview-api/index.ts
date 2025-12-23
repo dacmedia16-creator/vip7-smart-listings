@@ -166,7 +166,11 @@ serve(async (req) => {
           // Localização - preferir códigos numéricos (API funciona melhor com eles)
           codigocidade: params?.codigoCidade,
           cidade: !params?.codigoCidade ? params?.cidade : undefined, // Só usa nome se não tiver código
+          
+          // Bairro - enviar MÚLTIPLOS formatos para maximizar chance de funcionar
+          // A API pode usar codigobairro (singular) ou codigosbairros (plural como CSV)
           codigobairro: params?.codigoBairro,
+          codigosbairros: params?.codigoBairro ? String(params.codigoBairro) : undefined, // Plural como string
           bairro: !params?.codigoBairro ? params?.bairro : undefined, // Só usa nome se não tiver código
           
           // Valores
@@ -182,7 +186,7 @@ serve(async (req) => {
           ordenacao: params?.ordenarPor,
         };
         
-        console.log(`[imoview-api] listarImoveis - codigoBairro: ${params?.codigoBairro}, bairro: ${params?.bairro}`);
+        console.log(`[imoview-api] listarImoveis - codigoBairro: ${params?.codigoBairro}, codigosbairros: ${params?.codigoBairro ? String(params.codigoBairro) : undefined}, bairro: ${params?.bairro}`);
 
         // Suporte a código numérico de condomínio (codigocondominio)
         if (params?.codigoCondominio) {
