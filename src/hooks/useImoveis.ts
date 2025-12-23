@@ -14,8 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Cache inteligente: mantém dados por filtro, invalida automaticamente quando filtros mudam
 const IMOVEIS_CACHE_CONFIG = {
-  staleTime: 1000 * 60 * 2, // 2 minutos - dados considerados frescos
-  gcTime: 1000 * 60 * 30, // 30 minutos - manter em cache para voltar a filtros anteriores
+  staleTime: 1000 * 60 * 5, // 5 minutos - dados considerados frescos (otimizado)
+  gcTime: 1000 * 60 * 60, // 60 minutos - manter em cache para voltar a filtros anteriores
   refetchOnWindowFocus: false, // Não refetch ao focar janela
 };
 
@@ -49,10 +49,10 @@ export function useImovelDetalhes(codigo: string | number | undefined) {
   });
 }
 
-// Cache configuration for filter data (rarely changes)
+// Cache configuration for filter data (rarely changes) - OTIMIZADO
 const FILTER_CACHE_CONFIG = {
-  staleTime: 1000 * 60 * 60, // 1 hora - dados considerados frescos
-  gcTime: 1000 * 60 * 60 * 24, // 24 horas - manter em cache
+  staleTime: 1000 * 60 * 60 * 2, // 2 horas - dados considerados frescos
+  gcTime: 1000 * 60 * 60 * 48, // 48 horas - manter em cache
   refetchOnWindowFocus: false,
   refetchOnMount: false,
   refetchOnReconnect: false,

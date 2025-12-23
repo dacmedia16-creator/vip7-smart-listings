@@ -15,7 +15,7 @@ import { CidadeMultiSelect } from '@/components/CidadeMultiSelect';
 import { useImoveis, useBairrosMultiCidade, useCondominiosSlimMultiCidade, useCondominiosPorBairro } from '@/hooks/useImoveis';
 import { useFiltrosIniciais } from '@/hooks/useFiltrosIniciais';
 import { useImoveisMap } from '@/hooks/useImoveisMap';
-import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
+import { getFinalidadeCode } from '@/services/imoviewApi';
 export default function Imoveis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
@@ -108,7 +108,9 @@ export default function Imoveis() {
       const bairroEncontrado = bairros.find(b => b.nome.toLowerCase() === nome.toLowerCase());
       return bairroEncontrado?.codigo;
     }).filter((c): c is number => c !== undefined);
-    console.log(`[Imoveis] Bairros "${bairrosArray.join(', ')}" -> códigos: ${codigos.join(', ')}`);
+    if (import.meta.env.DEV) {
+      console.log(`[Imoveis] Bairros "${bairrosArray.join(', ')}" -> códigos: ${codigos.join(', ')}`);
+    }
     return codigos.length > 0 ? codigos : undefined;
   }, [bairrosArray, bairros]);
 
@@ -119,59 +121,22 @@ export default function Imoveis() {
     finalidadeCode
   );
 
-  // Cache de contagens de imóveis por condomínio
-  const [condominiosContagem, setCondominiosContagem] = useState<Record<number, number>>({});
-  const [isLoadingContagem, setIsLoadingContagem] = useState(false);
+  // OTIMIZAÇÃO: Removido loop de contagem individual de condomínios (causava 30+ requests)
+  // A contagem agora vem do useCondominiosPorBairro quando bairros estão selecionados
 
-  // Buscar contagem de imóveis para os primeiros 30 condomínios
-  useEffect(() => {
-    if (condominios.length === 0) return;
-
-    const fetchCounts = async () => {
-      setIsLoadingContagem(true);
-
-      // Limitar a 30 condomínios para performance
-      const condominiosToFetch = condominios.slice(0, 30).filter(
-        (c) => condominiosContagem[c.codigo] === undefined
-      );
-
-      if (condominiosToFetch.length === 0) {
-        setIsLoadingContagem(false);
-        return;
-      }
-
-      try {
-        const counts = await Promise.all(
-          condominiosToFetch.map(async (c) => ({
-            codigo: c.codigo,
-            quantidade: await contarImoveisPorCondominio(c.codigo, finalidadeCode),
-          }))
-        );
-
-        setCondominiosContagem((prev) => {
-          const updated = { ...prev };
-          for (const { codigo, quantidade } of counts) {
-            updated[codigo] = quantidade;
-          }
-          return updated;
-        });
-      } catch (error) {
-        console.error('Erro ao buscar contagens:', error);
-      } finally {
-        setIsLoadingContagem(false);
-      }
-    };
-
-    fetchCounts();
-  }, [condominios, finalidadeCode]);
-
-  // Enriquecer condomínios com contagem
+  // Enriquecer condomínios com contagem (do useCondominiosPorBairro quando disponível)
   const condominiosComContagem = useMemo(() => {
+    // Criar mapa de contagem do condominiosDoBairro
+    const contagemMap = new Map<number, number>();
+    for (const c of condominiosDoBairro) {
+      contagemMap.set(c.codigo, c.quantidadeImoveis);
+    }
+    
     return condominios.map((c) => ({
       ...c,
-      quantidadeImoveis: condominiosContagem[c.codigo],
+      quantidadeImoveis: contagemMap.get(c.codigo),
     }));
-  }, [condominios, condominiosContagem]);
+  }, [condominios, condominiosDoBairro]);
 
   const ITEMS_PER_PAGE = 20;
 
@@ -764,7 +729,7 @@ export default function Imoveis() {
                     values={condominiosArray}
                     onValuesChange={updateCondominios}
                     placeholder="Todos os condomínios"
-                    isLoading={isLoadingCondominios || isLoadingContagem}
+                    isLoading={isLoadingCondominios || isLoadingCondominiosDoBairro}
                     triggerClassName="bg-secondary border-border"
                     maxSelections={50}
                   />

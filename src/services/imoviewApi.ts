@@ -85,7 +85,7 @@ async function callImoviewApi<T>(action: string, params?: Record<string, unknown
   });
 
   if (error) {
-    console.error('[imoview-service] Error:', error);
+    if (import.meta.env.DEV) console.error('[imoview-service] Error:', error);
     throw new Error(error.message || 'Erro ao conectar com a API');
   }
 
@@ -119,9 +119,9 @@ function matchesBairroFilter(imovelBairro: string | undefined, filtrosBairros: s
 }
 
 export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
+  const isDev = import.meta.env.DEV;
   try {
-    console.log('[imoview-service] === INÍCIO listarImoveis ===');
-    console.log('[imoview-service] Filtros recebidos:', JSON.stringify(filters, null, 2));
+    if (isDev) console.log('[imoview-service] === INÍCIO listarImoveis ===');
 
     const condominiosSelecionados: number[] =
       filters.codigosCondominio && filters.codigosCondominio.length > 0
@@ -148,10 +148,10 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     const needsClientSideBairroFilter = bairrosFiltro.length > 0;
     const needsMultiCityFetch = codigosCidadesFiltro.length > 1;
     
-    console.log('[imoview-service] Cidades (códigos):', codigosCidadesFiltro);
-    console.log('[imoview-service] Bairros (nomes):', bairrosFiltro);
-    console.log('[imoview-service] Bairros (códigos):', codigosBairrosFiltro);
-    console.log('[imoview-service] Condomínios selecionados:', condominiosSelecionados);
+    if (isDev) {
+      console.log('[imoview-service] Cidades (códigos):', codigosCidadesFiltro);
+      console.log('[imoview-service] Condomínios selecionados:', condominiosSelecionados);
+    }
 
     // Mapear filtros de tipo "de vitrine" (Casa/Apartamento/Terreno/Comercial) para códigos reais do Imoview
     const tipoNormalized = typeof filters.tipo === 'string' ? filters.tipo.trim().toLowerCase() : null;
@@ -183,7 +183,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       return [];
     })();
 
-    console.log(`[imoview-service] Tipo original: "${filters.tipo}" -> Códigos: [${tipoValues.join(', ')}]`);
+    if (isDev) console.log(`[imoview-service] Tipo original: "${filters.tipo}" -> Códigos: [${tipoValues.join(', ')}]`);
 
     // Multi-fetch para múltiplos condomínios OU múltiplas cidades
     const needsMultiFetch = condominiosSelecionados.length > 0 || needsMultiCityFetch;
@@ -192,10 +192,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       // Para tipos, usar apenas o primeiro código se disponível
       const tipoParaFiltro = tipoValues.length > 0 ? tipoValues[0] : undefined;
       
-      console.log('[imoview-service] Modo MULTI-FETCH ativado');
-      console.log('[imoview-service] tipoParaFiltro:', tipoParaFiltro, '(de tipoValues:', tipoValues, ')');
-      console.log('[imoview-service] Cidades para buscar:', codigosCidadesFiltro);
-      console.log('[imoview-service] Condomínios para buscar:', condominiosSelecionados);
+      if (isDev) console.log('[imoview-service] Modo MULTI-FETCH ativado');
       
       const PAGE_SIZE = 20;
       const MAX_PAGES = 200;
@@ -228,8 +225,6 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           if (codigosBairrosFiltro.length > 0) {
             pageFilter.codigosBairros = codigosBairrosFiltro.join(',');
           }
-          
-          console.log('[imoview-service] Multi-fetch request:', JSON.stringify(pageFilter));
 
           const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
             'listarImoveis',
@@ -263,9 +258,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
       const combinedList: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
-      const batchSize = 6;
-
-      // CASO 1: Condomínios selecionados - iterar sobre cada condomínio (para cada cidade)
+      const batchSize = 3; // OTIMIZADO: reduzido de 6 para 3 para evitar sobrecarga
       if (condominiosSelecionados.length > 0) {
         console.log('[imoview-service] Multi-fetch: iterando sobre condomínios');
         
@@ -290,7 +283,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       }
       // CASO 2: Múltiplas cidades SEM condomínios - iterar sobre cada cidade
       else if (needsMultiCityFetch) {
-        console.log('[imoview-service] Multi-fetch: iterando sobre cidades');
+        if (isDev) console.log('[imoview-service] Multi-fetch: iterando sobre cidades');
         
         for (let i = 0; i < codigosCidadesFiltro.length; i += batchSize) {
           const batch = codigosCidadesFiltro.slice(i, i + batchSize);
@@ -309,31 +302,21 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         }
       }
 
-      console.log(`[imoview-service] Multi-fetch retornou ${combinedList.length} imóveis (antes de filtros)`);
-
-      // CORREÇÃO: NÃO aplicar filtro client-side de bairro quando usamos códigos de bairro
-      // A API Imoview pode retornar imóveis com texto de bairro diferente (ex: "Jardim América" para código do "Campolim")
-      // mas esses imóveis são válidos pois a API filtrou pelo CÓDIGO correto
+      if (isDev) console.log(`[imoview-service] Multi-fetch retornou ${combinedList.length} imóveis (antes de filtros)`);
+      
       let filteredList = combinedList;
       if (needsClientSideBairroFilter && codigosBairrosFiltro.length === 0) {
-        // Só filtra client-side se NÃO tiver enviado códigos para API (filtro por nome apenas)
         filteredList = combinedList.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
-        console.log(`[imoview-service] Filtro bairros client-side (por nome): ${combinedList.length} -> ${filteredList.length} (filtros: "${bairrosFiltro.join(', ')}")`);
-      } else if (codigosBairrosFiltro.length > 0) {
-        // Quando filtramos por CÓDIGO, confiamos na API - não remover imóveis com bairro diferente
-        console.log(`[imoview-service] Bairros filtrados por CÓDIGO - confiando na API (${combinedList.length} imóveis mantidos)`);
       }
 
-      // Aplicar filtro de faixa de preço client-side (garantia adicional)
+      // Aplicar filtro de faixa de preço client-side
       if (filters.valorMin !== undefined || filters.valorMax !== undefined) {
         const valorMin = filters.valorMin || 0;
         const valorMax = filters.valorMax || Infinity;
-        const beforeCount = filteredList.length;
         filteredList = filteredList.filter(imovel => {
           const valor = imovel.valor || 0;
           return valor >= valorMin && valor <= valorMax;
         });
-        console.log(`[imoview-service] Filtro preço client-side: ${beforeCount} -> ${filteredList.length} (min: ${valorMin}, max: ${valorMax})`);
       }
 
       // Aplicar ordenação se necessário
@@ -349,11 +332,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       const startIndex = (pagina - 1) * limite;
       const paginatedList = filteredList.slice(startIndex, startIndex + limite);
 
-      console.log(`[imoview-service] Multi-fetch resultado final: ${paginatedList.length} imóveis (página ${pagina}), total: ${filteredList.length}`);
-      
-      if (filteredList.length > 0 && paginatedList.length === 0) {
-        console.warn(`[imoview-service] AVISO: Lista tem ${filteredList.length} itens mas página ${pagina} está vazia! startIndex=${startIndex}, limite=${limite}`);
-      }
+      if (isDev) console.log(`[imoview-service] Multi-fetch resultado: ${paginatedList.length} de ${filteredList.length} total`);
 
       return { lista: paginatedList, quantidade: filteredList.length };
     }
@@ -383,12 +362,11 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       simpleFilters.codigosBairros = codigosBairrosFiltro.join(',');
     }
 
-    console.log(`[imoview-service] Chamada simples - tipoParaFiltro: ${tipoParaFiltroSimples}, tipoValues: [${tipoValues.join(', ')}]`);
-    console.log(`[imoview-service] Chamada simples com filtros:`, JSON.stringify(simpleFilters));
+    if (isDev) console.log('[imoview-service] Chamada simples com filtros');
 
     // Se precisa filtrar por bairro no cliente E não temos códigos para API, buscar TODAS as páginas
     if (needsClientSideBairroFilter && codigosBairrosFiltro.length === 0) {
-      console.log(`[imoview-service] Bairros filter detected SEM códigos ("${bairrosFiltro.join(', ')}"), fetching all pages for client-side filtering...`);
+      if (isDev) console.log('[imoview-service] Buscando todas as páginas para filtro client-side');
       const PAGE_SIZE = 20;
       const MAX_PAGES = 100;
       const allProperties: ImoviewProperty[] = [];
@@ -430,15 +408,8 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         if (pagina > MAX_PAGES) break;
       }
 
-      console.log(`[imoview-service] Fetched ${allProperties.length} properties from ${pagina} pages (API disse: ${totalFromApi})`);
-
-      // Aplicar filtro de bairro client-side (qualquer um dos bairros selecionados)
+      // Aplicar filtro de bairro client-side
       const filteredByBairro = allProperties.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
-      console.log(`[imoview-service] After bairros filter: ${filteredByBairro.length} of ${allProperties.length} (filters: "${bairrosFiltro.join(', ')}")`);
-      
-      // Log dos bairros únicos retornados para debug
-      const bairrosRetornados = [...new Set(allProperties.map(i => i.bairro).filter(Boolean))];
-      console.log(`[imoview-service] Bairros únicos retornados pela API: ${bairrosRetornados.slice(0, 20).join(', ')}${bairrosRetornados.length > 20 ? '...' : ''}`);
 
       // Aplicar ordenação
       if (filters.ordenarPor === 'valor_asc') {
@@ -447,23 +418,15 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         filteredByBairro.sort((a, b) => (b.valor || 0) - (a.valor || 0));
       }
 
-      // Aplicar paginação no resultado filtrado
       const userPagina = filters.pagina || 1;
       const userLimite = filters.limite || 20;
       const startIndex = (userPagina - 1) * userLimite;
       const paginatedResult = filteredByBairro.slice(startIndex, startIndex + userLimite);
 
-      console.log(`[imoview-service] Resultado paginado: ${paginatedResult.length} imóveis (página ${userPagina}), total filtrado: ${filteredByBairro.length}`);
-
-      if (filteredByBairro.length > 0 && paginatedResult.length === 0) {
-        console.warn(`[imoview-service] AVISO: Lista tem ${filteredByBairro.length} itens mas página ${userPagina} está vazia! startIndex=${startIndex}, limite=${userLimite}`);
-      }
-
       return { lista: paginatedResult, quantidade: filteredByBairro.length };
     }
 
-    // Chamada simples - API deve filtrar por bairro se tiver códigos
-    console.log('[imoview-service] Chamada simples (API deve filtrar)');
+    // Chamada simples - API deve filtrar
     const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
       'listarImoveis',
       simpleFilters as Record<string, unknown>
@@ -471,28 +434,15 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     
     const resultList = Array.isArray(data) ? data : data?.lista || [];
     const resultQuantidade = Array.isArray(data) ? data.length : (data?.quantidade || data?.lista?.length || 0);
-    
-    console.log(`[imoview-service] Resposta da API: ${resultList.length} imóveis na lista, quantidade: ${resultQuantidade}`);
-    
-    // Log dos primeiros imóveis para debug
-    if (resultList.length > 0) {
-      console.log(`[imoview-service] Primeiro imóvel: código=${resultList[0].codigo}, bairro="${resultList[0].bairro}", cidade="${resultList[0].cidade}"`);
-    } else if (resultQuantidade > 0) {
-      console.warn(`[imoview-service] PROBLEMA: API diz ${resultQuantidade} imóveis mas lista veio VAZIA!`);
-    }
 
-    // Fallback de segurança: alguns filtros (principalmente múltiplos bairros) podem quebrar a lista,
-    // retornando quantidade>0 com lista vazia. Neste caso, tentamos buscar separadamente por bairro.
+
+    // Fallback de segurança para múltiplos bairros
     if (
       resultList.length === 0 &&
       resultQuantidade > 0 &&
       codigosBairrosFiltro.length > 1 &&
       (filters.pagina === undefined || filters.pagina === 1)
     ) {
-      console.warn(
-        `[imoview-service] Fallback: refazendo busca por bairro (singular) para ${codigosBairrosFiltro.length} bairros...`
-      );
-
       const perBairro = await Promise.all(
         codigosBairrosFiltro.map((codigoBairro) =>
           callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
@@ -520,7 +470,6 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       }
 
       if (merged.length > 0) {
-        console.log(`[imoview-service] Fallback por bairro retornou ${merged.length} imóveis (deduplicados)`);
         return {
           lista: merged.slice(0, filters.limite || 20),
           quantidade: resultQuantidade,
@@ -528,20 +477,10 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       }
     }
     
-    // Validador client-side: se há filtro de bairro ativo, garantir que só mostramos imóveis desses bairros
+    // Validador client-side
     let finalList = resultList;
     if (bairrosFiltro.length > 0 && resultList.length > 0) {
-      const filtered = resultList.filter((imovel) => {
-        // Usar a função existente que já trata normalização e variações
-        return matchesBairroFilter(imovel.bairro, bairrosFiltro);
-      });
-      
-      if (filtered.length !== resultList.length) {
-        console.warn(
-          `[imoview-service] VALIDADOR: Removidos ${resultList.length - filtered.length} imóveis fora dos bairros selecionados (${bairrosFiltro.join(', ')})`
-        );
-        finalList = filtered;
-      }
+      finalList = resultList.filter((imovel) => matchesBairroFilter(imovel.bairro, bairrosFiltro));
     }
     
     return {
@@ -549,7 +488,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       quantidade: finalList.length !== resultList.length ? finalList.length : resultQuantidade,
     };
   } catch (error) {
-    console.error('[imoview-service] listarImoveis error:', error);
+    if (import.meta.env.DEV) console.error('[imoview-service] listarImoveis error:', error);
     return { lista: [], quantidade: 0 };
   }
 }
