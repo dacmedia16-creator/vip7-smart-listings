@@ -25,6 +25,7 @@ export default function Imoveis() {
   const finalidade = searchParams.get('finalidade') || '';
   const tipo = searchParams.get('tipo') || '';
   const cidadesParam = searchParams.get('cidades') || ''; // Comma-separated list of city names
+  const cidadeSingular = searchParams.get('cidade') || ''; // Retrocompatibilidade: parâmetro singular
   const bairrosParam = searchParams.get('bairros') || ''; // Comma-separated list of bairro names
   const condominiosCodes = searchParams.get('condominios') || ''; // Comma-separated list
   const ordenar = searchParams.get('ordenar') || 'recentes';
@@ -33,10 +34,12 @@ export default function Imoveis() {
   const valorMinUrl = searchParams.get('valorMin');
   const valorMaxUrl = searchParams.get('valorMax');
 
-  // Parse cidades from URL (comma-separated string to array)
+  // Parse cidades from URL (comma-separated string to array) com fallback para parâmetro singular
   const cidadesArray = useMemo(() => {
-    return cidadesParam ? cidadesParam.split(',').filter(Boolean) : [];
-  }, [cidadesParam]);
+    if (cidadesParam) return cidadesParam.split(',').filter(Boolean);
+    if (cidadeSingular) return [cidadeSingular]; // Fallback: cidade singular -> array
+    return [];
+  }, [cidadesParam, cidadeSingular]);
 
   // Initialize priceRange from URL values
   const [priceRange, setPriceRange] = useState<[number, number]>(() => {
