@@ -28,6 +28,8 @@ export interface ImoviewProperty {
   longitude?: number;
   aceitaPermuta?: boolean;
   urlVideo?: string;
+  dataAtualizacao?: string; // Data da última atualização (ISO string)
+  dataCadastro?: string; // Data de cadastro (ISO string)
 }
 
 export interface ImoviewFilters {
@@ -344,11 +346,18 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         });
       }
 
-      // Aplicar ordenação se necessário
+      // Aplicar ordenação - padrão: mais recentes primeiro (por data de atualização)
       if (filters.ordenarPor === 'valor_asc') {
         filteredList.sort((a, b) => (a.valor || 0) - (b.valor || 0));
       } else if (filters.ordenarPor === 'valor_desc') {
         filteredList.sort((a, b) => (b.valor || 0) - (a.valor || 0));
+      } else {
+        // Ordenação padrão: mais recentes primeiro (dataAtualizacao DESC)
+        filteredList.sort((a, b) => {
+          const dateA = a.dataAtualizacao ? new Date(a.dataAtualizacao).getTime() : 0;
+          const dateB = b.dataAtualizacao ? new Date(b.dataAtualizacao).getTime() : 0;
+          return dateB - dateA; // Mais recentes primeiro
+        });
       }
 
       // Aplicar paginação no resultado combinado
@@ -436,11 +445,18 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       // Aplicar filtro de bairro client-side
       const filteredByBairro = allProperties.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
 
-      // Aplicar ordenação
+      // Aplicar ordenação - padrão: mais recentes primeiro (por data de atualização)
       if (filters.ordenarPor === 'valor_asc') {
         filteredByBairro.sort((a, b) => (a.valor || 0) - (b.valor || 0));
       } else if (filters.ordenarPor === 'valor_desc') {
         filteredByBairro.sort((a, b) => (b.valor || 0) - (a.valor || 0));
+      } else {
+        // Ordenação padrão: mais recentes primeiro (dataAtualizacao DESC)
+        filteredByBairro.sort((a, b) => {
+          const dateA = a.dataAtualizacao ? new Date(a.dataAtualizacao).getTime() : 0;
+          const dateB = b.dataAtualizacao ? new Date(b.dataAtualizacao).getTime() : 0;
+          return dateB - dateA; // Mais recentes primeiro
+        });
       }
 
       const userPagina = filters.pagina || 1;

@@ -125,6 +125,16 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
     : null;
   console.log(`[imoview-api] urlVideo mapped value for ${raw.codigo}:`, urlVideo);
 
+  // Parse data de atualização
+  const parseDate = (val: unknown): string | null => {
+    if (!val) return null;
+    if (typeof val === 'string') {
+      // Formato esperado: "2024-01-15T10:30:00" ou similar
+      return val.trim() || null;
+    }
+    return null;
+  };
+
   return {
     codigo: raw.codigo,
     codigoReferencia: raw.codigoauxiliar || raw.codigo,
@@ -161,6 +171,9 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
                    raw.aceitapermuta === true || raw.aceitapermuta === 1 || raw.aceitapermuta === '1' || raw.aceitapermuta === 'Sim' ||
                    raw.aceita_permuta === true || raw.aceita_permuta === 1 || raw.aceita_permuta === '1' || raw.aceita_permuta === 'Sim' ||
                    raw.Permuta === true || raw.Permuta === 1 || raw.Permuta === '1' || raw.Permuta === 'Sim',
+    // Datas para ordenação
+    dataAtualizacao: parseDate(raw.datahoraultimaalteracao) || parseDate(raw.datahoracadastro),
+    dataCadastro: parseDate(raw.datahoracadastro),
   };
 }
 
