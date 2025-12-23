@@ -149,12 +149,20 @@ export function useBairrosMultiCidade(
   });
 }
 
+// Cache especial para condomínios - mais agressivo pois são muitos dados
+const CONDOMINIOS_CACHE_CONFIG = {
+  staleTime: 1000 * 60 * 60 * 2, // 2 horas - dados considerados frescos
+  gcTime: 1000 * 60 * 60 * 24, // 24 horas - manter em cache por muito tempo
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+  refetchOnReconnect: false,
+};
+
 export function useCondominios(cidade?: string, finalidade?: number) {
   return useQuery({
     queryKey: ['condominios', cidade, finalidade],
     queryFn: () => listarCondominios(cidade, finalidade),
-    enabled: !!cidade, // Só busca se tiver cidade selecionada
-    ...FILTER_CACHE_CONFIG,
+    ...CONDOMINIOS_CACHE_CONFIG,
   });
 }
 
