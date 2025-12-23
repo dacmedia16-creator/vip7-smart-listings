@@ -1,10 +1,14 @@
-import { Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
+import { generateWhatsAppLink } from '@/lib/formatters';
 
 export function FloatingAvaliacaoButton() {
+  const whatsappUrl = generateWhatsAppLink('Olá! Gostaria de solicitar uma avaliação do meu imóvel.');
+
   return (
-    <Link
-      to="/avaliacao"
+    <a
+      href={whatsappUrl}
+      target="_blank"
+      rel="noopener noreferrer"
       className="fixed bottom-6 left-6 z-50 group"
       aria-label="Avalie seu imóvel gratuitamente"
     >
@@ -18,6 +22,6 @@ export function FloatingAvaliacaoButton() {
           <span className="font-medium hidden md:inline">Avalie seu Imóvel</span>
         </div>
       </div>
-    </Link>
+    </a>
   );
 }
