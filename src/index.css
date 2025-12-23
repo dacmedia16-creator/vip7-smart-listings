@@ -1,4 +1,11 @@
 @tailwind base;
+
+/* Shimmer animation for skeletons */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
 @tailwind components;
 @tailwind utilities;
 
