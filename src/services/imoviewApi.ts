@@ -192,13 +192,16 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       // Para tipos, usar apenas o primeiro código se disponível
       const tipoParaFiltro = tipoValues.length > 0 ? tipoValues[0] : undefined;
       
-      console.log('[imoview-service] Modo MULTI-FETCH para condomínios');
+      console.log('[imoview-service] Modo MULTI-FETCH ativado');
       console.log('[imoview-service] tipoParaFiltro:', tipoParaFiltro, '(de tipoValues:', tipoValues, ')');
+      console.log('[imoview-service] Cidades para buscar:', codigosCidadesFiltro);
+      console.log('[imoview-service] Condomínios para buscar:', condominiosSelecionados);
       
       const PAGE_SIZE = 20;
       const MAX_PAGES = 200;
 
-      const fetchAll = async (codigoCondominio?: number, tipo?: number) => {
+      // Função para buscar todos os imóveis de uma cidade/condomínio específico
+      const fetchAll = async (codigoCidade: number, codigoCondominio?: number, tipo?: number) => {
         const all: ImoviewProperty[] = [];
         const seen = new Set<number>();
         let pagina = 1;
@@ -208,7 +211,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           // Construir filtro explicitamente para garantir que todos os parâmetros estão presentes
           const pageFilter: Record<string, unknown> = {
             finalidade: filters.finalidade,
-            codigoCidade: codigosCidadesFiltro[0], // Usar primeiro código de cidade
+            codigoCidade, // Usar o parâmetro da cidade
             codigoCondominio,
             valorMin: filters.valorMin,
             valorMax: filters.valorMax,
@@ -258,21 +261,49 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         return all;
       };
 
-      const condominiosLoop = condominiosSelecionados;
-
       const combinedList: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
-
       const batchSize = 6;
-      for (let i = 0; i < condominiosLoop.length; i += batchSize) {
-        const batch = condominiosLoop.slice(i, i + batchSize);
-        const results = await Promise.all(batch.map((condo) => fetchAll(condo, tipoParaFiltro)));
 
-        for (const lista of results) {
-          for (const imovel of lista) {
-            if (!seenCodigos.has(imovel.codigo)) {
-              seenCodigos.add(imovel.codigo);
-              combinedList.push(imovel);
+      // CASO 1: Condomínios selecionados - iterar sobre cada condomínio (para cada cidade)
+      if (condominiosSelecionados.length > 0) {
+        console.log('[imoview-service] Multi-fetch: iterando sobre condomínios');
+        
+        // Para cada cidade, buscar todos os condomínios selecionados
+        for (const codigoCidade of codigosCidadesFiltro) {
+          for (let i = 0; i < condominiosSelecionados.length; i += batchSize) {
+            const batch = condominiosSelecionados.slice(i, i + batchSize);
+            const results = await Promise.all(
+              batch.map((condo) => fetchAll(codigoCidade, condo, tipoParaFiltro))
+            );
+
+            for (const lista of results) {
+              for (const imovel of lista) {
+                if (!seenCodigos.has(imovel.codigo)) {
+                  seenCodigos.add(imovel.codigo);
+                  combinedList.push(imovel);
+                }
+              }
+            }
+          }
+        }
+      }
+      // CASO 2: Múltiplas cidades SEM condomínios - iterar sobre cada cidade
+      else if (needsMultiCityFetch) {
+        console.log('[imoview-service] Multi-fetch: iterando sobre cidades');
+        
+        for (let i = 0; i < codigosCidadesFiltro.length; i += batchSize) {
+          const batch = codigosCidadesFiltro.slice(i, i + batchSize);
+          const results = await Promise.all(
+            batch.map((cidadeCodigo) => fetchAll(cidadeCodigo, undefined, tipoParaFiltro))
+          );
+
+          for (const lista of results) {
+            for (const imovel of lista) {
+              if (!seenCodigos.has(imovel.codigo)) {
+                seenCodigos.add(imovel.codigo);
+                combinedList.push(imovel);
+              }
             }
           }
         }
