@@ -165,7 +165,8 @@ serve(async (req) => {
           
           // Localização
           codigocidade: params?.codigoCidade,
-          codigosbairros: params?.bairro,
+          cidade: params?.cidade,
+          bairro: params?.bairro,
           
           // Valores
           valorde: params?.valorMin,
