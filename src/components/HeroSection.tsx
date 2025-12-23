@@ -27,7 +27,14 @@ export function HeroSection() {
   
   const { data: cidades = [] } = useCidades(finalidadeCode);
   const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
-  const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominios(cidade || undefined, finalidadeCode);
+  // Carregar TODOS os condomínios (sem filtro de cidade) para cache inicial
+  const { data: todosCondominios = [], isLoading: isLoadingTodosCondominios } = useCondominios(undefined, finalidadeCode);
+  
+  // Filtrar localmente por cidade quando selecionada (muito mais rápido)
+  const condominiosFiltrados = useMemo(() => {
+    if (!cidade) return todosCondominios;
+    return todosCondominios.filter(c => c.cidade === cidade);
+  }, [todosCondominios, cidade]);
 
   // Reset bairro e condominio quando cidade mudar
   useEffect(() => {
@@ -210,12 +217,11 @@ export function HeroSection() {
 
             {/* Condomínio */}
               <CondominioMultiSelect
-                condominios={condominios}
+                condominios={condominiosFiltrados}
                 values={condominiosCodes}
                 onValuesChange={setCondominiosCodes}
-                placeholder={cidade ? "Condomínios" : "Selecione uma cidade"}
-                isLoading={isLoadingCondominios && !!cidade}
-                disabled={!cidade}
+                placeholder={cidade ? "Condomínios" : "Todos os condomínios"}
+                isLoading={isLoadingTodosCondominios}
                 triggerClassName="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors"
                 maxSelections={5}
               />
