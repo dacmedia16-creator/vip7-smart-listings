@@ -293,55 +293,75 @@ serve(async (req) => {
         }
         
         // Buscar imóveis nos bairros selecionados para identificar os condomínios
+        // IMPORTANTE: API Imoview limita a 20 registros por página, então precisamos paginar
         const condominiosEncontrados: Map<number, { codigo: number; nome: string; cidade: string; quantidadeImoveis: number }> = new Map();
+        const PAGE_SIZE = 20; // Limite máximo da API Imoview
+        const MAX_PAGES_PER_BAIRRO = 5; // Buscar até 5 páginas por bairro (100 imóveis)
         
-        // Buscar imóveis em cada bairro (limitado para performance)
+        // Buscar imóveis em cada bairro com paginação
         for (const codigoBairro of codigosBairros) {
           console.log(`[imoview-api] Buscando imóveis no bairro ${codigoBairro}...`);
           
-          const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'chave': IMOVIEW_API_KEY || '',
-            },
-            body: JSON.stringify(removeNullValues({
-              finalidade,
-              codigocidade: codigoCidade,
-              codigosbairros: String(codigoBairro),
-              numeropagina: 1,
-              numeroregistros: 100, // Buscar até 100 imóveis por bairro
-            })),
-          });
+          let pagina = 1;
+          let totalImoveisBairro = 0;
           
-          if (!response.ok) {
-            console.error(`[imoview-api] Erro ao buscar imóveis do bairro ${codigoBairro}`);
-            continue;
-          }
-          
-          const data = await response.json();
-          const imoveis = Array.isArray(data) ? data : (data?.lista || []);
-          
-          // Extrair condomínios únicos dos imóveis encontrados
-          for (const imovel of imoveis) {
-            const codigoCondominio = Number(imovel.codigocondominio || imovel.codigoCondominio);
-            const nomeCondominio = String(imovel.nomecondominio || imovel.condominio || '').trim();
-            const cidadeImovel = String(imovel.cidade || '').trim();
+          while (pagina <= MAX_PAGES_PER_BAIRRO) {
+            const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'chave': IMOVIEW_API_KEY || '',
+              },
+              body: JSON.stringify(removeNullValues({
+                finalidade,
+                codigocidade: codigoCidade,
+                codigosbairros: String(codigoBairro),
+                numeropagina: pagina,
+                numeroregistros: PAGE_SIZE,
+              })),
+            });
             
-            if (codigoCondominio && nomeCondominio) {
-              const existing = condominiosEncontrados.get(codigoCondominio);
-              if (existing) {
-                existing.quantidadeImoveis++;
-              } else {
-                condominiosEncontrados.set(codigoCondominio, {
-                  codigo: codigoCondominio,
-                  nome: nomeCondominio,
-                  cidade: cidadeImovel,
-                  quantidadeImoveis: 1,
-                });
+            if (!response.ok) {
+              console.error(`[imoview-api] Erro ao buscar imóveis do bairro ${codigoBairro}, página ${pagina}`);
+              break;
+            }
+            
+            const data = await response.json();
+            const imoveis = Array.isArray(data) ? data : (data?.lista || []);
+            
+            console.log(`[imoview-api] Bairro ${codigoBairro}, página ${pagina}: ${imoveis.length} imóveis`);
+            totalImoveisBairro += imoveis.length;
+            
+            // Extrair condomínios únicos dos imóveis encontrados
+            for (const imovel of imoveis) {
+              const codigoCondominio = Number(imovel.codigocondominio || imovel.codigoCondominio);
+              const nomeCondominio = String(imovel.nomecondominio || imovel.condominio || '').trim();
+              const cidadeImovel = String(imovel.cidade || '').trim();
+              
+              if (codigoCondominio && nomeCondominio) {
+                const existing = condominiosEncontrados.get(codigoCondominio);
+                if (existing) {
+                  existing.quantidadeImoveis++;
+                } else {
+                  condominiosEncontrados.set(codigoCondominio, {
+                    codigo: codigoCondominio,
+                    nome: nomeCondominio,
+                    cidade: cidadeImovel,
+                    quantidadeImoveis: 1,
+                  });
+                }
               }
             }
+            
+            // Se retornou menos que PAGE_SIZE, não há mais páginas
+            if (imoveis.length < PAGE_SIZE) {
+              break;
+            }
+            
+            pagina++;
           }
+          
+          console.log(`[imoview-api] Bairro ${codigoBairro}: ${totalImoveisBairro} imóveis totais processados`);
         }
         
         // Converter para array e ordenar por nome

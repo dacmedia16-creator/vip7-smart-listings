@@ -270,12 +270,17 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
       console.log(`[imoview-service] Multi-fetch retornou ${combinedList.length} imóveis (antes de filtros)`);
 
-      // Aplicar filtro client-side de bairro SE a API não tiver filtrado
+      // CORREÇÃO: NÃO aplicar filtro client-side de bairro quando usamos códigos de bairro
+      // A API Imoview pode retornar imóveis com texto de bairro diferente (ex: "Jardim América" para código do "Campolim")
+      // mas esses imóveis são válidos pois a API filtrou pelo CÓDIGO correto
       let filteredList = combinedList;
       if (needsClientSideBairroFilter && codigosBairrosFiltro.length === 0) {
-        // Só filtra client-side se não tiver enviado códigos para API
+        // Só filtra client-side se NÃO tiver enviado códigos para API (filtro por nome apenas)
         filteredList = combinedList.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
-        console.log(`[imoview-service] Filtro bairros client-side: ${combinedList.length} -> ${filteredList.length} (filtros: "${bairrosFiltro.join(', ')}")`);
+        console.log(`[imoview-service] Filtro bairros client-side (por nome): ${combinedList.length} -> ${filteredList.length} (filtros: "${bairrosFiltro.join(', ')}")`);
+      } else if (codigosBairrosFiltro.length > 0) {
+        // Quando filtramos por CÓDIGO, confiamos na API - não remover imóveis com bairro diferente
+        console.log(`[imoview-service] Bairros filtrados por CÓDIGO - confiando na API (${combinedList.length} imóveis mantidos)`);
       }
 
       // Aplicar ordenação se necessário
