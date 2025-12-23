@@ -118,6 +118,11 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
     return 0;
   };
 
+  // Parse video URL - pode ser YouTube, Vimeo, ou link direto
+  const urlVideo = raw.urlvideo && typeof raw.urlvideo === 'string' && raw.urlvideo.trim() !== '' 
+    ? raw.urlvideo.trim() 
+    : null;
+
   return {
     codigo: raw.codigo,
     codigoReferencia: raw.codigoauxiliar || raw.codigo,
@@ -141,6 +146,7 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
     qtdeBanheiros: parseInt2(raw.numerobanhos),
     destaque: raw.destaque === 'Destaque' || raw.destaque === 1 || raw.destaque === '1',
     fotos: fotos,
+    urlVideo: urlVideo,
     latitude: parseArea(raw.latitude) || undefined,
     longitude: parseArea(raw.longitude) || undefined,
     // Keep original fields that might be needed

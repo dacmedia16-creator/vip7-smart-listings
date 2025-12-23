@@ -27,6 +27,7 @@ export interface ImoviewProperty {
   latitude?: number;
   longitude?: number;
   aceitaPermuta?: boolean;
+  urlVideo?: string;
 }
 
 export interface ImoviewFilters {

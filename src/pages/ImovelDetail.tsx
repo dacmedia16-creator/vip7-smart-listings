@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PropertyGallery } from '@/components/PropertyGallery';
 import { PropertyLocationMap } from '@/components/PropertyLocationMap';
+import { PropertyVideo } from '@/components/PropertyVideo';
 import { useImovelDetalhes } from '@/hooks/useImoveis';
 import { formatPropertyValue } from '@/services/imoviewApi';
 import { generatePropertyWhatsAppMessage, generateWhatsAppLink } from '@/lib/formatters';
@@ -207,6 +208,14 @@ export default function ImovelDetail() {
                     {property.descricao}
                   </p>
                 </div>
+              )}
+
+              {/* Video */}
+              {property.urlVideo && (
+                <PropertyVideo 
+                  videoUrl={property.urlVideo} 
+                  title={property.titulo || 'Vídeo do imóvel'}
+                />
               )}
 
               {/* Características */}
