@@ -1,7 +1,69 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, X, ZoomIn, Grid3X3, Expand, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+
+// Lazy loaded image component with skeleton placeholder
+interface LazyImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+  onClick?: () => void;
+  style?: React.CSSProperties;
+  priority?: boolean;
+}
+
+function LazyImage({ src, alt, className, onClick, style, priority = false }: LazyImageProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isInView, setIsInView] = useState(priority);
+  const imgRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (priority) {
+      setIsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '50px', threshold: 0.1 }
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [priority]);
+
+  return (
+    <div ref={imgRef} className={cn("relative", className)} onClick={onClick} style={style}>
+      {/* Skeleton placeholder */}
+      {!isLoaded && (
+        <Skeleton className="absolute inset-0 w-full h-full" />
+      )}
+      
+      {/* Actual image - only loads when in view */}
+      {isInView && (
+        <img
+          src={src}
+          alt={alt}
+          className={cn(
+            "w-full h-full object-cover transition-opacity duration-300",
+            isLoaded ? "opacity-100" : "opacity-0"
+          )}
+          onLoad={() => setIsLoaded(true)}
+        />
+      )}
+    </div>
+  );
+}
 
 interface PropertyGalleryProps {
   images: string[];
@@ -231,10 +293,11 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                       : "border-transparent opacity-50 hover:opacity-100 hover:border-border"
                   )}
                 >
-                  <img 
+                  <LazyImage 
                     src={img} 
                     alt={`Miniatura ${index + 1}`} 
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full"
+                    priority={index < 8}
                   />
                   {index === 0 && (
                     <div className="absolute top-0.5 left-0.5">
@@ -285,10 +348,11 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                       : "border-border hover:border-primary"
                   )}
                 >
-                  <img 
+                  <LazyImage 
                     src={img} 
                     alt={`Foto ${index + 1}`} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    priority={index < 4}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
                     <span className="text-sm font-medium flex items-center gap-2">
@@ -405,10 +469,11 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                       : "border-white/20 opacity-70 hover:opacity-100 hover:border-white/50 hover:scale-105"
                   )}
                 >
-                  <img 
+                  <LazyImage 
                     src={img} 
                     alt={`Miniatura ${index + 1}`} 
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full"
+                    priority={true}
                   />
                 </button>
               ))}
