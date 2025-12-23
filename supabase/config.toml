@@ -2,3 +2,6 @@ project_id = "qozlwzgesezsygmnuzky"
 
 [functions.imoview-api]
 verify_jwt = false
+
+[functions.geocode-properties]
+verify_jwt = false
