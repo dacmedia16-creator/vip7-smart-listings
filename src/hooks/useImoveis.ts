@@ -75,6 +75,56 @@ export function useBairros(cidade?: string, codigoCidade?: number, finalidade?: 
   });
 }
 
+// Versão para múltiplas cidades
+export function useBairrosMultiCidade(
+  cidades?: string[],
+  codigosCidades?: number[],
+  finalidade?: number
+) {
+  return useQuery({
+    queryKey: ['bairros-multi', cidades, codigosCidades, finalidade],
+    queryFn: async () => {
+      if (!codigosCidades || codigosCidades.length === 0) {
+        // Fallback: buscar por nomes
+        if (!cidades || cidades.length === 0) return [];
+        const results = await Promise.all(
+          cidades.map(cidade => listarBairros(cidade, undefined, finalidade))
+        );
+        // Combinar e remover duplicatas por código
+        const seen = new Set<number>();
+        const combined: { codigo: number; nome: string; cidade?: string }[] = [];
+        for (const bairros of results) {
+          for (const b of bairros) {
+            if (!seen.has(b.codigo)) {
+              seen.add(b.codigo);
+              combined.push(b);
+            }
+          }
+        }
+        return combined.sort((a, b) => a.nome.localeCompare(b.nome));
+      }
+      // Buscar por códigos de cidade em paralelo
+      const results = await Promise.all(
+        codigosCidades.map(codigo => listarBairros(undefined, codigo, finalidade))
+      );
+      // Combinar e remover duplicatas por código
+      const seen = new Set<number>();
+      const combined: { codigo: number; nome: string; cidade?: string }[] = [];
+      for (const bairros of results) {
+        for (const b of bairros) {
+          if (!seen.has(b.codigo)) {
+            seen.add(b.codigo);
+            combined.push(b);
+          }
+        }
+      }
+      return combined.sort((a, b) => a.nome.localeCompare(b.nome));
+    },
+    enabled: (cidades && cidades.length > 0) || (codigosCidades && codigosCidades.length > 0),
+    ...FILTER_CACHE_CONFIG,
+  });
+}
+
 export function useCondominios(cidade?: string, finalidade?: number) {
   return useQuery({
     queryKey: ['condominios', cidade, finalidade],
@@ -111,6 +161,56 @@ export function useCondominiosSlim(cidade?: string, codigoCidade?: number, final
   return useQuery({
     queryKey: ['condominios-slim', cidade, codigoCidade, finalidade],
     queryFn: () => listarCondominiosSlim(cidade, codigoCidade, finalidade),
+    ...FILTER_CACHE_CONFIG,
+  });
+}
+
+// Versão para múltiplas cidades
+export function useCondominiosSlimMultiCidade(
+  cidades?: string[],
+  codigosCidades?: number[],
+  finalidade?: number
+) {
+  return useQuery({
+    queryKey: ['condominios-slim-multi', cidades, codigosCidades, finalidade],
+    queryFn: async () => {
+      if (!codigosCidades || codigosCidades.length === 0) {
+        // Fallback: buscar por nomes
+        if (!cidades || cidades.length === 0) return [];
+        const results = await Promise.all(
+          cidades.map(cidade => listarCondominiosSlim(cidade, undefined, finalidade))
+        );
+        // Combinar e remover duplicatas por código
+        const seen = new Set<number>();
+        const combined: CondominioSlim[] = [];
+        for (const condominios of results) {
+          for (const c of condominios) {
+            if (!seen.has(c.codigo)) {
+              seen.add(c.codigo);
+              combined.push(c);
+            }
+          }
+        }
+        return combined.sort((a, b) => a.nome.localeCompare(b.nome));
+      }
+      // Buscar por códigos de cidade em paralelo
+      const results = await Promise.all(
+        codigosCidades.map(codigo => listarCondominiosSlim(undefined, codigo, finalidade))
+      );
+      // Combinar e remover duplicatas por código
+      const seen = new Set<number>();
+      const combined: CondominioSlim[] = [];
+      for (const condominios of results) {
+        for (const c of condominios) {
+          if (!seen.has(c.codigo)) {
+            seen.add(c.codigo);
+            combined.push(c);
+          }
+        }
+      }
+      return combined.sort((a, b) => a.nome.localeCompare(b.nome));
+    },
+    enabled: (cidades && cidades.length > 0) || (codigosCidades && codigosCidades.length > 0),
     ...FILTER_CACHE_CONFIG,
   });
 }

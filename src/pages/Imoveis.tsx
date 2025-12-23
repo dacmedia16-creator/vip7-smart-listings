@@ -11,7 +11,8 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { BairroMultiSelect } from '@/components/BairroMultiSelect';
-import { useImoveis, useBairros, useCondominiosSlim, useCondominiosPorBairro } from '@/hooks/useImoveis';
+import { CidadeMultiSelect } from '@/components/CidadeMultiSelect';
+import { useImoveis, useBairrosMultiCidade, useCondominiosSlimMultiCidade, useCondominiosPorBairro } from '@/hooks/useImoveis';
 import { useFiltrosIniciais } from '@/hooks/useFiltrosIniciais';
 import { useImoveisMap } from '@/hooks/useImoveisMap';
 import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
@@ -23,7 +24,7 @@ export default function Imoveis() {
   // Get filter values from URL
   const finalidade = searchParams.get('finalidade') || '';
   const tipo = searchParams.get('tipo') || '';
-  const cidade = searchParams.get('cidade') || '';
+  const cidadesParam = searchParams.get('cidades') || ''; // Comma-separated list of city names
   const bairrosParam = searchParams.get('bairros') || ''; // Comma-separated list of bairro names
   const condominiosCodes = searchParams.get('condominios') || ''; // Comma-separated list
   const ordenar = searchParams.get('ordenar') || 'recentes';
@@ -31,6 +32,11 @@ export default function Imoveis() {
   const busca = searchParams.get('busca') || '';
   const valorMinUrl = searchParams.get('valorMin');
   const valorMaxUrl = searchParams.get('valorMax');
+
+  // Parse cidades from URL (comma-separated string to array)
+  const cidadesArray = useMemo(() => {
+    return cidadesParam ? cidadesParam.split(',').filter(Boolean) : [];
+  }, [cidadesParam]);
 
   // Initialize priceRange from URL values
   const [priceRange, setPriceRange] = useState<[number, number]>(() => {
@@ -63,20 +69,34 @@ export default function Imoveis() {
 
   // Carregar filtros iniciais (cidades + tipos) em uma única chamada
   const { data: filtrosIniciais, isLoading: isLoadingFiltros } = useFiltrosIniciais(finalidadeCode);
-  const cidades = filtrosIniciais?.cidades || [];
+  const cidadesDisponiveis = filtrosIniciais?.cidades || [];
   
-  // Converter nome de cidade para código (API filtra melhor por código)
-  const codigoCidade = useMemo(() => {
-    if (!cidade) return undefined;
-    const cidadeEncontrada = cidades.find(c => c.nome.toLowerCase() === cidade.toLowerCase());
-    return cidadeEncontrada?.codigo;
-  }, [cidade, cidades]);
+  // Converter nomes de cidade para códigos (API filtra melhor por código)
+  const codigosCidades = useMemo(() => {
+    if (cidadesArray.length === 0) return undefined;
+    const codigos = cidadesArray.map(nome => {
+      const cidadeEncontrada = cidadesDisponiveis.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+      return cidadeEncontrada?.codigo;
+    }).filter((c): c is number => c !== undefined);
+    return codigos.length > 0 ? codigos : undefined;
+  }, [cidadesArray, cidadesDisponiveis]);
 
-  // Buscar bairros usando código da cidade quando disponível (lazy loading - só quando tem cidade)
-  const { data: bairros = [], isLoading: isLoadingBairros } = useBairros(cidade || undefined, codigoCidade, finalidadeCode);
+  // Para compatibilidade com API (primeiro código de cidade ou undefined)
+  const codigoCidadePrincipal = codigosCidades?.[0];
+
+  // Buscar bairros usando múltiplas cidades (lazy loading - só quando tem cidade)
+  const { data: bairros = [], isLoading: isLoadingBairros } = useBairrosMultiCidade(
+    cidadesArray.length > 0 ? cidadesArray : undefined,
+    codigosCidades,
+    finalidadeCode
+  );
   
-  // Usar versão slim dos condomínios (muito mais rápido - só codigo, nome, cidade)
-  const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominiosSlim(cidade || undefined, codigoCidade, finalidadeCode);
+  // Usar versão slim dos condomínios para múltiplas cidades
+  const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominiosSlimMultiCidade(
+    cidadesArray.length > 0 ? cidadesArray : undefined,
+    codigosCidades,
+    finalidadeCode
+  );
 
   // Converter nomes de bairros para códigos (API filtra melhor por código)
   const codigosBairros = useMemo(() => {
@@ -92,7 +112,7 @@ export default function Imoveis() {
   // Buscar condomínios que têm imóveis nos bairros selecionados
   const { data: condominiosDoBairro = [], isLoading: isLoadingCondominiosDoBairro } = useCondominiosPorBairro(
     codigosBairros,
-    codigoCidade,
+    codigoCidadePrincipal,
     finalidadeCode
   );
 
@@ -165,8 +185,8 @@ export default function Imoveis() {
   const apiFilters = {
     finalidade: finalidadeCode,
     tipo: tipo || undefined,
-    cidade: cidade || undefined,
-    codigoCidade: codigoCidade,
+    cidades: cidadesArray.length > 0 ? cidadesArray : undefined,
+    codigosCidades: codigosCidades,
     bairros: bairrosArray.length > 0 ? bairrosArray : undefined,
     codigosBairros: codigosBairros, // Códigos numéricos dos bairros (funciona melhor na API)
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
@@ -182,8 +202,8 @@ export default function Imoveis() {
     [
       finalidadeCode,
       tipo,
-      cidade,
-      codigoCidade,
+      cidadesArray,
+      codigosCidades,
       bairrosArray,
       codigosBairros,
       condominiosCodes,
@@ -206,8 +226,8 @@ export default function Imoveis() {
   const mapFilters = {
     finalidade: finalidadeCode,
     tipo: tipo || undefined,
-    cidade: cidade || undefined,
-    codigoCidade: codigoCidade,
+    cidades: cidadesArray.length > 0 ? cidadesArray : undefined,
+    codigosCidades: codigosCidades,
     bairros: bairrosArray.length > 0 ? bairrosArray : undefined,
     codigosBairros: codigosBairros,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
@@ -348,23 +368,24 @@ export default function Imoveis() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Reset bairros/condomínios quando a cidade REALMENTE muda (não no primeiro load)
-  const prevCidadeRef = useRef<string>('');
+  // Reset bairros/condomínios quando as cidades REALMENTE mudam (não no primeiro load)
+  const prevCidadesRef = useRef<string>('');
   useEffect(() => {
-    const prev = prevCidadeRef.current;
-    prevCidadeRef.current = cidade;
+    const currentCidadesStr = cidadesArray.join(',');
+    const prev = prevCidadesRef.current;
+    prevCidadesRef.current = currentCidadesStr;
 
-    // Se ainda não havia cidade (primeiro render), não mexe na URL
+    // Se ainda não havia cidades (primeiro render), não mexe na URL
     if (!prev) return;
 
-    if (cidade && prev !== cidade) {
+    if (currentCidadesStr && prev !== currentCidadesStr) {
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('bairros');
       newParams.delete('condominios');
       newParams.delete('pagina');
       setSearchParams(newParams);
     }
-  }, [cidade, searchParams, setSearchParams]);
+  }, [cidadesArray, searchParams, setSearchParams]);
 
   const updateFilter = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
@@ -389,7 +410,22 @@ export default function Imoveis() {
       newParams.delete('pagina');
       setSearchParams(newParams);
     }
-  }, [finalidade, tipo, cidade, bairrosParam, condominiosCodes, ordenar, busca]);
+  }, [finalidade, tipo, cidadesParam, bairrosParam, condominiosCodes, ordenar, busca]);
+
+  // Handler for updating cidades (multi-select)
+  const updateCidades = (values: string[]) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (values.length > 0) {
+      newParams.set('cidades', values.join(','));
+    } else {
+      newParams.delete('cidades');
+    }
+    // Reset bairros e condomínios quando cidades mudam
+    newParams.delete('bairros');
+    newParams.delete('condominios');
+    newParams.delete('pagina');
+    setSearchParams(newParams);
+  };
 
   // Handler for updating bairros (multi-select)
   const updateBairros = (values: string[]) => {
@@ -427,7 +463,8 @@ export default function Imoveis() {
     if (finalidade === 'venda') parts.push('à Venda');
     else if (finalidade === 'aluguel') parts.push('para Alugar');
 
-    if (cidade) parts.push(`em ${cidade}`);
+    if (cidadesArray.length === 1) parts.push(`em ${cidadesArray[0]}`);
+    else if (cidadesArray.length > 1) parts.push(`em ${cidadesArray.length} cidades`);
     if (bairrosArray.length === 1) parts.push(`- ${bairrosArray[0]}`);
     else if (bairrosArray.length > 1) parts.push(`- ${bairrosArray.length} bairros`);
 
@@ -625,20 +662,18 @@ export default function Imoveis() {
                   </Select>
                 </div>
 
-                {/* Cidade */}
+                {/* Cidade (Multi-Select) */}
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">Cidade</h3>
-                  <Select value={cidade || "all"} onValueChange={(v) => updateFilter('cidade', v === "all" ? "" : v)}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Todas as cidades" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      <SelectItem value="all">Todas</SelectItem>
-                      {cidades.map((c) => (
-                        <SelectItem key={c.codigo || c.nome} value={c.nome || `cidade-${c.codigo}`}>{c.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <h3 className="font-semibold text-foreground">Cidades</h3>
+                  <CidadeMultiSelect
+                    cidades={cidadesDisponiveis}
+                    values={cidadesArray}
+                    onValuesChange={updateCidades}
+                    placeholder="Todas as cidades"
+                    isLoading={isLoadingFiltros}
+                    triggerClassName="bg-secondary border-border"
+                    maxSelections={10}
+                  />
                 </div>
 
                 {/* Bairros (Multi-Select) */}
@@ -648,8 +683,9 @@ export default function Imoveis() {
                     bairros={bairros}
                     values={bairrosArray}
                     onValuesChange={updateBairros}
-                    placeholder={cidade ? "Todos os bairros" : "Selecione a cidade"}
-                    disabled={!cidade}
+                    placeholder={cidadesArray.length > 0 ? "Todos os bairros" : "Selecione uma cidade"}
+                    disabled={cidadesArray.length === 0}
+                    isLoading={isLoadingBairros}
                     triggerClassName="bg-secondary border-border"
                     maxSelections={50}
                   />
