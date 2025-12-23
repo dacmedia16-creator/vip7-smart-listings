@@ -18,6 +18,15 @@ function removeNullValues(obj: Record<string, unknown>): Record<string, unknown>
 
 // Function to map Imoview API response to frontend expected format
 function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknown> {
+  // LOG: Capturar TODAS as chaves do objeto raw para descobrir campos como "permuta"
+  console.log(`[imoview-api] RAW KEYS for property ${raw.codigo}:`, Object.keys(raw).sort().join(', '));
+  
+  // LOG: Procurar especificamente por campos de permuta (pode ser: permuta, aceitapermuta, aceita_permuta, etc.)
+  const permutaRelatedKeys = Object.keys(raw).filter(k => k.toLowerCase().includes('permut'));
+  if (permutaRelatedKeys.length > 0) {
+    console.log(`[imoview-api] PERMUTA FIELDS FOUND:`, permutaRelatedKeys.map(k => `${k}=${raw[k]}`).join(', '));
+  }
+  
   // A API Imoview retorna finalidade como string: "Venda" ou "Aluguel"
   // Convertemos para: 1 = Aluguel, 2 = Venda (conforme documentação API Imoview)
   let finalidadeCode = 2; // default venda
@@ -125,6 +134,11 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
     cep: raw.cep || '',
     numero: raw.numero || '',
     complemento: raw.complemento || '',
+    // Campo de permuta - testar variações possíveis do nome do campo
+    aceitaPermuta: raw.permuta === true || raw.permuta === 1 || raw.permuta === '1' || raw.permuta === 'Sim' ||
+                   raw.aceitapermuta === true || raw.aceitapermuta === 1 || raw.aceitapermuta === '1' || raw.aceitapermuta === 'Sim' ||
+                   raw.aceita_permuta === true || raw.aceita_permuta === 1 || raw.aceita_permuta === '1' || raw.aceita_permuta === 'Sim' ||
+                   raw.Permuta === true || raw.Permuta === 1 || raw.Permuta === '1' || raw.Permuta === 'Sim',
   };
 }
 
