@@ -821,6 +821,15 @@ export default function Imoveis() {
                   </div>
                 </div>
 
+                {/* Apply Filters */}
+                <Button
+                  variant="gold"
+                  className="w-full"
+                  onClick={() => setShowFilters(false)}
+                >
+                  Aplicar Filtros
+                </Button>
+
                 {/* Clear Filters */}
                 <Button
                   variant="outline"
@@ -828,15 +837,6 @@ export default function Imoveis() {
                   onClick={clearFilters}
                 >
                   Limpar Filtros
-                </Button>
-
-                {/* Mobile Apply */}
-                <Button
-                  variant="gold"
-                  className="w-full lg:hidden"
-                  onClick={() => setShowFilters(false)}
-                >
-                  Aplicar Filtros
                 </Button>
               </div>
             </aside>
