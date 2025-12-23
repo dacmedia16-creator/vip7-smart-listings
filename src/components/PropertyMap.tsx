@@ -274,26 +274,41 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       const isRental = property.finalidade === 1;
       const color = isRental ? '#3b82f6' : '#10b981'; // blue for rental, green for sale
 
-      // Create custom marker element
+      // Create custom marker element with container for stable hover
       const el = document.createElement('div');
-      el.className = 'property-marker';
+      el.className = 'property-marker-container';
       el.style.cssText = `
-        width: 32px;
-        height: 32px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      `;
+
+      const markerDot = document.createElement('div');
+      markerDot.className = 'property-marker-dot';
+      markerDot.style.cssText = `
+        width: 24px;
+        height: 24px;
         background-color: ${color};
         border: 3px solid white;
         border-radius: 50%;
-        cursor: pointer;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        transition: transform 0.2s ease, opacity 0.3s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        pointer-events: none;
       `;
 
+      el.appendChild(markerDot);
+
       el.addEventListener('mouseenter', () => {
-        el.style.transform = 'scale(1.2)';
+        markerDot.style.transform = 'scale(1.3)';
+        markerDot.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
       });
 
       el.addEventListener('mouseleave', () => {
-        el.style.transform = 'scale(1)';
+        markerDot.style.transform = 'scale(1)';
+        markerDot.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
       });
 
       const popup = new mapboxgl.Popup({
