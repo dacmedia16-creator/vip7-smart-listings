@@ -307,7 +307,8 @@ serve(async (req) => {
           numeroregistros,
           
           // Tipo de imóvel - aceita número, string numérica ou lista separada por vírgula
-          codigoTipo: params?.codigoTipo || (typeof params?.tipo === 'number' ? params.tipo : undefined),
+          // IMPORTANTE: usar lowercase "codigotipo" (não camelCase) - API Imoview é case-sensitive
+          codigotipo: params?.codigoTipo ?? (typeof params?.tipo === 'number' ? params.tipo : undefined),
           
           // Localização - preferir códigos numéricos (API funciona melhor com eles)
           codigocidade: params?.codigoCidade,
