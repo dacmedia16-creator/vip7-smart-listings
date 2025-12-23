@@ -153,7 +153,7 @@ export function useCondominios(cidade?: string, finalidade?: number) {
   return useQuery({
     queryKey: ['condominios', cidade, finalidade],
     queryFn: () => listarCondominios(cidade, finalidade),
-    // Sempre habilitado - busca todos se não houver cidade
+    enabled: !!cidade, // Só busca se tiver cidade selecionada
     ...FILTER_CACHE_CONFIG,
   });
 }
