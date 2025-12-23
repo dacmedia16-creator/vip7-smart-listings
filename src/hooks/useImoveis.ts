@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import {
   listarImoveis,
   listarCidades,
@@ -20,13 +21,36 @@ const IMOVEIS_CACHE_CONFIG = {
 };
 
 export function useImoveis(filters: ImoviewFilters = {}) {
-  return useQuery({
+  const queryClient = useQueryClient();
+  
+  const query = useQuery({
     queryKey: ['imoveis', filters],
     queryFn: () => listarImoveis(filters),
     ...IMOVEIS_CACHE_CONFIG,
     // Mostra dados anteriores enquanto carrega novos (transição suave)
     placeholderData: (previousData) => previousData,
   });
+
+  // Prefetch da próxima página para paginação instantânea
+  useEffect(() => {
+    if (query.data && query.data.quantidade > 0) {
+      const limite = filters.limite || 20;
+      const paginaAtual = filters.pagina || 1;
+      const totalPaginas = Math.ceil(query.data.quantidade / limite);
+      
+      // Se há próxima página, prefetch ela
+      if (paginaAtual < totalPaginas) {
+        const nextPageFilters = { ...filters, pagina: paginaAtual + 1 };
+        queryClient.prefetchQuery({
+          queryKey: ['imoveis', nextPageFilters],
+          queryFn: () => listarImoveis(nextPageFilters),
+          ...IMOVEIS_CACHE_CONFIG,
+        });
+      }
+    }
+  }, [query.data, filters, queryClient]);
+
+  return query;
 }
 
 export function useImoveisDestaque(finalidade?: number) {
