@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight, Repeat } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ImoviewProperty, formatPropertyValue } from '@/services/imoviewApi';
@@ -36,6 +36,12 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
                 {property.condominio && (
                   <Badge className="bg-primary/90 text-primary-foreground border-none text-xs font-medium">
                     {property.condominio}
+                  </Badge>
+                )}
+                {property.aceitaPermuta && (
+                  <Badge className="bg-emerald-600 text-white border-none text-xs font-medium flex items-center gap-1">
+                    <Repeat className="h-3 w-3" />
+                    Aceita Permuta
                   </Badge>
                 )}
               </div>

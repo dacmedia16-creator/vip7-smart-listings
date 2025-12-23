@@ -26,6 +26,7 @@ export interface ImoviewProperty {
   caracteristicas?: string[];
   latitude?: number;
   longitude?: number;
+  aceitaPermuta?: boolean;
 }
 
 export interface ImoviewFilters {
