@@ -119,9 +119,11 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
   };
 
   // Parse video URL - pode ser YouTube, Vimeo, ou link direto
+  console.log(`[imoview-api] urlvideo raw value for ${raw.codigo}:`, JSON.stringify(raw.urlvideo), `type: ${typeof raw.urlvideo}`);
   const urlVideo = raw.urlvideo && typeof raw.urlvideo === 'string' && raw.urlvideo.trim() !== '' 
     ? raw.urlvideo.trim() 
     : null;
+  console.log(`[imoview-api] urlVideo mapped value for ${raw.codigo}:`, urlVideo);
 
   return {
     codigo: raw.codigo,
