@@ -208,13 +208,14 @@ export function HeroSection() {
                 </SelectContent>
               </Select>
 
-              {/* Condomínio */}
+            {/* Condomínio */}
               <CondominioMultiSelect
                 condominios={condominios}
                 values={condominiosCodes}
                 onValuesChange={setCondominiosCodes}
-                placeholder="Condomínios"
-                isLoading={isLoadingCondominios}
+                placeholder={cidade ? "Condomínios" : "Selecione uma cidade"}
+                isLoading={isLoadingCondominios && !!cidade}
+                disabled={!cidade}
                 triggerClassName="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors"
                 maxSelections={5}
               />
