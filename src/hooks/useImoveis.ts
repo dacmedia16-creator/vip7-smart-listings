@@ -12,11 +12,20 @@ import {
 } from '@/services/imoviewApi';
 import { supabase } from '@/integrations/supabase/client';
 
+// Cache inteligente: mantém dados por filtro, invalida automaticamente quando filtros mudam
+const IMOVEIS_CACHE_CONFIG = {
+  staleTime: 1000 * 60 * 2, // 2 minutos - dados considerados frescos
+  gcTime: 1000 * 60 * 30, // 30 minutos - manter em cache para voltar a filtros anteriores
+  refetchOnWindowFocus: false, // Não refetch ao focar janela
+};
+
 export function useImoveis(filters: ImoviewFilters = {}) {
   return useQuery({
     queryKey: ['imoveis', filters],
     queryFn: () => listarImoveis(filters),
-    staleTime: 0, // sempre refetch (evita cache segurar resultado antigo após ajustes de filtros)
+    ...IMOVEIS_CACHE_CONFIG,
+    // Mostra dados anteriores enquanto carrega novos (transição suave)
+    placeholderData: (previousData) => previousData,
   });
 }
 
