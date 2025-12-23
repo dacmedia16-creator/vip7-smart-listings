@@ -290,7 +290,8 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     const { tipo: _ignoredTipo, bairros: _ignoredBairros, codigosBairros: _ignoredCodBairros, ...filtersWithoutTipo } = filters;
     const simpleFilters = {
       ...filtersWithoutTipo,
-      codigoTipo: tipoValues.length > 0 ? tipoValues.join(',') : undefined,
+      // IMPORTANTE: Enviar APENAS o primeiro código de tipo - API não suporta CSV confiável
+      codigoTipo: tipoValues.length > 0 ? tipoValues[0] : undefined,
       // Enviar códigos de bairros como string CSV para API
       codigosBairros: codigosBairrosFiltro.length > 0 ? codigosBairrosFiltro.join(',') : undefined,
     };
