@@ -56,8 +56,25 @@ export default function Imoveis() {
 
   // Fetch data from API
   const { data: cidades = [] } = useCidades(finalidadeCode);
-  const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
+  
+  // Converter nome de cidade para código (API filtra melhor por código)
+  const codigoCidade = useMemo(() => {
+    if (!cidade) return undefined;
+    const cidadeEncontrada = cidades.find(c => c.nome.toLowerCase() === cidade.toLowerCase());
+    return cidadeEncontrada?.codigo;
+  }, [cidade, cidades]);
+
+  // Buscar bairros usando código da cidade quando disponível
+  const { data: bairros = [] } = useBairros(cidade || undefined, codigoCidade, finalidadeCode);
   const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominios(cidade || undefined, finalidadeCode);
+
+  // Converter nome de bairro para código (API filtra melhor por código)
+  const codigoBairro = useMemo(() => {
+    if (!bairro) return undefined;
+    const bairroEncontrado = bairros.find(b => b.nome.toLowerCase() === bairro.toLowerCase());
+    console.log(`[Imoveis] Bairro "${bairro}" -> código: ${bairroEncontrado?.codigo}`);
+    return bairroEncontrado?.codigo;
+  }, [bairro, bairros]);
 
   // Cache de contagens de imóveis por condomínio
   const [condominiosContagem, setCondominiosContagem] = useState<Record<number, number>>({});
@@ -124,11 +141,14 @@ export default function Imoveis() {
   const valorMinFiltro = valorMinUrl ? Number(valorMinUrl) : (priceRange[0] > 0 ? priceRange[0] : undefined);
   const valorMaxFiltro = valorMaxUrl ? Number(valorMaxUrl) : (priceRange[1] < 10000000 ? priceRange[1] : undefined);
   
+  // API Imoview funciona melhor com códigos numéricos para cidade e bairro
   const apiFilters = {
     finalidade: finalidadeCode,
     tipo: tipo || undefined,
     cidade: cidade || undefined,
+    codigoCidade: codigoCidade,
     bairro: bairro || undefined,
+    codigoBairro: codigoBairro, // Código numérico do bairro (funciona melhor na API)
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,
@@ -143,7 +163,9 @@ export default function Imoveis() {
       finalidadeCode,
       tipo,
       cidade,
+      codigoCidade,
       bairro,
+      codigoBairro,
       condominiosCodes,
       valorMinFiltro,
       valorMaxFiltro,
@@ -165,7 +187,9 @@ export default function Imoveis() {
     finalidade: finalidadeCode,
     tipo: tipo || undefined,
     cidade: cidade || undefined,
+    codigoCidade: codigoCidade,
     bairro: bairro || undefined,
+    codigoBairro: codigoBairro,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,

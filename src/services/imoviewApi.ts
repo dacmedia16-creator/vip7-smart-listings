@@ -36,7 +36,9 @@ export interface ImoviewFilters {
    */
   tipo?: string | number;
   cidade?: string;
+  codigoCidade?: number; // Código numérico da cidade
   bairro?: string;
+  codigoBairro?: number; // Código numérico do bairro (API filtra melhor por código)
   codigoCondominio?: number; // Código numérico do condomínio (single)
   codigosCondominio?: number[]; // Array de códigos de condomínios (multi-select)
   valorMin?: number;
@@ -58,6 +60,7 @@ export interface ImoviewCity {
 export interface ImoviewNeighborhood {
   codigo: number;
   nome: string;
+  cidade?: string; // Nome da cidade associada
 }
 
 export interface ImoviewCondominium {
@@ -282,9 +285,14 @@ export async function listarCidades(finalidade?: number): Promise<ImoviewCity[]>
   }
 }
 
-export async function listarBairros(cidade?: string, finalidade?: number): Promise<ImoviewNeighborhood[]> {
+export async function listarBairros(cidade?: string, codigoCidade?: number, finalidade?: number): Promise<ImoviewNeighborhood[]> {
   try {
-    const data = await callImoviewApi<ImoviewNeighborhood[] | { lista?: ImoviewNeighborhood[] }>('listarBairros', { cidade, finalidade });
+    // Preferir código da cidade se disponível (mais confiável)
+    const data = await callImoviewApi<ImoviewNeighborhood[] | { lista?: ImoviewNeighborhood[] }>('listarBairros', { 
+      cidade, 
+      codigoCidade,
+      finalidade 
+    });
     if (Array.isArray(data)) {
       return data;
     }

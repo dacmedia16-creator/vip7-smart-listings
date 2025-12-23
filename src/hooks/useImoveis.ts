@@ -56,11 +56,11 @@ export function useCidades(finalidade?: number) {
   });
 }
 
-export function useBairros(cidade?: string, finalidade?: number) {
+export function useBairros(cidade?: string, codigoCidade?: number, finalidade?: number) {
   return useQuery({
-    queryKey: ['bairros', cidade, finalidade],
-    queryFn: () => listarBairros(cidade, finalidade),
-    enabled: !!cidade,
+    queryKey: ['bairros', cidade, codigoCidade, finalidade],
+    queryFn: () => listarBairros(cidade, codigoCidade, finalidade),
+    enabled: !!cidade || !!codigoCidade, // Precisa de cidade ou código
     ...FILTER_CACHE_CONFIG,
   });
 }
