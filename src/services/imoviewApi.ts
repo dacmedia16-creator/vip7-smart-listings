@@ -202,6 +202,8 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
             finalidade: filters.finalidade,
             codigoCidade: filters.codigoCidade,
             codigoCondominio,
+            valorMin: filters.valorMin,
+            valorMax: filters.valorMax,
             limite: PAGE_SIZE,
             pagina,
           };
@@ -283,6 +285,18 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         console.log(`[imoview-service] Bairros filtrados por CÓDIGO - confiando na API (${combinedList.length} imóveis mantidos)`);
       }
 
+      // Aplicar filtro de faixa de preço client-side (garantia adicional)
+      if (filters.valorMin !== undefined || filters.valorMax !== undefined) {
+        const valorMin = filters.valorMin || 0;
+        const valorMax = filters.valorMax || Infinity;
+        const beforeCount = filteredList.length;
+        filteredList = filteredList.filter(imovel => {
+          const valor = imovel.valor || 0;
+          return valor >= valorMin && valor <= valorMax;
+        });
+        console.log(`[imoview-service] Filtro preço client-side: ${beforeCount} -> ${filteredList.length} (min: ${valorMin}, max: ${valorMax})`);
+      }
+
       // Aplicar ordenação se necessário
       if (filters.ordenarPor === 'valor_asc') {
         filteredList.sort((a, b) => (a.valor || 0) - (b.valor || 0));
@@ -313,6 +327,8 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     const simpleFilters: Record<string, unknown> = {
       finalidade: filters.finalidade,
       codigoCidade: filters.codigoCidade,
+      valorMin: filters.valorMin,
+      valorMax: filters.valorMax,
       limite: filters.limite,
       pagina: filters.pagina,
       ordenarPor: filters.ordenarPor,
