@@ -148,6 +148,10 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     const tipoNormalized = typeof filters.tipo === 'string' ? filters.tipo.trim().toLowerCase() : null;
     const TIPO_GROUP_CODES: Record<string, number[]> = {
       casa: [1, 28], // Casa, Casa de Condomínio
+      // Casa em condomínio (valor vindo da UI/URL)
+      casa_condominio: [28],
+      'casa de condominio': [28],
+      'casa de condomínio': [28],
       apartamento: [2, 12, 18, 21, 22, 25], // Apartamento, Flat, Cobertura, Garden, Studio, Duplex
       terreno: [19, 4], // Terreno, Lote em condomínio
       comercial: [6, 8, 11, 23, 26], // Sala, Prédio, Galpão, Área, Barracão
@@ -391,6 +395,53 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       console.log(`[imoview-service] Primeiro imóvel: código=${resultList[0].codigo}, bairro="${resultList[0].bairro}", cidade="${resultList[0].cidade}"`);
     } else if (resultQuantidade > 0) {
       console.warn(`[imoview-service] PROBLEMA: API diz ${resultQuantidade} imóveis mas lista veio VAZIA!`);
+    }
+
+    // Fallback de segurança: alguns filtros (principalmente múltiplos bairros) podem quebrar a lista,
+    // retornando quantidade>0 com lista vazia. Neste caso, tentamos buscar separadamente por bairro.
+    if (
+      resultList.length === 0 &&
+      resultQuantidade > 0 &&
+      codigosBairrosFiltro.length > 1 &&
+      (filters.pagina === undefined || filters.pagina === 1)
+    ) {
+      console.warn(
+        `[imoview-service] Fallback: refazendo busca por bairro (singular) para ${codigosBairrosFiltro.length} bairros...`
+      );
+
+      const perBairro = await Promise.all(
+        codigosBairrosFiltro.map((codigoBairro) =>
+          callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
+            'listarImoveis',
+            {
+              ...simpleFilters,
+              codigosBairros: String(codigoBairro),
+              pagina: 1,
+              limite: filters.limite || 20,
+            } as Record<string, unknown>
+          )
+        )
+      );
+
+      const merged: ImoviewProperty[] = [];
+      const seen = new Set<number>();
+      for (const resp of perBairro) {
+        const lista = Array.isArray(resp) ? resp : resp?.lista || [];
+        for (const imovel of lista) {
+          if (!seen.has(imovel.codigo)) {
+            seen.add(imovel.codigo);
+            merged.push(imovel);
+          }
+        }
+      }
+
+      if (merged.length > 0) {
+        console.log(`[imoview-service] Fallback por bairro retornou ${merged.length} imóveis (deduplicados)`);
+        return {
+          lista: merged.slice(0, filters.limite || 20),
+          quantidade: resultQuantidade,
+        };
+      }
     }
     
     return {
