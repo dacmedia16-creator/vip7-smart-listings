@@ -118,6 +118,9 @@ function matchesBairroFilter(imovelBairro: string | undefined, filtrosBairros: s
 
 export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
   try {
+    console.log('[imoview-service] === INÍCIO listarImoveis ===');
+    console.log('[imoview-service] Filtros recebidos:', JSON.stringify(filters, null, 2));
+
     const condominiosSelecionados: number[] =
       filters.codigosCondominio && filters.codigosCondominio.length > 0
         ? filters.codigosCondominio
@@ -125,11 +128,21 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           ? [filters.codigoCondominio]
           : [];
 
-    // Capturar bairros para filtro client-side (a API ignora bairro frequentemente)
+    // Capturar bairros para filtro - ENVIAR CÓDIGOS para API (mais confiável)
     const bairrosFiltro = filters.bairros && filters.bairros.length > 0 
       ? filters.bairros.map(b => b.trim()).filter(Boolean)
       : filters.bairro?.trim() ? [filters.bairro.trim()] : [];
+    
+    // IMPORTANTE: Usar códigos numéricos dos bairros para API (funciona melhor)
+    const codigosBairrosFiltro = filters.codigosBairros && filters.codigosBairros.length > 0
+      ? filters.codigosBairros
+      : [];
+    
     const needsClientSideBairroFilter = bairrosFiltro.length > 0;
+    
+    console.log('[imoview-service] Bairros (nomes):', bairrosFiltro);
+    console.log('[imoview-service] Bairros (códigos):', codigosBairrosFiltro);
+    console.log('[imoview-service] Condomínios selecionados:', condominiosSelecionados);
 
     // Mapear filtros de tipo "de vitrine" (Casa/Apartamento/Terreno/Comercial) para códigos reais do Imoview
     const tipoNormalized = typeof filters.tipo === 'string' ? filters.tipo.trim().toLowerCase() : null;
@@ -164,6 +177,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     const needsMultiFetch = condominiosSelecionados.length > 0;
 
     if (needsMultiFetch) {
+      console.log('[imoview-service] Modo MULTI-FETCH para condomínios');
       const PAGE_SIZE = 20;
       const MAX_PAGES = 200;
 
@@ -175,11 +189,13 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
         for (;;) {
           // Remover tipo string do spread e usar codigoTipo conforme API Imoview
-          const { tipo: _ignoredTipo, codigosCondominio: _ignored, ...filtersWithoutTipo } = filters;
+          const { tipo: _ignoredTipo, codigosCondominio: _ignored, bairros: _ignoredBairros, codigosBairros: _ignoredCodBairros, ...filtersWithoutTipo } = filters;
           const pageFilter = {
             ...filtersWithoutTipo,
             codigoTipo: tipo, // código numérico conforme API
             codigoCondominio,
+            // Enviar códigos de bairros como string CSV para API
+            codigosBairros: codigosBairrosFiltro.length > 0 ? codigosBairrosFiltro.join(',') : undefined,
             limite: PAGE_SIZE,
             pagina,
           };
@@ -236,9 +252,12 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         }
       }
 
-      // Aplicar filtro client-side de bairro (API frequentemente ignora)
+      console.log(`[imoview-service] Multi-fetch retornou ${combinedList.length} imóveis (antes de filtros)`);
+
+      // Aplicar filtro client-side de bairro SE a API não tiver filtrado
       let filteredList = combinedList;
-      if (needsClientSideBairroFilter) {
+      if (needsClientSideBairroFilter && codigosBairrosFiltro.length === 0) {
+        // Só filtra client-side se não tiver enviado códigos para API
         filteredList = combinedList.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
         console.log(`[imoview-service] Filtro bairros client-side: ${combinedList.length} -> ${filteredList.length} (filtros: "${bairrosFiltro.join(', ')}")`);
       }
@@ -256,23 +275,31 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       const startIndex = (pagina - 1) * limite;
       const paginatedList = filteredList.slice(startIndex, startIndex + limite);
 
+      console.log(`[imoview-service] Multi-fetch resultado final: ${paginatedList.length} imóveis (página ${pagina}), total: ${filteredList.length}`);
+      
+      if (filteredList.length > 0 && paginatedList.length === 0) {
+        console.warn(`[imoview-service] AVISO: Lista tem ${filteredList.length} itens mas página ${pagina} está vazia! startIndex=${startIndex}, limite=${limite}`);
+      }
+
       return { lista: paginatedList, quantidade: filteredList.length };
     }
 
     // Chamada simples: enviar apenas o PRIMEIRO código numérico do tipo
     // A filtragem refinada será feita no cliente via matchesTipoFiltro()
     // Remover tipo string do spread e usar codigoTipo conforme API Imoview
-    const { tipo: _ignoredTipo, ...filtersWithoutTipo } = filters;
+    const { tipo: _ignoredTipo, bairros: _ignoredBairros, codigosBairros: _ignoredCodBairros, ...filtersWithoutTipo } = filters;
     const simpleFilters = {
       ...filtersWithoutTipo,
       codigoTipo: tipoValues.length > 0 ? tipoValues.join(',') : undefined,
+      // Enviar códigos de bairros como string CSV para API
+      codigosBairros: codigosBairrosFiltro.length > 0 ? codigosBairrosFiltro.join(',') : undefined,
     };
 
-    console.log(`[imoview-service] Chamada simples com codigoTipo: ${simpleFilters.codigoTipo}`);
+    console.log(`[imoview-service] Chamada simples com codigoTipo: ${simpleFilters.codigoTipo}, codigosBairros: ${simpleFilters.codigosBairros}`);
 
-    // Se precisa filtrar por bairro no cliente, buscar TODAS as páginas
-    if (needsClientSideBairroFilter) {
-      console.log(`[imoview-service] Bairros filter detected ("${bairrosFiltro.join(', ')}"), fetching all pages for client-side filtering...`);
+    // Se precisa filtrar por bairro no cliente E não temos códigos para API, buscar TODAS as páginas
+    if (needsClientSideBairroFilter && codigosBairrosFiltro.length === 0) {
+      console.log(`[imoview-service] Bairros filter detected SEM códigos ("${bairrosFiltro.join(', ')}"), fetching all pages for client-side filtering...`);
       const PAGE_SIZE = 20;
       const MAX_PAGES = 100;
       const allProperties: ImoviewProperty[] = [];
@@ -314,11 +341,15 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         if (pagina > MAX_PAGES) break;
       }
 
-      console.log(`[imoview-service] Fetched ${allProperties.length} properties from ${pagina} pages`);
+      console.log(`[imoview-service] Fetched ${allProperties.length} properties from ${pagina} pages (API disse: ${totalFromApi})`);
 
       // Aplicar filtro de bairro client-side (qualquer um dos bairros selecionados)
       const filteredByBairro = allProperties.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
       console.log(`[imoview-service] After bairros filter: ${filteredByBairro.length} of ${allProperties.length} (filters: "${bairrosFiltro.join(', ')}")`);
+      
+      // Log dos bairros únicos retornados para debug
+      const bairrosRetornados = [...new Set(allProperties.map(i => i.bairro).filter(Boolean))];
+      console.log(`[imoview-service] Bairros únicos retornados pela API: ${bairrosRetornados.slice(0, 20).join(', ')}${bairrosRetornados.length > 20 ? '...' : ''}`);
 
       // Aplicar ordenação
       if (filters.ordenarPor === 'valor_asc') {
@@ -333,20 +364,37 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       const startIndex = (userPagina - 1) * userLimite;
       const paginatedResult = filteredByBairro.slice(startIndex, startIndex + userLimite);
 
+      console.log(`[imoview-service] Resultado paginado: ${paginatedResult.length} imóveis (página ${userPagina}), total filtrado: ${filteredByBairro.length}`);
+
+      if (filteredByBairro.length > 0 && paginatedResult.length === 0) {
+        console.warn(`[imoview-service] AVISO: Lista tem ${filteredByBairro.length} itens mas página ${userPagina} está vazia! startIndex=${startIndex}, limite=${userLimite}`);
+      }
+
       return { lista: paginatedResult, quantidade: filteredByBairro.length };
     }
 
-    // Chamada simples sem filtro de bairro client-side
+    // Chamada simples - API deve filtrar por bairro se tiver códigos
+    console.log('[imoview-service] Chamada simples (API deve filtrar)');
     const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
       'listarImoveis',
       simpleFilters as Record<string, unknown>
     );
-    if (Array.isArray(data)) {
-      return { lista: data, quantidade: data.length };
+    
+    const resultList = Array.isArray(data) ? data : data?.lista || [];
+    const resultQuantidade = Array.isArray(data) ? data.length : (data?.quantidade || data?.lista?.length || 0);
+    
+    console.log(`[imoview-service] Resposta da API: ${resultList.length} imóveis na lista, quantidade: ${resultQuantidade}`);
+    
+    // Log dos primeiros imóveis para debug
+    if (resultList.length > 0) {
+      console.log(`[imoview-service] Primeiro imóvel: código=${resultList[0].codigo}, bairro="${resultList[0].bairro}", cidade="${resultList[0].cidade}"`);
+    } else if (resultQuantidade > 0) {
+      console.warn(`[imoview-service] PROBLEMA: API diz ${resultQuantidade} imóveis mas lista veio VAZIA!`);
     }
+    
     return {
-      lista: data?.lista || [],
-      quantidade: data?.quantidade || data?.lista?.length || 0,
+      lista: resultList,
+      quantidade: resultQuantidade,
     };
   } catch (error) {
     console.error('[imoview-service] listarImoveis error:', error);
