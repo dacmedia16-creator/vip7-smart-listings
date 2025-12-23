@@ -10,6 +10,7 @@ import {
   ImoviewProperty,
   ImoviewListResult,
 } from '@/services/imoviewApi';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useImoveis(filters: ImoviewFilters = {}) {
   return useQuery({
@@ -70,6 +71,37 @@ export function useCondominios(cidade?: string, finalidade?: number) {
     queryKey: ['condominios', cidade, finalidade],
     queryFn: () => listarCondominios(cidade, finalidade),
     // Sempre habilitado - busca todos se não houver cidade
+    ...FILTER_CACHE_CONFIG,
+  });
+}
+
+// Versão slim dos condomínios - carrega apenas codigo, nome e cidade (muito mais rápido)
+interface CondominioSlim {
+  codigo: number;
+  nome: string;
+  cidade: string;
+}
+
+async function listarCondominiosSlim(cidade?: string, codigoCidade?: number, finalidade?: number): Promise<CondominioSlim[]> {
+  const { data, error } = await supabase.functions.invoke('imoview-api', {
+    body: {
+      action: 'listarCondominiosSlim',
+      params: { cidade, codigoCidade, finalidade },
+    },
+  });
+
+  if (error) {
+    console.error('[useCondominiosSlim] Error:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export function useCondominiosSlim(cidade?: string, codigoCidade?: number, finalidade?: number) {
+  return useQuery({
+    queryKey: ['condominios-slim', cidade, codigoCidade, finalidade],
+    queryFn: () => listarCondominiosSlim(cidade, codigoCidade, finalidade),
     ...FILTER_CACHE_CONFIG,
   });
 }

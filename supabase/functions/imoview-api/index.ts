@@ -157,6 +157,127 @@ serve(async (req) => {
     let body = null;
 
     switch (action) {
+      // ========= NOVO: Endpoint unificado para carregar filtros iniciais =========
+      case 'carregarFiltrosIniciais': {
+        console.log('[imoview-api] carregarFiltrosIniciais - loading cities and property types in parallel');
+        
+        const [cidadesResponse, tiposResponse] = await Promise.all([
+          fetch(`${IMOVIEW_API_URL}/Imovel/RetornarCidadesDisponiveis`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'chave': IMOVIEW_API_KEY || '',
+            },
+            body: JSON.stringify(removeNullValues({ finalidade: params?.finalidade })),
+          }),
+          fetch(`${IMOVIEW_API_URL}/Imovel/RetornarTiposImoveisDisponiveis`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'chave': IMOVIEW_API_KEY || '',
+            },
+          }),
+        ]);
+
+        if (!cidadesResponse.ok || !tiposResponse.ok) {
+          throw new Error('Failed to fetch initial filters');
+        }
+
+        const [cidadesData, tiposData] = await Promise.all([
+          cidadesResponse.json(),
+          tiposResponse.json(),
+        ]);
+
+        const cidades = Array.isArray(cidadesData) ? cidadesData : cidadesData?.lista || [];
+        const tipos = Array.isArray(tiposData) ? tiposData : tiposData?.lista || [];
+
+        console.log(`[imoview-api] Loaded ${cidades.length} cities and ${tipos.length} property types`);
+
+        return new Response(JSON.stringify({
+          cidades,
+          tipos,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // ========= NOVO: Condomínios slim (apenas codigo e nome) =========
+      case 'listarCondominiosSlim': {
+        console.log('[imoview-api] listarCondominiosSlim params:', JSON.stringify(params));
+        
+        const cityCode = params?.codigoCidade as number | undefined;
+        const cityName = String(params?.cidade ?? '').trim();
+        const pageSize = 20;
+        
+        const fetchCondominiosPageSlim = async (payload: Record<string, unknown>) => {
+          const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarCondominiosDisponiveis`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'chave': IMOVIEW_API_KEY || '',
+            },
+            body: JSON.stringify(removeNullValues(payload)),
+          });
+
+          if (!response.ok) {
+            const txt = await response.text();
+            throw new Error(`Failed condominios slim: ${response.status} - ${txt}`);
+          }
+
+          return response.json();
+        };
+        
+        const allCondominios: Array<{ codigo: number; nome: string; cidade: string }> = [];
+        const seenCodigos = new Set<number>();
+        let pagina = 1;
+        const maxPages = 100;
+
+        while (pagina <= maxPages) {
+          const payload: Record<string, unknown> = {
+            finalidade: params?.finalidade,
+            numeroPagina: pagina,
+            numeroRegistros: pageSize,
+          };
+          
+          if (cityCode) {
+            payload.codigoCidade = cityCode;
+          } else if (cityName) {
+            payload.cidade = cityName;
+          }
+
+          const condData = await fetchCondominiosPageSlim(payload);
+          const lista = Array.isArray(condData) 
+            ? condData 
+            : Array.isArray(condData?.lista) 
+              ? condData.lista 
+              : [];
+
+          if (lista.length === 0) break;
+
+          for (const cond of lista) {
+            const codigo = Number(cond.codigo);
+            if (codigo && !seenCodigos.has(codigo)) {
+              seenCodigos.add(codigo);
+              allCondominios.push({
+                codigo,
+                nome: String(cond.nome || cond.nomecondominio || cond.descricao || '').trim(),
+                cidade: String(cond.cidade || cityName || '').trim(),
+              });
+            }
+          }
+
+          if (lista.length < pageSize) break;
+          pagina++;
+        }
+
+        allCondominios.sort((a, b) => a.nome.localeCompare(b.nome));
+        console.log(`[imoview-api] listarCondominiosSlim: returned ${allCondominios.length} condominios (slim format)`);
+
+        return new Response(JSON.stringify(allCondominios), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       case 'listarImoveis': {
         endpoint = '/Imovel/RetornarImoveisDisponiveis';
         method = 'POST';

@@ -11,7 +11,8 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { BairroMultiSelect } from '@/components/BairroMultiSelect';
-import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
+import { useImoveis, useBairros, useCondominiosSlim } from '@/hooks/useImoveis';
+import { useFiltrosIniciais } from '@/hooks/useFiltrosIniciais';
 import { useImoveisMap } from '@/hooks/useImoveisMap';
 import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
 export default function Imoveis() {
@@ -60,8 +61,9 @@ export default function Imoveis() {
 
   const finalidadeCode = getFinalidadeCode(finalidade);
 
-  // Fetch data from API
-  const { data: cidades = [] } = useCidades(finalidadeCode);
+  // Carregar filtros iniciais (cidades + tipos) em uma única chamada
+  const { data: filtrosIniciais, isLoading: isLoadingFiltros } = useFiltrosIniciais(finalidadeCode);
+  const cidades = filtrosIniciais?.cidades || [];
   
   // Converter nome de cidade para código (API filtra melhor por código)
   const codigoCidade = useMemo(() => {
@@ -70,9 +72,11 @@ export default function Imoveis() {
     return cidadeEncontrada?.codigo;
   }, [cidade, cidades]);
 
-  // Buscar bairros usando código da cidade quando disponível
-  const { data: bairros = [] } = useBairros(cidade || undefined, codigoCidade, finalidadeCode);
-  const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominios(cidade || undefined, finalidadeCode);
+  // Buscar bairros usando código da cidade quando disponível (lazy loading - só quando tem cidade)
+  const { data: bairros = [], isLoading: isLoadingBairros } = useBairros(cidade || undefined, codigoCidade, finalidadeCode);
+  
+  // Usar versão slim dos condomínios (muito mais rápido - só codigo, nome, cidade)
+  const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominiosSlim(cidade || undefined, codigoCidade, finalidadeCode);
 
   // Converter nomes de bairros para códigos (API filtra melhor por código)
   const codigosBairros = useMemo(() => {
