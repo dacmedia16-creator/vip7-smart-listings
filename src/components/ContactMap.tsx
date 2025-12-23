@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 // Mapbox public token
 mapboxgl.accessToken = 'pk.eyJ1IjoiZGFjbWVkaWExNiIsImEiOiJjbWpnZXFyanUwcnd2M2RvbjFwbjlqcWhvIn0.t5x9PadkXW-3tX-zSdvJ-g';
 
-// VIP7 Imóveis coordinates (Rua Horacio Cenci, 9 - Parque Campolim, Sorocaba)
+// VIP7 Imóveis coordinates (Rua Horacio Cenci, 9 - Parque Campolim, Sorocaba - SP, 18047-800)
 const VIP7_COORDS = {
-  lat: -23.4867,
-  lng: -47.4407
+  lat: -23.4894,
+  lng: -47.4516
 };
 
-const VIP7_ADDRESS = 'Rua Horacio Cenci, 9 - Parque Campolim, Sorocaba - SP';
+const VIP7_ADDRESS = 'Rua Horacio Cenci, 9 - Parque Campolim, Sorocaba - SP, 18047-800';
 
 export function ContactMap() {
   const mapContainer = useRef<HTMLDivElement>(null);
