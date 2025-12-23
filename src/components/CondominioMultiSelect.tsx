@@ -126,12 +126,15 @@ export function CondominioMultiSelect({
           )}
         >
           <div className="flex items-center gap-2 flex-wrap flex-1 text-left">
-            <Castle className="h-4 w-4 text-primary shrink-0" />
+            <Castle className={cn("h-4 w-4 shrink-0", isLoading ? "text-muted-foreground animate-pulse" : "text-primary")} />
             {isLoading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Carregando...
-              </span>
+              <div className="flex items-center gap-2 flex-1">
+                <div className="flex gap-1.5">
+                  <div className="h-2 w-16 bg-muted-foreground/20 rounded animate-pulse" />
+                  <div className="h-2 w-12 bg-muted-foreground/15 rounded animate-pulse [animation-delay:150ms]" />
+                  <div className="h-2 w-8 bg-muted-foreground/10 rounded animate-pulse [animation-delay:300ms]" />
+                </div>
+              </div>
             ) : values.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {selectedCondominios.slice(0, 2).map((cond) => (
@@ -177,10 +180,29 @@ export function CondominioMultiSelect({
             />
           </div>
           <CommandList className="max-h-[300px] overflow-auto">
-            {isLoading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin opacity-50" />
-                Carregando condomínios...
+          {isLoading ? (
+              <div className="p-3 space-y-3">
+                {/* Skeleton header */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="h-3 w-24 bg-muted-foreground/20 rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-muted-foreground/15 rounded animate-pulse [animation-delay:100ms]" />
+                </div>
+                {/* Skeleton items */}
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3 py-2 px-1" style={{ animationDelay: `${i * 75}ms` }}>
+                    <div className="h-4 w-4 rounded border border-muted-foreground/20 bg-muted-foreground/10 animate-pulse" />
+                    <div className="flex-1 space-y-1.5">
+                      <div 
+                        className="h-3.5 bg-muted-foreground/20 rounded animate-pulse" 
+                        style={{ width: `${60 + (i % 3) * 15}%`, animationDelay: `${i * 75}ms` }} 
+                      />
+                      <div 
+                        className="h-2.5 bg-muted-foreground/10 rounded animate-pulse" 
+                        style={{ width: '35%', animationDelay: `${i * 75 + 50}ms` }} 
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredCondominios.length === 0 ? (
               <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
