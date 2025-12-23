@@ -10,14 +10,15 @@ export function useImoveisMap(filters: ImoviewFilters = {}, enabled: boolean = t
     queryKey: ['imoveis-map', filters],
     queryFn: async () => {
       // IMPORTANTE: A API Imoview limita a 20 registros por página!
-      // Usar 50 fazia com que parássemos na primeira página por erro na condição
       const PAGE_SIZE = 20;
-      const MAX_PAGES = 50; // Aumentado para cobrir mais imóveis
+      const MAX_PAGES = 100; // Aumentado para cobrir todos os imóveis (20 * 100 = 2000)
       const allProperties: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
       
       let pagina = 1;
       let totalQuantidade: number | undefined;
+
+      console.log('[useImoveisMap] Starting fetch with filters:', filters);
 
       // Fetch all pages
       while (pagina <= MAX_PAGES) {
@@ -29,6 +30,7 @@ export function useImoveisMap(filters: ImoviewFilters = {}, enabled: boolean = t
 
         if (totalQuantidade === undefined) {
           totalQuantidade = result.quantidade;
+          console.log(`[useImoveisMap] Total quantity from API: ${totalQuantidade}`);
         }
 
         // Add unique properties
@@ -39,12 +41,27 @@ export function useImoveisMap(filters: ImoviewFilters = {}, enabled: boolean = t
           }
         }
 
+        console.log(`[useImoveisMap] Page ${pagina}: fetched ${result.lista.length} items, total so far: ${allProperties.length}`);
+
         // Stop if we've fetched all or no more results
-        if (result.lista.length < PAGE_SIZE) break;
-        if (totalQuantidade && allProperties.length >= totalQuantidade) break;
+        if (result.lista.length < PAGE_SIZE) {
+          console.log(`[useImoveisMap] Stopping: page returned less than ${PAGE_SIZE} items`);
+          break;
+        }
+        if (totalQuantidade && allProperties.length >= totalQuantidade) {
+          console.log(`[useImoveisMap] Stopping: reached total quantity ${totalQuantidade}`);
+          break;
+        }
 
         pagina++;
       }
+
+      // Log statistics about coordinates
+      const withCoords = allProperties.filter(p => 
+        p.latitude && p.longitude && 
+        p.latitude !== 0 && p.longitude !== 0
+      );
+      console.log(`[useImoveisMap] Final: ${allProperties.length} total, ${withCoords.length} with valid coordinates`);
 
       return allProperties;
     },
