@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      property_geocodes: {
+        Row: {
+          created_at: string
+          geocoded_address: string | null
+          id: string
+          is_approximate: boolean
+          latitude: number | null
+          longitude: number | null
+          property_code: number
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          geocoded_address?: string | null
+          id?: string
+          is_approximate?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          property_code: number
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          geocoded_address?: string | null
+          id?: string
+          is_approximate?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          property_code?: number
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

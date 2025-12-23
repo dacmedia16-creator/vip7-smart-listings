@@ -8,8 +8,10 @@ import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { ImoviewProperty } from '@/services/imoviewApi';
 import { formatPropertyValue } from '@/services/imoviewApi';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Square, Trash2, X } from 'lucide-react';
+import { Pencil, Square, Trash2, X, MapPin, AlertCircle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePropertyGeocodes, useGeocodeProperties, mergePropertiesWithGeocodes } from '@/hooks/usePropertyGeocodes';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Mapbox public token
 mapboxgl.accessToken = 'pk.eyJ1IjoiZGFjbWVkaWExNiIsImEiOiJjbWpnZXFyanUwcnd2M2RvbjFwbjlqcWhvIn0.t5x9PadkXW-3tX-zSdvJ-g';
@@ -32,15 +34,53 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
   const [drawMode, setDrawMode] = useState<'polygon' | 'rectangle' | null>(null);
   const [hasArea, setHasArea] = useState(false);
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
+  const [showApproximate, setShowApproximate] = useState(true);
 
-  // Filter properties with valid coordinates
-  const propertiesWithCoords = useMemo(() => {
+  // Find properties without coordinates to geocode
+  const propertiesWithoutCoords = useMemo(() => {
     return properties.filter(
-      (p) => p.latitude && p.longitude && 
-             p.latitude !== 0 && p.longitude !== 0 &&
-             Math.abs(p.latitude) <= 90 && Math.abs(p.longitude) <= 180
+      (p) => !p.latitude || !p.longitude || 
+             p.latitude === 0 || p.longitude === 0 ||
+             Math.abs(p.latitude) > 90 || Math.abs(p.longitude) > 180
     );
   }, [properties]);
+
+  // Fetch cached geocodes for properties without coords
+  const { data: cachedGeocodes = [] } = usePropertyGeocodes(
+    propertiesWithoutCoords.map(p => p.codigo)
+  );
+
+  // Geocode mutation for properties not yet cached
+  const geocodeMutation = useGeocodeProperties();
+
+  // Merge properties with geocoded coordinates
+  const { withCoords, withApproximateCoords, withoutCoords, totalWithLocation, totalWithoutLocation } = useMemo(() => {
+    return mergePropertiesWithGeocodes(properties, cachedGeocodes);
+  }, [properties, cachedGeocodes]);
+
+  // Trigger geocoding for uncached properties (background task)
+  useEffect(() => {
+    const uncachedCodes = new Set(cachedGeocodes.map(g => g.property_code));
+    const toGeocode = propertiesWithoutCoords.filter(p => !uncachedCodes.has(p.codigo));
+    
+    if (toGeocode.length > 0 && !geocodeMutation.isPending) {
+      console.log(`[PropertyMap] Triggering geocode for ${toGeocode.length} uncached properties`);
+      geocodeMutation.mutate(toGeocode.map(p => ({
+        codigo: p.codigo,
+        endereco: p.endereco,
+        bairro: p.bairro,
+        cidade: p.cidade,
+      })));
+    }
+  }, [propertiesWithoutCoords, cachedGeocodes, geocodeMutation]);
+
+  // All properties to display on map
+  const propertiesWithCoords = useMemo(() => {
+    if (showApproximate) {
+      return [...withCoords, ...withApproximateCoords];
+    }
+    return withCoords;
+  }, [withCoords, withApproximateCoords, showApproximate]);
 
   // Create popup HTML content
   const createPopupContent = useCallback((property: ImoviewProperty) => {
@@ -49,16 +89,20 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     const imageUrl = property.fotos?.[0]?.url || '/placeholder.svg';
     const finalidadeLabel = isRental ? 'Aluguel' : 'Venda';
     const finalidadeClass = isRental ? 'bg-blue-500' : 'bg-emerald-500';
+    const isApproximate = (property as any)._isApproximate === true;
+    const geocodedAddress = (property as any)._geocodedAddress;
 
     return `
       <div class="property-popup">
         <div class="popup-image-container">
           <img src="${imageUrl}" alt="${property.titulo || 'Imóvel'}" class="popup-image" />
           <span class="popup-badge ${finalidadeClass}">${finalidadeLabel}</span>
+          ${isApproximate ? '<span class="popup-badge bg-amber-500" style="right: auto; left: 8px;">Loc. aproximada</span>' : ''}
         </div>
         <div class="popup-content">
           <h3 class="popup-title">${property.titulo || 'Imóvel'}</h3>
           <p class="popup-location">${property.bairro || ''}${property.bairro && property.cidade ? ', ' : ''}${property.cidade || ''}</p>
+          ${isApproximate && geocodedAddress ? `<p class="popup-location text-xs opacity-70">${geocodedAddress}</p>` : ''}
           <div class="popup-features">
             ${property.qtdeQuartos ? `<span>${property.qtdeQuartos} quarto${property.qtdeQuartos > 1 ? 's' : ''}</span>` : ''}
             ${property.qtdeVagas ? `<span>${property.qtdeVagas} vaga${property.qtdeVagas > 1 ? 's' : ''}</span>` : ''}
@@ -272,7 +316,11 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
 
     propertiesWithCoords.forEach((property) => {
       const isRental = property.finalidade === 1;
-      const color = isRental ? '#3b82f6' : '#10b981'; // blue for rental, green for sale
+      const isApproximate = (property as any)._isApproximate === true;
+      
+      // Color: blue for rental, green for sale, with amber border for approximate
+      const color = isRental ? '#3b82f6' : '#10b981';
+      const borderColor = isApproximate ? '#f59e0b' : 'white';
 
       // Create custom marker element with container for stable hover
       const el = document.createElement('div');
@@ -292,7 +340,7 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
         width: 24px;
         height: 24px;
         background-color: ${color};
-        border: 3px solid white;
+        border: 3px solid ${borderColor};
         border-radius: 50%;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -383,7 +431,7 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       
       {/* Drawing toolbar */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-        {/* Properties count */}
+        {/* Properties count with transparency info */}
         <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border shadow-lg">
           {hasArea && filteredCount !== null ? (
             <p className="text-sm text-foreground">
@@ -391,10 +439,63 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
               <span className="text-muted-foreground"> de {propertiesWithCoords.length} imóveis na área</span>
             </p>
           ) : (
-            <p className="text-sm text-foreground">
-              <span className="font-semibold text-primary">{propertiesWithCoords.length}</span>
-              <span className="text-muted-foreground"> de {properties.length} imóveis no mapa</span>
-            </p>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm text-foreground">
+                  <span className="font-semibold text-primary">{propertiesWithCoords.length}</span>
+                  <span className="text-muted-foreground"> imóveis no mapa</span>
+                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      <p className="text-xs">
+                        O mapa exibe apenas imóveis com coordenadas de localização. 
+                        {totalWithoutLocation > 0 && ` ${totalWithoutLocation} imóveis não possuem localização na fonte de dados.`}
+                        {withApproximateCoords.length > 0 && ` ${withApproximateCoords.length} possuem localização aproximada.`}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              
+              {/* Detailed breakdown */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  {withCoords.length} com localização
+                </span>
+                {withApproximateCoords.length > 0 && (
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    {withApproximateCoords.length} aproximada
+                    <button
+                      onClick={() => setShowApproximate(!showApproximate)}
+                      className="ml-1 text-primary hover:underline"
+                    >
+                      ({showApproximate ? 'ocultar' : 'mostrar'})
+                    </button>
+                  </span>
+                )}
+                {totalWithoutLocation > 0 && (
+                  <span className="flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                    {totalWithoutLocation} sem localização
+                  </span>
+                )}
+              </div>
+              
+              {/* Geocoding status */}
+              {geocodeMutation.isPending && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  Buscando localizações...
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -457,15 +558,21 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
 
       {/* Legend */}
       <div className="absolute bottom-4 left-4 z-10 bg-card/90 backdrop-blur-sm rounded-lg px-4 py-3 border border-border shadow-lg">
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
+            <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
             <span className="text-muted-foreground">Venda</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white" />
             <span className="text-muted-foreground">Aluguel</span>
           </div>
+          {withApproximateCoords.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-amber-500" />
+              <span className="text-muted-foreground">Loc. aproximada</span>
+            </div>
+          )}
         </div>
       </div>
 
