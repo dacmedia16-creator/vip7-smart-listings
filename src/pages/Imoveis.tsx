@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -304,15 +304,23 @@ export default function Imoveis() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Reset bairro when cidade changes
+  // Reset bairro/condomínios quando a cidade REALMENTE muda (não no primeiro load)
+  const prevCidadeRef = useRef<string>('');
   useEffect(() => {
-    if (cidade) {
+    const prev = prevCidadeRef.current;
+    prevCidadeRef.current = cidade;
+
+    // Se ainda não havia cidade (primeiro render), não mexe na URL
+    if (!prev) return;
+
+    if (cidade && prev !== cidade) {
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('bairro');
-      newParams.delete('condominio');
+      newParams.delete('condominios');
+      newParams.delete('pagina');
       setSearchParams(newParams);
     }
-  }, [cidade]);
+  }, [cidade, searchParams, setSearchParams]);
 
   const updateFilter = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams);
