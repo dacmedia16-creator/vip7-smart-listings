@@ -285,8 +285,19 @@ serve(async (req) => {
         const pagina = Number(params?.pagina ?? 1);
         const numeroregistros = Math.min(Number(params?.limite ?? 20), 20); // API Imoview limita a 20 registros
 
-        // Log do tipo recebido para debug
-        console.log(`[imoview-api] listarImoveis - tipo recebido: ${params?.tipo} (${typeof params?.tipo})`);
+        // Log detalhado para debug
+        console.log(`[imoview-api] === listarImoveis ===`);
+        console.log(`[imoview-api] Params recebidos: ${JSON.stringify(params)}`);
+        
+        // Bairros - aceitar tanto singular quanto plural (array ou CSV)
+        // O frontend envia codigosBairros como string CSV "1,2,3"
+        const codigosBairrosCSV = params?.codigosBairros 
+          ? String(params.codigosBairros) 
+          : params?.codigoBairro 
+            ? String(params.codigoBairro) 
+            : undefined;
+        
+        console.log(`[imoview-api] codigosBairros (CSV): "${codigosBairrosCSV}"`);
         
         // Nomes de parâmetros conforme documentação da API Imoview
         const listarImoveisBody: Record<string, unknown> = {
@@ -302,11 +313,15 @@ serve(async (req) => {
           codigocidade: params?.codigoCidade,
           cidade: !params?.codigoCidade ? params?.cidade : undefined, // Só usa nome se não tiver código
           
-          // Bairro - enviar MÚLTIPLOS formatos para maximizar chance de funcionar
-          // A API pode usar codigobairro (singular) ou codigosbairros (plural como CSV)
-          codigobairro: params?.codigoBairro,
-          codigosbairros: params?.codigoBairro ? String(params.codigoBairro) : undefined, // Plural como string
-          bairro: !params?.codigoBairro ? params?.bairro : undefined, // Só usa nome se não tiver código
+          // Bairro - enviar AMBOS os formatos para maximizar chance de funcionar
+          // Primeiro código se for singular, senão pegar do CSV
+          codigobairro: codigosBairrosCSV?.includes(',') 
+            ? undefined 
+            : (codigosBairrosCSV ? Number(codigosBairrosCSV) : undefined),
+          // CSV de códigos para múltiplos bairros
+          codigosbairros: codigosBairrosCSV,
+          // Nome do bairro só se não tiver código
+          bairro: !codigosBairrosCSV && !params?.codigoBairro ? params?.bairro : undefined,
           
           // Valores
           valorde: params?.valorMin,
@@ -320,8 +335,6 @@ serve(async (req) => {
           // Ordenação
           ordenacao: params?.ordenarPor,
         };
-        
-        console.log(`[imoview-api] listarImoveis - codigoBairro: ${params?.codigoBairro}, codigosbairros: ${params?.codigoBairro ? String(params.codigoBairro) : undefined}, bairro: ${params?.bairro}`);
 
         // Suporte a código numérico de condomínio (codigocondominio)
         if (params?.codigoCondominio) {
@@ -335,7 +348,7 @@ serve(async (req) => {
         }
 
         const cleaned = removeNullValues(listarImoveisBody);
-        console.log('[imoview-api] listarImoveis body:', JSON.stringify(cleaned));
+        console.log('[imoview-api] listarImoveis body FINAL:', JSON.stringify(cleaned));
         body = JSON.stringify(cleaned);
         break;
       }
