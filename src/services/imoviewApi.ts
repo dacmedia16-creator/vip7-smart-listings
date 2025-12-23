@@ -208,13 +208,17 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           // Construir filtro explicitamente para garantir que todos os parâmetros estão presentes
           const pageFilter: Record<string, unknown> = {
             finalidade: filters.finalidade,
-            codigoCidade, // Usar o parâmetro da cidade
             codigoCondominio,
             valorMin: filters.valorMin,
             valorMax: filters.valorMax,
             limite: PAGE_SIZE,
             pagina,
           };
+          
+          // Adicionar cidade APENAS se definida (> 0)
+          if (codigoCidade > 0) {
+            pageFilter.codigoCidade = codigoCidade;
+          }
           
           // Adicionar tipo APENAS se definido (evitar undefined)
           if (tipo !== undefined) {
@@ -260,14 +264,15 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       const seenCodigos = new Set<number>();
       const batchSize = 3; // OTIMIZADO: reduzido de 6 para 3 para evitar sobrecarga
       if (condominiosSelecionados.length > 0) {
-        console.log('[imoview-service] Multi-fetch: iterando sobre condomínios');
+        if (isDev) console.log('[imoview-service] Multi-fetch: iterando sobre condomínios');
         
-        // Para cada cidade, buscar todos os condomínios selecionados
-        for (const codigoCidade of codigosCidadesFiltro) {
+        // CASO: Condomínios selecionados SEM cidade - buscar diretamente pelo condomínio
+        // A API Imoview aceita codigoCondominio sem necessidade de codigoCidade
+        if (codigosCidadesFiltro.length === 0) {
           for (let i = 0; i < condominiosSelecionados.length; i += batchSize) {
             const batch = condominiosSelecionados.slice(i, i + batchSize);
             const results = await Promise.all(
-              batch.map((condo) => fetchAll(codigoCidade, condo, tipoParaFiltro))
+              batch.map((condo) => fetchAll(0, condo, tipoParaFiltro)) // cidade 0 = sem filtro de cidade
             );
 
             for (const lista of results) {
@@ -275,6 +280,25 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
                 if (!seenCodigos.has(imovel.codigo)) {
                   seenCodigos.add(imovel.codigo);
                   combinedList.push(imovel);
+                }
+              }
+            }
+          }
+        } else {
+          // CASO: Condomínios COM cidade(s) - buscar combinação
+          for (const codigoCidade of codigosCidadesFiltro) {
+            for (let i = 0; i < condominiosSelecionados.length; i += batchSize) {
+              const batch = condominiosSelecionados.slice(i, i + batchSize);
+              const results = await Promise.all(
+                batch.map((condo) => fetchAll(codigoCidade, condo, tipoParaFiltro))
+              );
+
+              for (const lista of results) {
+                for (const imovel of lista) {
+                  if (!seenCodigos.has(imovel.codigo)) {
+                    seenCodigos.add(imovel.codigo);
+                    combinedList.push(imovel);
+                  }
                 }
               }
             }
