@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
+import { BairroMultiSelect } from '@/components/BairroMultiSelect';
 import { useImoveis, useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
 import { useImoveisMap } from '@/hooks/useImoveisMap';
 import { getFinalidadeCode, contarImoveisPorCondominio } from '@/services/imoviewApi';
@@ -22,7 +23,7 @@ export default function Imoveis() {
   const finalidade = searchParams.get('finalidade') || '';
   const tipo = searchParams.get('tipo') || '';
   const cidade = searchParams.get('cidade') || '';
-  const bairro = searchParams.get('bairro') || '';
+  const bairrosParam = searchParams.get('bairros') || ''; // Comma-separated list of bairro names
   const condominiosCodes = searchParams.get('condominios') || ''; // Comma-separated list
   const ordenar = searchParams.get('ordenar') || 'recentes';
   const paginaAtual = Number(searchParams.get('pagina')) || 1;
@@ -52,6 +53,11 @@ export default function Imoveis() {
     return condominiosCodes ? condominiosCodes.split(',').filter(Boolean) : [];
   }, [condominiosCodes]);
 
+  // Parse bairros from URL (comma-separated string to array)
+  const bairrosArray = useMemo(() => {
+    return bairrosParam ? bairrosParam.split(',').filter(Boolean) : [];
+  }, [bairrosParam]);
+
   const finalidadeCode = getFinalidadeCode(finalidade);
 
   // Fetch data from API
@@ -68,13 +74,16 @@ export default function Imoveis() {
   const { data: bairros = [] } = useBairros(cidade || undefined, codigoCidade, finalidadeCode);
   const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominios(cidade || undefined, finalidadeCode);
 
-  // Converter nome de bairro para código (API filtra melhor por código)
-  const codigoBairro = useMemo(() => {
-    if (!bairro) return undefined;
-    const bairroEncontrado = bairros.find(b => b.nome.toLowerCase() === bairro.toLowerCase());
-    console.log(`[Imoveis] Bairro "${bairro}" -> código: ${bairroEncontrado?.codigo}`);
-    return bairroEncontrado?.codigo;
-  }, [bairro, bairros]);
+  // Converter nomes de bairros para códigos (API filtra melhor por código)
+  const codigosBairros = useMemo(() => {
+    if (bairrosArray.length === 0) return undefined;
+    const codigos = bairrosArray.map(nome => {
+      const bairroEncontrado = bairros.find(b => b.nome.toLowerCase() === nome.toLowerCase());
+      return bairroEncontrado?.codigo;
+    }).filter((c): c is number => c !== undefined);
+    console.log(`[Imoveis] Bairros "${bairrosArray.join(', ')}" -> códigos: ${codigos.join(', ')}`);
+    return codigos.length > 0 ? codigos : undefined;
+  }, [bairrosArray, bairros]);
 
   // Cache de contagens de imóveis por condomínio
   const [condominiosContagem, setCondominiosContagem] = useState<Record<number, number>>({});
@@ -147,8 +156,8 @@ export default function Imoveis() {
     tipo: tipo || undefined,
     cidade: cidade || undefined,
     codigoCidade: codigoCidade,
-    bairro: bairro || undefined,
-    codigoBairro: codigoBairro, // Código numérico do bairro (funciona melhor na API)
+    bairros: bairrosArray.length > 0 ? bairrosArray : undefined,
+    codigosBairros: codigosBairros, // Códigos numéricos dos bairros (funciona melhor na API)
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,
@@ -164,8 +173,8 @@ export default function Imoveis() {
       tipo,
       cidade,
       codigoCidade,
-      bairro,
-      codigoBairro,
+      bairrosArray,
+      codigosBairros,
       condominiosCodes,
       valorMinFiltro,
       valorMaxFiltro,
@@ -188,8 +197,8 @@ export default function Imoveis() {
     tipo: tipo || undefined,
     cidade: cidade || undefined,
     codigoCidade: codigoCidade,
-    bairro: bairro || undefined,
-    codigoBairro: codigoBairro,
+    bairros: bairrosArray.length > 0 ? bairrosArray : undefined,
+    codigosBairros: codigosBairros,
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,
@@ -328,7 +337,7 @@ export default function Imoveis() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Reset bairro/condomínios quando a cidade REALMENTE muda (não no primeiro load)
+  // Reset bairros/condomínios quando a cidade REALMENTE muda (não no primeiro load)
   const prevCidadeRef = useRef<string>('');
   useEffect(() => {
     const prev = prevCidadeRef.current;
@@ -339,7 +348,7 @@ export default function Imoveis() {
 
     if (cidade && prev !== cidade) {
       const newParams = new URLSearchParams(searchParams);
-      newParams.delete('bairro');
+      newParams.delete('bairros');
       newParams.delete('condominios');
       newParams.delete('pagina');
       setSearchParams(newParams);
@@ -369,7 +378,19 @@ export default function Imoveis() {
       newParams.delete('pagina');
       setSearchParams(newParams);
     }
-  }, [finalidade, tipo, cidade, bairro, condominiosCodes, ordenar, busca]);
+  }, [finalidade, tipo, cidade, bairrosParam, condominiosCodes, ordenar, busca]);
+
+  // Handler for updating bairros (multi-select)
+  const updateBairros = (values: string[]) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (values.length > 0) {
+      newParams.set('bairros', values.join(','));
+    } else {
+      newParams.delete('bairros');
+    }
+    newParams.delete('pagina'); // Reset page on filter change
+    setSearchParams(newParams);
+  };
 
   // Handler for updating condominios (multi-select)
   const updateCondominios = (values: string[]) => {
@@ -396,7 +417,8 @@ export default function Imoveis() {
     else if (finalidade === 'aluguel') parts.push('para Alugar');
 
     if (cidade) parts.push(`em ${cidade}`);
-    if (bairro) parts.push(`- ${bairro}`);
+    if (bairrosArray.length === 1) parts.push(`- ${bairrosArray[0]}`);
+    else if (bairrosArray.length > 1) parts.push(`- ${bairrosArray.length} bairros`);
 
     return parts.join(' ');
   };
@@ -608,20 +630,18 @@ export default function Imoveis() {
                   </Select>
                 </div>
 
-                {/* Bairro */}
+                {/* Bairros (Multi-Select) */}
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">Bairro</h3>
-                  <Select value={bairro || "all"} onValueChange={(v) => updateFilter('bairro', v === "all" ? "" : v)} disabled={!cidade}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder={cidade ? "Selecione" : "Selecione a cidade"} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      <SelectItem value="all">Todos</SelectItem>
-                      {bairros.map((b) => (
-                        <SelectItem key={b.codigo || b.nome} value={b.nome || `bairro-${b.codigo}`}>{b.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <h3 className="font-semibold text-foreground">Bairros</h3>
+                  <BairroMultiSelect
+                    bairros={bairros}
+                    values={bairrosArray}
+                    onValuesChange={updateBairros}
+                    placeholder={cidade ? "Todos os bairros" : "Selecione a cidade"}
+                    disabled={!cidade}
+                    triggerClassName="bg-secondary border-border"
+                    maxSelections={10}
+                  />
                 </div>
 
                 {/* Condomínios (Multi-Select) */}

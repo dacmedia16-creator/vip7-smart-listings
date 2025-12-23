@@ -37,8 +37,10 @@ export interface ImoviewFilters {
   tipo?: string | number;
   cidade?: string;
   codigoCidade?: number; // Código numérico da cidade
-  bairro?: string;
-  codigoBairro?: number; // Código numérico do bairro (API filtra melhor por código)
+  bairro?: string; // Deprecated: use bairros[]
+  bairros?: string[]; // Array de nomes de bairros
+  codigoBairro?: number; // Deprecated: use codigosBairros[]
+  codigosBairros?: number[]; // Array de códigos de bairros (API filtra melhor por código)
   codigoCondominio?: number; // Código numérico do condomínio (single)
   codigosCondominio?: number[]; // Array de códigos de condomínios (multi-select)
   valorMin?: number;
@@ -100,15 +102,17 @@ function normalizeString(str: string): string {
 }
 
 /**
- * Verifica se o bairro do imóvel corresponde ao filtro
+ * Verifica se o bairro do imóvel corresponde a QUALQUER um dos bairros no filtro
  * Usa "contém" para aceitar variações como "Campolim" -> "Parque Campolim"
  */
-function matchesBairroFilter(imovelBairro: string | undefined, filtroBairro: string): boolean {
+function matchesBairroFilter(imovelBairro: string | undefined, filtrosBairros: string[]): boolean {
   if (!imovelBairro) return false;
   const normalizedImovel = normalizeString(imovelBairro);
-  const normalizedFiltro = normalizeString(filtroBairro);
-  // Aceita se o bairro do imóvel contém o filtro OU vice-versa
-  return normalizedImovel.includes(normalizedFiltro) || normalizedFiltro.includes(normalizedImovel);
+  // Aceita se o bairro do imóvel corresponde a QUALQUER bairro do filtro
+  return filtrosBairros.some(filtroBairro => {
+    const normalizedFiltro = normalizeString(filtroBairro);
+    return normalizedImovel.includes(normalizedFiltro) || normalizedFiltro.includes(normalizedImovel);
+  });
 }
 
 export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
@@ -120,9 +124,11 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           ? [filters.codigoCondominio]
           : [];
 
-    // Capturar bairro para filtro client-side (a API ignora bairro frequentemente)
-    const bairroFiltro = filters.bairro?.trim() || '';
-    const needsClientSideBairroFilter = bairroFiltro.length > 0;
+    // Capturar bairros para filtro client-side (a API ignora bairro frequentemente)
+    const bairrosFiltro = filters.bairros && filters.bairros.length > 0 
+      ? filters.bairros.map(b => b.trim()).filter(Boolean)
+      : filters.bairro?.trim() ? [filters.bairro.trim()] : [];
+    const needsClientSideBairroFilter = bairrosFiltro.length > 0;
 
     // Mapear filtros de tipo "de vitrine" (Casa/Apartamento/Terreno/Comercial) para códigos reais do Imoview
     const tipoNormalized = typeof filters.tipo === 'string' ? filters.tipo.trim().toLowerCase() : null;
@@ -232,8 +238,8 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       // Aplicar filtro client-side de bairro (API frequentemente ignora)
       let filteredList = combinedList;
       if (needsClientSideBairroFilter) {
-        filteredList = combinedList.filter(imovel => matchesBairroFilter(imovel.bairro, bairroFiltro));
-        console.log(`[imoview-service] Filtro bairro client-side: ${combinedList.length} -> ${filteredList.length} (filtro: "${bairroFiltro}")`);
+        filteredList = combinedList.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
+        console.log(`[imoview-service] Filtro bairros client-side: ${combinedList.length} -> ${filteredList.length} (filtros: "${bairrosFiltro.join(', ')}")`);
       }
 
       // Aplicar ordenação se necessário
@@ -265,7 +271,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
     // Se precisa filtrar por bairro no cliente, buscar TODAS as páginas
     if (needsClientSideBairroFilter) {
-      console.log(`[imoview-service] Bairro filter detected ("${bairroFiltro}"), fetching all pages for client-side filtering...`);
+      console.log(`[imoview-service] Bairros filter detected ("${bairrosFiltro.join(', ')}"), fetching all pages for client-side filtering...`);
       const PAGE_SIZE = 20;
       const MAX_PAGES = 100;
       const allProperties: ImoviewProperty[] = [];
@@ -309,9 +315,9 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
       console.log(`[imoview-service] Fetched ${allProperties.length} properties from ${pagina} pages`);
 
-      // Aplicar filtro de bairro client-side
-      const filteredByBairro = allProperties.filter(imovel => matchesBairroFilter(imovel.bairro, bairroFiltro));
-      console.log(`[imoview-service] After bairro filter: ${filteredByBairro.length} of ${allProperties.length} (filter: "${bairroFiltro}")`);
+      // Aplicar filtro de bairro client-side (qualquer um dos bairros selecionados)
+      const filteredByBairro = allProperties.filter(imovel => matchesBairroFilter(imovel.bairro, bairrosFiltro));
+      console.log(`[imoview-service] After bairros filter: ${filteredByBairro.length} of ${allProperties.length} (filters: "${bairrosFiltro.join(', ')}")`);
 
       // Aplicar ordenação
       if (filters.ordenarPor === 'valor_asc') {
