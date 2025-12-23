@@ -16,7 +16,7 @@ export function useImoveis(filters: ImoviewFilters = {}) {
   return useQuery({
     queryKey: ['imoveis', filters],
     queryFn: () => listarImoveis(filters),
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    staleTime: 0, // sempre refetch (evita cache segurar resultado antigo após ajustes de filtros)
   });
 }
 
