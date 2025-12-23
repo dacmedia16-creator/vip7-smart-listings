@@ -651,7 +651,7 @@ export default function Imoveis() {
                     placeholder={cidade ? "Todos os bairros" : "Selecione a cidade"}
                     disabled={!cidade}
                     triggerClassName="bg-secondary border-border"
-                    maxSelections={10}
+                    maxSelections={50}
                   />
                 </div>
 
@@ -727,7 +727,7 @@ export default function Imoveis() {
                     placeholder="Todos os condomínios"
                     isLoading={isLoadingCondominios || isLoadingContagem}
                     triggerClassName="bg-secondary border-border"
-                    maxSelections={10}
+                    maxSelections={50}
                   />
                 </div>
 
