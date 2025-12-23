@@ -181,7 +181,12 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     const needsMultiFetch = condominiosSelecionados.length > 0;
 
     if (needsMultiFetch) {
+      // Para tipos, usar apenas o primeiro código se disponível
+      const tipoParaFiltro = tipoValues.length > 0 ? tipoValues[0] : undefined;
+      
       console.log('[imoview-service] Modo MULTI-FETCH para condomínios');
+      console.log('[imoview-service] tipoParaFiltro:', tipoParaFiltro, '(de tipoValues:', tipoValues, ')');
+      
       const PAGE_SIZE = 20;
       const MAX_PAGES = 200;
 
@@ -192,21 +197,30 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
         let total: number | undefined;
 
         for (;;) {
-          // Remover tipo string do spread e usar codigoTipo conforme API Imoview
-          const { tipo: _ignoredTipo, codigosCondominio: _ignored, bairros: _ignoredBairros, codigosBairros: _ignoredCodBairros, ...filtersWithoutTipo } = filters;
-          const pageFilter = {
-            ...filtersWithoutTipo,
-            codigoTipo: tipo, // código numérico conforme API
+          // Construir filtro explicitamente para garantir que todos os parâmetros estão presentes
+          const pageFilter: Record<string, unknown> = {
+            finalidade: filters.finalidade,
+            codigoCidade: filters.codigoCidade,
             codigoCondominio,
-            // Enviar códigos de bairros como string CSV para API
-            codigosBairros: codigosBairrosFiltro.length > 0 ? codigosBairrosFiltro.join(',') : undefined,
             limite: PAGE_SIZE,
             pagina,
           };
+          
+          // Adicionar tipo APENAS se definido (evitar undefined)
+          if (tipo !== undefined) {
+            pageFilter.codigoTipo = tipo;
+          }
+          
+          // Adicionar bairros APENAS se definido
+          if (codigosBairrosFiltro.length > 0) {
+            pageFilter.codigosBairros = codigosBairrosFiltro.join(',');
+          }
+          
+          console.log('[imoview-service] Multi-fetch request:', JSON.stringify(pageFilter));
 
           const data = await callImoviewApi<ImoviewProperty[] | { lista?: ImoviewProperty[]; quantidade?: number }>(
             'listarImoveis',
-            pageFilter as Record<string, unknown>
+            pageFilter
           );
 
           const lista = Array.isArray(data) ? data : data?.lista || [];
@@ -235,8 +249,6 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       };
 
       const condominiosLoop = condominiosSelecionados;
-      // Para tipos, usar apenas o primeiro código se disponível
-      const tipoParaFiltro = tipoValues.length > 0 ? tipoValues[0] : undefined;
 
       const combinedList: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
@@ -290,17 +302,29 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
     // Chamada simples: enviar apenas o PRIMEIRO código numérico do tipo
     // A filtragem refinada será feita no cliente via matchesTipoFiltro()
-    // Remover tipo string do spread e usar codigoTipo conforme API Imoview
-    const { tipo: _ignoredTipo, bairros: _ignoredBairros, codigosBairros: _ignoredCodBairros, ...filtersWithoutTipo } = filters;
-    const simpleFilters = {
-      ...filtersWithoutTipo,
-      // IMPORTANTE: Enviar APENAS o primeiro código de tipo - API não suporta CSV confiável
-      codigoTipo: tipoValues.length > 0 ? tipoValues[0] : undefined,
-      // Enviar códigos de bairros como string CSV para API
-      codigosBairros: codigosBairrosFiltro.length > 0 ? codigosBairrosFiltro.join(',') : undefined,
+    const tipoParaFiltroSimples = tipoValues.length > 0 ? tipoValues[0] : undefined;
+    
+    // Construir filtro explicitamente para garantir que todos os parâmetros estão presentes
+    const simpleFilters: Record<string, unknown> = {
+      finalidade: filters.finalidade,
+      codigoCidade: filters.codigoCidade,
+      limite: filters.limite,
+      pagina: filters.pagina,
+      ordenarPor: filters.ordenarPor,
     };
+    
+    // Adicionar tipo APENAS se definido
+    if (tipoParaFiltroSimples !== undefined) {
+      simpleFilters.codigoTipo = tipoParaFiltroSimples;
+    }
+    
+    // Adicionar bairros APENAS se definido
+    if (codigosBairrosFiltro.length > 0) {
+      simpleFilters.codigosBairros = codigosBairrosFiltro.join(',');
+    }
 
-    console.log(`[imoview-service] Chamada simples com codigoTipo: ${simpleFilters.codigoTipo}, codigosBairros: ${simpleFilters.codigosBairros}`);
+    console.log(`[imoview-service] Chamada simples - tipoParaFiltro: ${tipoParaFiltroSimples}, tipoValues: [${tipoValues.join(', ')}]`);
+    console.log(`[imoview-service] Chamada simples com filtros:`, JSON.stringify(simpleFilters));
 
     // Se precisa filtrar por bairro no cliente E não temos códigos para API, buscar TODAS as páginas
     if (needsClientSideBairroFilter && codigosBairrosFiltro.length === 0) {
