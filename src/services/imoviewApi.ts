@@ -444,9 +444,25 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       }
     }
     
+    // Validador client-side: se há filtro de bairro ativo, garantir que só mostramos imóveis desses bairros
+    let finalList = resultList;
+    if (bairrosFiltro.length > 0 && resultList.length > 0) {
+      const filtered = resultList.filter((imovel) => {
+        // Usar a função existente que já trata normalização e variações
+        return matchesBairroFilter(imovel.bairro, bairrosFiltro);
+      });
+      
+      if (filtered.length !== resultList.length) {
+        console.warn(
+          `[imoview-service] VALIDADOR: Removidos ${resultList.length - filtered.length} imóveis fora dos bairros selecionados (${bairrosFiltro.join(', ')})`
+        );
+        finalList = filtered;
+      }
+    }
+    
     return {
-      lista: resultList,
-      quantidade: resultQuantidade,
+      lista: finalList,
+      quantidade: finalList.length !== resultList.length ? finalList.length : resultQuantidade,
     };
   } catch (error) {
     console.error('[imoview-service] listarImoveis error:', error);

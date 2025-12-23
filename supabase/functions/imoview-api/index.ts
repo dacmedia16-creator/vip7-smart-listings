@@ -313,16 +313,9 @@ serve(async (req) => {
           codigocidade: params?.codigoCidade,
           cidade: !params?.codigoCidade ? params?.cidade : undefined, // Só usa nome se não tiver código
           
-          // IMPORTANTE: Enviar APENAS um formato de bairro para evitar conflitos na API
-          // Se CSV tem vírgula (múltiplos) -> usar codigosbairros
-          // Se CSV não tem vírgula (único) -> usar codigobairro
-          // NUNCA enviar ambos ao mesmo tempo
-          codigobairro: codigosBairrosCSV && !codigosBairrosCSV.includes(',') 
-            ? Number(codigosBairrosCSV) 
-            : undefined,
-          codigosbairros: codigosBairrosCSV?.includes(',') 
-            ? codigosBairrosCSV 
-            : undefined,
+          // IMPORTANTE: Sempre usar codigosbairros (plural) - a API ignora codigobairro (singular)
+          // Mesmo para 1 bairro, enviar como CSV (ex: "16")
+          codigosbairros: codigosBairrosCSV || undefined,
           // Nome do bairro só se não tiver código
           bairro: !codigosBairrosCSV && !params?.codigoBairro ? params?.bairro : undefined,
           
