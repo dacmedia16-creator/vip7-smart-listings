@@ -36,8 +36,10 @@ export interface ImoviewFilters {
    * Mantemos string | number para compatibilidade com a UI baseada em texto.
    */
   tipo?: string | number;
-  cidade?: string;
-  codigoCidade?: number; // Código numérico da cidade
+  cidade?: string; // Deprecated: use cidades[]
+  cidades?: string[]; // Array de nomes de cidades (multi-select)
+  codigoCidade?: number; // Deprecated: use codigosCidades[]
+  codigosCidades?: number[]; // Array de códigos numéricos das cidades (multi-select)
   bairro?: string; // Deprecated: use bairros[]
   bairros?: string[]; // Array de nomes de bairros
   codigoBairro?: number; // Deprecated: use codigosBairros[]
@@ -128,6 +130,11 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           ? [filters.codigoCondominio]
           : [];
 
+    // Capturar cidades para filtro - suporte a múltiplas cidades
+    const codigosCidadesFiltro = filters.codigosCidades && filters.codigosCidades.length > 0
+      ? filters.codigosCidades
+      : typeof filters.codigoCidade === 'number' ? [filters.codigoCidade] : [];
+    
     // Capturar bairros para filtro - ENVIAR CÓDIGOS para API (mais confiável)
     const bairrosFiltro = filters.bairros && filters.bairros.length > 0 
       ? filters.bairros.map(b => b.trim()).filter(Boolean)
@@ -139,7 +146,9 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       : [];
     
     const needsClientSideBairroFilter = bairrosFiltro.length > 0;
+    const needsMultiCityFetch = codigosCidadesFiltro.length > 1;
     
+    console.log('[imoview-service] Cidades (códigos):', codigosCidadesFiltro);
     console.log('[imoview-service] Bairros (nomes):', bairrosFiltro);
     console.log('[imoview-service] Bairros (códigos):', codigosBairrosFiltro);
     console.log('[imoview-service] Condomínios selecionados:', condominiosSelecionados);
@@ -176,9 +185,8 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
 
     console.log(`[imoview-service] Tipo original: "${filters.tipo}" -> Códigos: [${tipoValues.join(', ')}]`);
 
-    // Multi-fetch APENAS para múltiplos condomínios selecionados
-    // Para tipos, enviamos apenas o PRIMEIRO código numérico e confiamos na filtragem do cliente
-    const needsMultiFetch = condominiosSelecionados.length > 0;
+    // Multi-fetch para múltiplos condomínios OU múltiplas cidades
+    const needsMultiFetch = condominiosSelecionados.length > 0 || needsMultiCityFetch;
 
     if (needsMultiFetch) {
       // Para tipos, usar apenas o primeiro código se disponível
@@ -200,7 +208,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
           // Construir filtro explicitamente para garantir que todos os parâmetros estão presentes
           const pageFilter: Record<string, unknown> = {
             finalidade: filters.finalidade,
-            codigoCidade: filters.codigoCidade,
+            codigoCidade: codigosCidadesFiltro[0], // Usar primeiro código de cidade
             codigoCondominio,
             valorMin: filters.valorMin,
             valorMax: filters.valorMax,
