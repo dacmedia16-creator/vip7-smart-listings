@@ -78,14 +78,28 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
 
   // Build fotos array from urlfotoprincipal and existing fotos
   const fotos: Array<{ url: string; descricao?: string }> = [];
-  if (raw.urlfotoprincipal && typeof raw.urlfotoprincipal === 'string') {
-    fotos.push({ url: raw.urlfotoprincipal, descricao: 'Foto principal' });
+  const fotoPrincipalUrl = raw.urlfotoprincipal && typeof raw.urlfotoprincipal === 'string' 
+    ? raw.urlfotoprincipal 
+    : null;
+
+  // Adicionar foto principal primeiro
+  if (fotoPrincipalUrl) {
+    fotos.push({ url: fotoPrincipalUrl, descricao: 'Foto principal' });
   }
+
+  // Adicionar demais fotos, EXCLUINDO a foto principal para evitar duplicação
   if (Array.isArray(raw.fotos)) {
-    fotos.push(...raw.fotos.map((f: Record<string, unknown>) => ({
-      url: String(f.url || f.arquivo || ''),
-      descricao: String(f.descricao || '')
-    })));
+    fotos.push(...raw.fotos
+      .filter((f: Record<string, unknown>) => {
+        const fotoUrl = String(f.url || f.arquivo || '');
+        // Só adiciona se NÃO for igual à foto principal
+        return fotoUrl !== fotoPrincipalUrl;
+      })
+      .map((f: Record<string, unknown>) => ({
+        url: String(f.url || f.arquivo || ''),
+        descricao: String(f.descricao || '')
+      }))
+    );
   }
 
   // Parse area values
