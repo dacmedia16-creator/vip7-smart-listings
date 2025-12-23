@@ -704,7 +704,7 @@ export default function Imoveis() {
                             const newCodigos = condominiosDoBairro
                               .map(c => String(c.codigo))
                               .filter(codigo => !condominiosArray.includes(codigo));
-                            updateCondominios([...condominiosArray, ...newCodigos].slice(0, 10));
+                            updateCondominios([...condominiosArray, ...newCodigos].slice(0, 50));
                           }}
                         >
                           <Plus className="h-3 w-3 mr-1" />
