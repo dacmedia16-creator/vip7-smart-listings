@@ -163,10 +163,11 @@ serve(async (req) => {
           // Tipo de imóvel - aceita número, string numérica ou lista separada por vírgula
           codigoTipo: params?.codigoTipo || (typeof params?.tipo === 'number' ? params.tipo : undefined),
           
-          // Localização
+          // Localização - preferir códigos numéricos (API funciona melhor com eles)
           codigocidade: params?.codigoCidade,
-          cidade: params?.cidade,
-          bairro: params?.bairro,
+          cidade: !params?.codigoCidade ? params?.cidade : undefined, // Só usa nome se não tiver código
+          codigobairro: params?.codigoBairro,
+          bairro: !params?.codigoBairro ? params?.bairro : undefined, // Só usa nome se não tiver código
           
           // Valores
           valorde: params?.valorMin,
@@ -180,6 +181,8 @@ serve(async (req) => {
           // Ordenação
           ordenacao: params?.ordenarPor,
         };
+        
+        console.log(`[imoview-api] listarImoveis - codigoBairro: ${params?.codigoBairro}, bairro: ${params?.bairro}`);
 
         // Suporte a código numérico de condomínio (codigocondominio)
         if (params?.codigoCondominio) {
@@ -214,10 +217,13 @@ serve(async (req) => {
       case 'listarBairros':
         endpoint = '/Imovel/RetornarBairrosDisponiveis';
         method = 'POST';
+        // Preferir código da cidade se disponível (mais confiável para filtrar)
         body = JSON.stringify(removeNullValues({
-          cidade: params?.cidade,
+          codigocidade: params?.codigoCidade,
+          cidade: !params?.codigoCidade ? params?.cidade : undefined, // Só usa nome se não tiver código
           finalidade: params?.finalidade,
         }));
+        console.log(`[imoview-api] listarBairros - codigoCidade: ${params?.codigoCidade}, cidade: ${params?.cidade}`);
         break;
 
       case 'listarCondominios': {
