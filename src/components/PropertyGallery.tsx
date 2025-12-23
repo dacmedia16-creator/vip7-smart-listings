@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, X, ZoomIn, Grid3X3, Expand, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, ZoomIn, Grid3X3, Expand, Star } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface PropertyGalleryProps {
@@ -224,7 +225,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                     setTimeout(() => setIsAnimating(false), 300);
                   }}
                   className={cn(
-                    "flex-shrink-0 w-16 h-12 md:w-24 md:h-16 rounded-lg overflow-hidden border-2 transition-all duration-200",
+                    "flex-shrink-0 w-16 h-12 md:w-24 md:h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 relative",
                     index === currentImage
                       ? "border-primary ring-2 ring-primary/30 scale-105 opacity-100"
                       : "border-transparent opacity-50 hover:opacity-100 hover:border-border"
@@ -235,6 +236,11 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                     alt={`Miniatura ${index + 1}`} 
                     className="w-full h-full object-cover" 
                   />
+                  {index === 0 && (
+                    <div className="absolute top-0.5 left-0.5">
+                      <Star className="h-3 w-3 text-gold fill-gold drop-shadow-md" />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -272,7 +278,12 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                     setShowAllThumbnails(false);
                     setLightboxOpen(true);
                   }}
-                  className="aspect-[4/3] rounded-xl overflow-hidden border border-border hover:border-primary transition-all hover:scale-[1.02] hover:shadow-2xl group relative"
+                  className={cn(
+                    "aspect-[4/3] rounded-xl overflow-hidden border transition-all hover:scale-[1.02] hover:shadow-2xl group relative",
+                    index === 0 
+                      ? "border-gold/50 ring-2 ring-gold/20" 
+                      : "border-border hover:border-primary"
+                  )}
                 >
                   <img 
                     src={img} 
@@ -285,9 +296,16 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                       Ampliar
                     </span>
                   </div>
-                  <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium">
-                    {index + 1}
-                  </div>
+                  {index === 0 ? (
+                    <Badge className="absolute top-3 left-3 bg-gold text-gold-foreground flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-current" />
+                      Principal
+                    </Badge>
+                  ) : (
+                    <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium">
+                      {index + 1}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -351,10 +369,18 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
         )}
 
         {/* Image Counter Badge */}
-        <div className="absolute top-6 right-6 px-4 py-2 rounded-full bg-background/80 backdrop-blur-sm text-sm font-medium flex items-center gap-2">
-          <span className="text-primary font-bold">{currentImage + 1}</span>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-muted-foreground">{images.length}</span>
+        <div className="absolute top-6 right-6 flex items-center gap-2">
+          {currentImage === 0 && (
+            <Badge className="bg-gold text-gold-foreground flex items-center gap-1">
+              <Star className="h-3 w-3 fill-current" />
+              Principal
+            </Badge>
+          )}
+          <div className="px-4 py-2 rounded-full bg-background/80 backdrop-blur-sm text-sm font-medium flex items-center gap-2">
+            <span className="text-primary font-bold">{currentImage + 1}</span>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-muted-foreground">{images.length}</span>
+          </div>
         </div>
 
         {/* Bottom Thumbnail Strip */}
