@@ -13,7 +13,8 @@ import {
   Loader2,
   X,
   Home,
-  Building
+  Building,
+  Scale
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -21,18 +22,63 @@ import { Badge } from '@/components/ui/badge';
 import { PropertyGallery } from '@/components/PropertyGallery';
 import { PropertyLocationMap } from '@/components/PropertyLocationMap';
 import { PropertyVideo } from '@/components/PropertyVideo';
+import { PropertyBreadcrumb } from '@/components/PropertyBreadcrumb';
+import { SEOHead } from '@/components/SEOHead';
+import { PropertyJsonLd } from '@/components/PropertyJsonLd';
 import { useImovelDetalhes } from '@/hooks/useImoveis';
 import { formatPropertyValue } from '@/services/imoviewApi';
 import { generatePropertyWhatsAppMessage, generateWhatsAppLink } from '@/lib/formatters';
+import { useFavoritesContext } from '@/contexts/FavoritesContext';
+import { useCompareContext } from '@/contexts/CompareContext';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function ImovelDetail() {
   const { codigo } = useParams<{ codigo: string }>();
+  const { toast } = useToast();
 
   const { data: property, isLoading, error } = useImovelDetalhes(codigo);
+  const { isFavorite, toggleFavorite } = useFavoritesContext();
+  const { isInCompare, toggleCompare, canAddMore } = useCompareContext();
+
+  const propertyCode = property?.codigo || Number(codigo);
+  const isFav = isFavorite(propertyCode);
+  const isComparing = property ? isInCompare(propertyCode) : false;
+
+  const handleToggleFavorite = () => {
+    toggleFavorite(propertyCode);
+    toast({
+      title: isFav ? 'Removido dos favoritos' : 'Adicionado aos favoritos',
+      description: isFav 
+        ? 'Imóvel removido da sua lista' 
+        : 'Imóvel salvo na sua lista de favoritos',
+    });
+  };
+
+  const handleToggleCompare = () => {
+    if (property) {
+      if (!isComparing && !canAddMore) {
+        toast({
+          title: 'Limite atingido',
+          description: 'Você pode comparar no máximo 3 imóveis',
+          variant: 'destructive',
+        });
+        return;
+      }
+      toggleCompare(property);
+      toast({
+        title: isComparing ? 'Removido da comparação' : 'Adicionado para comparar',
+        description: isComparing 
+          ? 'Imóvel removido da comparação' 
+          : 'Imóvel adicionado para comparar',
+      });
+    }
+  };
 
   if (isLoading) {
     return (
       <Layout>
+        <SEOHead title="Carregando imóvel..." noIndex />
         <div className="pt-24 pb-16 flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
@@ -46,6 +92,7 @@ export default function ImovelDetail() {
   if (error || !property) {
     return (
       <Layout>
+        <SEOHead title="Imóvel não encontrado" noIndex />
         <div className="pt-24 pb-16 text-center min-h-[60vh] flex flex-col items-center justify-center">
           <Home className="h-16 w-16 text-muted-foreground mb-4" />
           <h1 className="text-2xl font-heading font-bold text-foreground mb-4">
@@ -65,11 +112,17 @@ export default function ImovelDetail() {
   const isRental = property.finalidade === 1; // API Imoview: 1 = Aluguel, 2 = Venda
   const whatsappMessage = generatePropertyWhatsAppMessage({ titulo: property.titulo, codigo: property.codigo });
   const whatsappLink = generateWhatsAppLink(whatsappMessage);
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   // Build images array
   const images = property.fotos?.length 
     ? property.fotos.map(f => f.url) 
     : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200'];
+
+  const pageTitle = property.titulo || `${property.tipoDescricao || 'Imóvel'} em ${property.bairro || property.cidade}`;
+  const pageDescription = property.descricao 
+    ? property.descricao.slice(0, 155) + '...'
+    : `${property.tipoDescricao || 'Imóvel'} para ${isRental ? 'alugar' : 'vender'} em ${property.bairro}, ${property.cidade}. ${property.qtdeQuartos || 0} quartos, ${property.areaConstruida || property.areaTotal || 0}m².`;
 
   const handleShare = async () => {
     const shareData = {
@@ -86,12 +139,37 @@ export default function ImovelDetail() {
       }
     } else {
       navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: 'Link copiado!',
+        description: 'O link do imóvel foi copiado para a área de transferência',
+      });
     }
   };
 
   return (
     <Layout>
+      <SEOHead
+        title={pageTitle}
+        description={pageDescription}
+        image={images[0]}
+        url={currentUrl}
+        type="product"
+        keywords={`${property.tipoDescricao}, ${property.bairro}, ${property.cidade}, ${isRental ? 'alugar' : 'comprar'}, imóvel`}
+      />
+      <PropertyJsonLd property={property} url={currentUrl} />
+      
       <div className="pt-20">
+        {/* Breadcrumb */}
+        <div className="container mx-auto px-4 py-4">
+          <PropertyBreadcrumb
+            propertyTitle={property.titulo}
+            propertyCode={property.codigo}
+            isRental={isRental}
+            city={property.cidade}
+            neighborhood={property.bairro}
+          />
+        </div>
+
         {/* Image Gallery */}
         <div className="relative">
           <PropertyGallery 
@@ -321,14 +399,30 @@ export default function ImovelDetail() {
                     </a>
                   </Button>
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1">
-                      <Heart className="h-4 w-4 mr-2" />
-                      Salvar
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "flex-1",
+                        isFav && "bg-destructive/10 border-destructive text-destructive hover:bg-destructive/20"
+                      )}
+                      onClick={handleToggleFavorite}
+                    >
+                      <Heart className={cn("h-4 w-4", isFav && "fill-current")} />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "flex-1",
+                        isComparing && "bg-primary/10 border-primary text-primary hover:bg-primary/20"
+                      )}
+                      onClick={handleToggleCompare}
+                      title="Comparar imóveis"
+                    >
+                      <Scale className={cn("h-4 w-4")} />
                     </Button>
                     <Button variant="outline" className="flex-1" onClick={handleShare}>
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Compartilhar
+                      <Share2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
