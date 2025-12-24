@@ -8,7 +8,7 @@ const quickLinks = [
   { name: 'Casas', href: '/imoveis?tipo=casa' },
   { name: 'Apartamentos', href: '/imoveis?tipo=apartamento' },
   { name: 'Condomínios', href: '/condominios' },
-  { name: 'Avaliar Imóvel', href: '/avaliar' },
+  { name: 'Avaliar Imóvel', href: '/avaliacao' },
 ];
 
 const socialLinks = [
