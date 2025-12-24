@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { PropertyCard } from '@/components/PropertyCard';
+import { PropertyCardSkeleton } from '@/components/PropertyCardSkeleton';
 import { Button } from '@/components/ui/button';
 import { useImoveisDestaque } from '@/hooks/useImoveis';
 import { ImoviewProperty } from '@/services/imoviewApi';
@@ -23,20 +24,7 @@ export function FeaturedPropertiesSection({
   // Limitar a 4 imóveis
   const featured = properties.slice(0, 4);
 
-  if (isLoading) {
-    return (
-      <section className="py-24 lg:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (error || featured.length === 0) {
+  if (error) {
     return null;
   }
 
@@ -84,11 +72,26 @@ export function FeaturedPropertiesSection({
 
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featured.map((property: ImoviewProperty, index: number) => (
-            <ScrollReveal key={property.codigo} variant="fade-up" delay={index * 0.1}>
-              <PropertyCard property={property} />
-            </ScrollReveal>
-          ))}
+          {isLoading ? (
+            // Skeleton loading state
+            Array.from({ length: 4 }).map((_, index) => (
+              <ScrollReveal key={index} variant="fade-up" delay={index * 0.1}>
+                <PropertyCardSkeleton />
+              </ScrollReveal>
+            ))
+          ) : featured.length === 0 ? (
+            // Empty state
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              Nenhum imóvel em destaque no momento.
+            </div>
+          ) : (
+            // Properties
+            featured.map((property: ImoviewProperty, index: number) => (
+              <ScrollReveal key={property.codigo} variant="fade-up" delay={index * 0.1}>
+                <PropertyCard property={property} />
+              </ScrollReveal>
+            ))
+          )}
         </div>
       </div>
     </section>
