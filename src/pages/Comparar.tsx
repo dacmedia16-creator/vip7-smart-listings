@@ -208,7 +208,21 @@ export default function Comparar() {
                   ))}
                 </tr>
 
-                {/* Condomínio */}
+                {/* Valor m² */}
+                <tr className="border-t border-border">
+                  <td className="p-4 font-medium text-foreground">Valor/m²</td>
+                  {properties.map((p) => {
+                    const area = p.areaConstruida || p.areaTotal;
+                    const valorM2 = area && p.valor ? p.valor / area : null;
+                    return (
+                      <td key={p.codigo} className="p-4 text-center text-foreground font-semibold">
+                        {valorM2
+                          ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(valorM2) + '/m²'
+                          : '-'}
+                      </td>
+                    );
+                  })}
+                </tr>
                 <tr className="border-t border-border">
                   <td className="p-4 font-medium text-foreground">Condomínio</td>
                   {properties.map((p) => (
