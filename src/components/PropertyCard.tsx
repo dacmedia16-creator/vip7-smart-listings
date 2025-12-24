@@ -1,9 +1,12 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight, Repeat } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight, Repeat, Scale } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ImoviewProperty, formatPropertyValue } from '@/services/imoviewApi';
+import { useCompareContext } from '@/contexts/CompareContext';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PropertyCardProps {
   property: ImoviewProperty;
@@ -11,8 +14,16 @@ interface PropertyCardProps {
 
 export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProps>(
   ({ property }, ref) => {
-    const isRental = property.finalidade === 1; // API Imoview: 1 = Aluguel
+    const { isInCompare, toggleCompare, canAddMore } = useCompareContext();
+    const isSelected = isInCompare(property.codigo);
+    const isRental = property.finalidade === 1;
     const imageUrl = property.fotos?.[0]?.url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800';
+
+    const handleCompareClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCompare(property);
+    };
 
     return (
       <Link
@@ -20,7 +31,10 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
         to={`/imovel/${property.codigo}`}
         className="group block h-full"
       >
-        <article className="card-luxury rounded-2xl overflow-hidden h-full flex flex-col">
+        <article className={cn(
+          "card-luxury rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-300",
+          isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+        )}>
           {/* Image Container */}
           <div className="relative aspect-[4/3] overflow-hidden">
             <img
@@ -32,24 +46,52 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
             
             {/* Top Badges */}
-            <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-              <div className="flex flex-col gap-2">
-                {property.condominio && (
-                  <Badge className="bg-primary/90 text-primary-foreground border-none text-xs font-medium">
-                    {property.condominio}
-                  </Badge>
-                )}
-                {property.aceitaPermuta && (
-                  <Badge className="bg-emerald-600 text-white border-none text-xs font-medium flex items-center gap-1">
-                    <Repeat className="h-3 w-3" />
-                    Aceita Permuta
-                  </Badge>
-                )}
-              </div>
-              <Badge className="bg-background/80 backdrop-blur-sm text-foreground border-none text-xs uppercase tracking-wider">
-                {isRental ? 'Locação' : 'Venda'}
-              </Badge>
+            <div className="absolute top-4 left-4 right-14 flex flex-col gap-2">
+              {property.condominio && (
+                <Badge className="bg-primary/90 text-primary-foreground border-none text-xs font-medium w-fit">
+                  {property.condominio}
+                </Badge>
+              )}
+              {property.aceitaPermuta && (
+                <Badge className="bg-emerald-600 text-white border-none text-xs font-medium flex items-center gap-1 w-fit">
+                  <Repeat className="h-3 w-3" />
+                  Aceita Permuta
+                </Badge>
+              )}
             </div>
+
+            {/* Compare Button */}
+            <div className="absolute top-4 right-4">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleCompareClick}
+                    disabled={!canAddMore && !isSelected}
+                    className={cn(
+                      "p-2 rounded-full transition-all duration-200",
+                      isSelected 
+                        ? "bg-primary text-primary-foreground shadow-lg" 
+                        : "bg-background/80 backdrop-blur-sm text-foreground hover:bg-primary hover:text-primary-foreground",
+                      !canAddMore && !isSelected && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <Scale className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSelected 
+                    ? "Remover da comparação" 
+                    : canAddMore 
+                      ? "Adicionar à comparação" 
+                      : "Limite de 3 imóveis atingido"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
+            {/* Finalidade Badge */}
+            <Badge className="absolute top-4 right-14 bg-background/80 backdrop-blur-sm text-foreground border-none text-xs uppercase tracking-wider">
+              {isRental ? 'Locação' : 'Venda'}
+            </Badge>
 
             {/* Price at bottom of image */}
             <div className="absolute bottom-4 left-4 right-4">
