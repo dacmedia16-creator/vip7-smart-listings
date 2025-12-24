@@ -158,7 +158,7 @@ export function HeroSection() {
 
         {/* Compact Search Panel */}
         <div className="max-w-4xl mx-auto animate-slide-up delay-400">
-          <div className="glass-luxury-dark rounded-2xl p-6 md:p-8 border border-primary/10">
+          <div className="glass-luxury-dark rounded-2xl p-6 md:p-8 border border-primary/10 max-h-[75vh] md:max-h-none overflow-y-auto">
             {/* Finalidade Tabs */}
             <div className="flex gap-2 mb-6">
               <button
