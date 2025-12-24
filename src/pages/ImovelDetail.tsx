@@ -385,6 +385,18 @@ export default function ImovelDetail() {
                     </p>
                   )}
                   
+                  {/* Valor por m² */}
+                  {property.valor && (property.areaConstruida || property.areaTotal) && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Valor/m²: {new Intl.NumberFormat('pt-BR', { 
+                        style: 'currency', 
+                        currency: 'BRL', 
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0 
+                      }).format(property.valor / (property.areaConstruida || property.areaTotal))}
+                    </p>
+                  )}
+                  
                   <div className="mb-6" />
 
                   <Button variant="whatsapp" size="xl" className="w-full mb-4" asChild>
