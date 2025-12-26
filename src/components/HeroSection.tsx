@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash, BedDouble, Bath, Ruler } from 'lucide-react';
+import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash, BedDouble, Bath, Ruler, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -101,6 +101,32 @@ export function HeroSection() {
     if (priceRange[0] > PRICE_MIN) params.set('valorMin', String(priceRange[0]));
     if (priceRange[1] < PRICE_MAX) params.set('valorMax', String(priceRange[1]));
     navigate(`/imoveis?${params.toString()}`);
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      tipo !== '' ||
+      cidade !== '' ||
+      bairro !== '' ||
+      quartos !== '' ||
+      banheiros !== '' ||
+      areaMin !== '' ||
+      condominiosCodes.length > 0 ||
+      priceRange[0] > PRICE_MIN ||
+      priceRange[1] < PRICE_MAX
+    );
+  }, [tipo, cidade, bairro, quartos, banheiros, areaMin, condominiosCodes, priceRange]);
+
+  const handleClearFilters = () => {
+    setTipo('');
+    setCidade('');
+    setBairro('');
+    setQuartos('');
+    setBanheiros('');
+    setAreaMin('');
+    setCondominiosCodes([]);
+    setPriceRange([PRICE_MIN, PRICE_MAX]);
+    setCodigoImovel('');
   };
 
   return (
@@ -370,18 +396,31 @@ export function HeroSection() {
               </div>
             </div>
 
-            {/* Search Button */}
-            <Button 
-              variant="gold" 
-              size="lg" 
-              className="w-full group"
-              onClick={handleSearch}
-              disabled={isPriceRangeInvalid}
-            >
-              <Search className="h-5 w-5 mr-2" />
-              Buscar Imóveis
-              <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              {hasActiveFilters && (
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="group border-border/50 hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                  onClick={handleClearFilters}
+                >
+                  <X className="h-5 w-5 mr-2" />
+                  Limpar
+                </Button>
+              )}
+              <Button 
+                variant="gold" 
+                size="lg" 
+                className="flex-1 group"
+                onClick={handleSearch}
+                disabled={isPriceRangeInvalid}
+              >
+                <Search className="h-5 w-5 mr-2" />
+                Buscar Imóveis
+                <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
