@@ -125,33 +125,49 @@ serve(async (req) => {
     const isRental = String(property.finalidade).toLowerCase().includes('aluguel') || property.finalidade === 1;
     const valorFormatado = formatCurrency(property.valor);
     const finalidadeTexto = isRental ? 'Aluguel' : 'Venda';
-    
+
     const pageTitle = `${property.titulo} | VIP7 Imóveis`;
-    const pageDescription = valorFormatado 
+    const pageDescription = valorFormatado
       ? `${property.tipo} para ${finalidadeTexto.toLowerCase()} em ${property.bairro}, ${property.cidade}. ${valorFormatado}`
       : property.descricao?.slice(0, 160) || `${property.tipo} disponível em ${property.bairro}, ${property.cidade}`;
-    
+
     const canonicalUrl = buildCanonicalUrl(redirectParam, siteUrl, codigo);
     const imageUrl = property.imagem || `${siteUrl}/og-image.jpg`;
-    
+
     // Para WhatsApp, a imagem ideal é 1200x630px
     // Não adicionar parâmetros de resize que podem quebrar a URL da imagem
     const optimizedImageUrl = imageUrl;
 
+    const userAgent = req.headers.get('user-agent') || '';
+    const isCrawler = isSocialCrawlerUserAgent(userAgent);
+
     console.log(
-      `[og-metadata] Generating OG for ${codigo}: title="${pageTitle}", image="${optimizedImageUrl}", canonical="${canonicalUrl}", redirectParam="${redirectParam}"`,
+      `[og-metadata] codigo=${codigo} canonical="${canonicalUrl}" crawler=${isCrawler} ua="${userAgent}"`,
     );
+
+    // Se for clique humano (browser), redireciona imediatamente.
+    // Para crawlers (Facebook/WhatsApp), devolve HTML com OG tags.
+    if (!isCrawler) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': canonicalUrl,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   <!-- Basic Meta -->
   <title>${escapeHtml(pageTitle)}</title>
   <meta name="description" content="${escapeHtml(pageDescription)}">
-  
+
   <!-- Open Graph / Facebook / WhatsApp - Otimizado para 1200x630px -->
   <meta property="og:type" content="product">
   <meta property="og:url" content="${canonicalUrl}">
@@ -165,47 +181,25 @@ serve(async (req) => {
   <meta property="og:image:alt" content="${escapeHtml(pageTitle)}">
   <meta property="og:site_name" content="VIP7 Imóveis">
   <meta property="og:locale" content="pt_BR">
-  
+
   <!-- Twitter Card - Otimizado para large image -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(pageTitle)}">
   <meta name="twitter:description" content="${escapeHtml(pageDescription)}">
   <meta name="twitter:image" content="${escapeHtml(optimizedImageUrl)}">
   <meta name="twitter:image:alt" content="${escapeHtml(pageTitle)}">
-  
+
   <!-- WhatsApp specific -->
   <meta property="og:image:url" content="${escapeHtml(optimizedImageUrl)}">
-  
+
   <!-- Canonical -->
   <link rel="canonical" href="${canonicalUrl}">
-  
+
   <!-- Redirect after crawler reads meta tags -->
   <meta http-equiv="refresh" content="0;url=${canonicalUrl}">
-  
-  <style>
-    body { 
-      font-family: system-ui, sans-serif; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      min-height: 100vh; 
-      margin: 0;
-      background: #0f172a;
-      color: #f8fafc;
-    }
-    .container { text-align: center; padding: 2rem; }
-    h1 { font-size: 1.5rem; margin-bottom: 1rem; }
-    p { color: #94a3b8; }
-    a { color: #c9a54d; }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Redirecionando...</h1>
-    <p>Você será redirecionado para o imóvel em instantes.</p>
-    <p><a href="${canonicalUrl}">Clique aqui se não for redirecionado</a></p>
-  </div>
-  <script>window.location.href = "${canonicalUrl}";</script>
+  <p>OK</p>
 </body>
 </html>`;
 
@@ -236,22 +230,46 @@ serve(async (req) => {
 
 function buildCanonicalUrl(redirectParam: string, siteUrl: string, codigo: string): string {
   const redirect = (redirectParam || '').trim();
-  if (!redirect) return `${siteUrl}/imovel/${codigo}`;
+  const base = redirect.replace(/\/$/, '');
 
-  if (redirect.includes('{codigo}')) {
-    return redirect.split('{codigo}').join(String(codigo));
+  // Sem redirect válido, usa hash route (funciona mesmo sem rewrite no servidor)
+  if (!base) return `${siteUrl}/#/imovel/${codigo}`;
+
+  // Template (ex: https://site.com/#/imovel/{codigo})
+  if (base.includes('{codigo}')) {
+    return base.split('{codigo}').join(String(codigo));
   }
 
-  const lower = redirect.toLowerCase();
+  const lower = base.toLowerCase();
   const isFullUrl =
     lower.includes('/imovel/') ||
     lower.includes('#/imovel/') ||
     lower.includes('codigo=');
 
-  if (isFullUrl) return redirect;
+  if (isFullUrl) return base;
 
-  return `${redirect.replace(/\/$/, '')}/imovel/${codigo}`;
+  // Fallback: tratar redirect como base do site e usar hash route
+  return `${base}/#/imovel/${codigo}`;
 }
+
+function isSocialCrawlerUserAgent(userAgent: string): boolean {
+  const ua = (userAgent || '').toLowerCase();
+
+  // Importante: não marcar "whatsapp" genérico como crawler, porque o clique humano abre no in-app browser.
+  const crawlerTokens = [
+    'facebookexternalhit',
+    'facebot',
+    'twitterbot',
+    'slackbot',
+    'telegrambot',
+    'linkedinbot',
+    'discordbot',
+    'pinterest',
+  ];
+
+  return crawlerTokens.some((t) => ua.includes(t));
+}
+
 
 function escapeHtml(text: string): string {
   return text
