@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.geocode-properties]
 verify_jwt = false
+
+[functions.og-metadata]
+verify_jwt = false
