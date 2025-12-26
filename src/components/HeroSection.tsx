@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash } from 'lucide-react';
+import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash, BedDouble } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -19,6 +19,7 @@ export function HeroSection() {
   const [tipo, setTipo] = useState<string>('');
   const [cidade, setCidade] = useState<string>('');
   const [bairro, setBairro] = useState<string>('');
+  const [quartos, setQuartos] = useState<string>('');
   const [condominiosCodes, setCondominiosCodes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const [codigoImovel, setCodigoImovel] = useState<string>('');
@@ -91,6 +92,7 @@ export function HeroSection() {
     if (tipo) params.set('tipo', tipo);
     if (cidade) params.set('cidade', cidade);
     if (bairro) params.set('bairro', bairro);
+    if (quartos) params.set('quartos', quartos);
     if (condominiosCodes.length > 0) params.set('condominios', condominiosCodes.join(','));
     if (priceRange[0] > PRICE_MIN) params.set('valorMin', String(priceRange[0]));
     if (priceRange[1] < PRICE_MAX) params.set('valorMax', String(priceRange[1]));
@@ -186,7 +188,7 @@ export function HeroSection() {
             </div>
 
             {/* Filters Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {/* Tipo */}
               <Select value={tipo} onValueChange={setTipo}>
                 <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
@@ -215,7 +217,22 @@ export function HeroSection() {
                 </SelectContent>
               </Select>
 
-            {/* Condomínio */}
+              {/* Quartos */}
+              <Select value={quartos} onValueChange={setQuartos}>
+                <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
+                  <BedDouble className="h-4 w-4 text-primary mr-2" />
+                  <SelectValue placeholder="Quartos" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="1">1 quarto</SelectItem>
+                  <SelectItem value="2">2 quartos</SelectItem>
+                  <SelectItem value="3">3 quartos</SelectItem>
+                  <SelectItem value="4">4 quartos</SelectItem>
+                  <SelectItem value="5">5+ quartos</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Condomínio */}
               <CondominioMultiSelect
                 condominios={condominiosFiltrados}
                 values={condominiosCodes}
