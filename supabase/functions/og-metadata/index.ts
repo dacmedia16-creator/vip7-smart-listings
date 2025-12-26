@@ -138,7 +138,9 @@ serve(async (req) => {
     // Não adicionar parâmetros de resize que podem quebrar a URL da imagem
     const optimizedImageUrl = imageUrl;
 
-    console.log(`[og-metadata] Generating OG for ${codigo}: title="${pageTitle}", image="${optimizedImageUrl}", redirect="${siteUrl}"`);
+    console.log(
+      `[og-metadata] Generating OG for ${codigo}: title="${pageTitle}", image="${optimizedImageUrl}", canonical="${canonicalUrl}", redirectParam="${redirectParam}"`,
+    );
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -207,14 +209,19 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    // Use explicit Headers to ensure Content-Type is respected
+    // Force Content-Type to be honored by intermediaries (send bytes + lowercase header)
     const responseHeaders = new Headers();
-    responseHeaders.set('Content-Type', 'text/html; charset=utf-8');
-    responseHeaders.set('Cache-Control', 'public, max-age=3600');
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
-    responseHeaders.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+    responseHeaders.set('content-type', 'text/html; charset=utf-8');
+    responseHeaders.set('cache-control', 'public, max-age=3600');
+    responseHeaders.set('access-control-allow-origin', '*');
+    responseHeaders.set(
+      'access-control-allow-headers',
+      'authorization, x-client-info, apikey, content-type',
+    );
 
-    return new Response(html, {
+    const body = new TextEncoder().encode(html);
+
+    return new Response(body, {
       status: 200,
       headers: responseHeaders,
     });
