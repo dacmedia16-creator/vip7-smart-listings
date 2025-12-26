@@ -86,9 +86,23 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const codigo = url.searchParams.get('codigo');
+
     // Allow dynamic redirect URL (for different environments)
-    const redirectBase = url.searchParams.get('redirect') || DEFAULT_SITE_URL;
-    const siteUrl = redirectBase.replace(/\/$/, ''); // Remove trailing slash
+    // `redirect` pode ser:
+    // - base do site (ex: https://site.com)
+    // - URL final do imóvel (ex: https://site.com/imovel/123 ou https://site.com/#/imovel/123)
+    // - template com {codigo} (ex: https://site.com/imovel/{codigo})
+    const redirectParam = (url.searchParams.get('redirect') || DEFAULT_SITE_URL).trim();
+
+    // Base do site (usado para rotas padrão como /imoveis e fallback)
+    let redirectOrigin = DEFAULT_SITE_URL;
+    try {
+      redirectOrigin = new URL(redirectParam).origin;
+    } catch (_) {
+      // Se vier inválido, mantém DEFAULT_SITE_URL
+    }
+
+    const siteUrl = redirectOrigin.replace(/\/$/, ''); // Remove trailing slash
 
     if (!codigo) {
       // Redirect to homepage if no code
@@ -117,7 +131,7 @@ serve(async (req) => {
       ? `${property.tipo} para ${finalidadeTexto.toLowerCase()} em ${property.bairro}, ${property.cidade}. ${valorFormatado}`
       : property.descricao?.slice(0, 160) || `${property.tipo} disponível em ${property.bairro}, ${property.cidade}`;
     
-    const canonicalUrl = `${siteUrl}/imovel/${codigo}`;
+    const canonicalUrl = buildCanonicalUrl(redirectParam, siteUrl, codigo);
     const imageUrl = property.imagem || `${siteUrl}/og-image.jpg`;
     
     // Para WhatsApp, a imagem ideal é 1200x630px
@@ -212,6 +226,25 @@ serve(async (req) => {
     });
   }
 });
+
+function buildCanonicalUrl(redirectParam: string, siteUrl: string, codigo: string): string {
+  const redirect = (redirectParam || '').trim();
+  if (!redirect) return `${siteUrl}/imovel/${codigo}`;
+
+  if (redirect.includes('{codigo}')) {
+    return redirect.split('{codigo}').join(String(codigo));
+  }
+
+  const lower = redirect.toLowerCase();
+  const isFullUrl =
+    lower.includes('/imovel/') ||
+    lower.includes('#/imovel/') ||
+    lower.includes('codigo=');
+
+  if (isFullUrl) return redirect;
+
+  return `${redirect.replace(/\/$/, '')}/imovel/${codigo}`;
+}
 
 function escapeHtml(text: string): string {
   return text

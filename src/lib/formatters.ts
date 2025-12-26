@@ -1,8 +1,16 @@
 // Helper para gerar URL de compartilhamento com OG tags (foto aparece no WhatsApp)
 export const buildOgShareUrl = (codigo: number | string): string => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const redirectUrl = encodeURIComponent(window.location.origin);
+
+  // Envia o redirect como URL FINAL do imóvel (para evitar montar caminho errado no backend)
+  const usesHashRouting = typeof window !== 'undefined' && window.location.hash.startsWith('#/');
+  const redirectTarget = usesHashRouting
+    ? `${window.location.origin}/#/imovel/${codigo}`
+    : `${window.location.origin}/imovel/${codigo}`;
+
+  const redirectUrl = encodeURIComponent(redirectTarget);
   const cacheBuster = Math.floor(Date.now() / 60000); // muda a cada minuto para evitar cache
+
   return `${supabaseUrl}/functions/v1/og-metadata?codigo=${codigo}&redirect=${redirectUrl}&v=${cacheBuster}`;
 };
 
