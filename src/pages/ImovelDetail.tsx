@@ -128,8 +128,11 @@ export default function ImovelDetail() {
     ? property.descricao.slice(0, 155) + '...'
     : `${property.tipoDescricao || 'Imóvel'} para ${isRental ? 'alugar' : 'vender'} em ${property.bairro}, ${property.cidade}. ${property.qtdeQuartos || 0} quartos, ${property.areaConstruida || property.areaTotal || 0}m².`;
 
-  // URL for sharing with dynamic OG meta tags
-  const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-metadata?codigo=${property.codigo}`;
+  // URL for sharing with dynamic OG meta tags - includes redirect to current origin
+  const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-metadata?codigo=${property.codigo}&redirect=${encodeURIComponent(window.location.origin)}`;
+  
+  // Direct WhatsApp share link with OG URL
+  const whatsappShareLink = `https://wa.me/?text=${encodeURIComponent(`Confira este imóvel: ${property.titulo}\n${shareUrl}`)}`;
 
   const handleShare = async () => {
     const shareData = {
@@ -420,7 +423,7 @@ export default function ImovelDetail() {
                   
                   <div className="mb-6" />
 
-                  <Button variant="whatsapp" size="xl" className="w-full mb-4" asChild>
+                  <Button variant="whatsapp" size="xl" className="w-full mb-3" asChild>
                     <a
                       href={whatsappLink}
                       target="_blank"
@@ -432,6 +435,19 @@ export default function ImovelDetail() {
                     </a>
                   </Button>
 
+                  {/* Share on WhatsApp button - uses OG link for preview */}
+                  <Button variant="outline" className="w-full mb-4 border-green-500/50 text-green-600 hover:bg-green-500/10" asChild>
+                    <a
+                      href={whatsappShareLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Compartilhar no WhatsApp
+                    </a>
+                  </Button>
+
                   <div className="grid grid-cols-4 gap-2">
                     <Button 
                       variant="outline" 
@@ -440,6 +456,7 @@ export default function ImovelDetail() {
                         isFav && "bg-destructive/10 border-destructive text-destructive hover:bg-destructive/20"
                       )}
                       onClick={handleToggleFavorite}
+                      title="Favoritar"
                     >
                       <Heart className={cn("h-4 w-4", isFav && "fill-current")} />
                     </Button>

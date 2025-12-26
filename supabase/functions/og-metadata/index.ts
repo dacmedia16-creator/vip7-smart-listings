@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const IMOVIEW_API_KEY = Deno.env.get('IMOVIEW_API_KEY');
 const IMOVIEW_API_URL = 'https://api.imoview.com.br';
-const SITE_URL = 'https://vip7imoveis.com.br';
+const DEFAULT_SITE_URL = 'https://vip7imoveis.com.br';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,15 +10,17 @@ const corsHeaders = {
 };
 
 async function fetchPropertyDetails(codigo: string) {
-  console.log(`[og-metadata] Fetching property ${codigo}`);
+  console.log(`[og-metadata] Fetching property details for ${codigo}`);
   
-  const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`, {
-    method: 'POST',
+  // Use the correct endpoint for property details (GET instead of POST)
+  const url = `${IMOVIEW_API_URL}/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${codigo}`;
+  
+  const response = await fetch(url, {
+    method: 'GET',
     headers: {
       'Content-Type': 'application/json',
       'chave': IMOVIEW_API_KEY || '',
     },
-    body: JSON.stringify({ codigo: Number(codigo) }),
   });
 
   if (!response.ok) {
@@ -27,21 +29,33 @@ async function fetchPropertyDetails(codigo: string) {
   }
 
   const data = await response.json();
-  const lista = Array.isArray(data) ? data : data?.lista || [];
+  console.log(`[og-metadata] API response keys:`, Object.keys(data || {}));
   
-  if (lista.length === 0) {
-    console.log(`[og-metadata] Property ${codigo} not found`);
+  // The details endpoint returns the property directly or wrapped
+  const raw = data?.imovel || data;
+  
+  if (!raw || !raw.codigo) {
+    console.log(`[og-metadata] Property ${codigo} not found or invalid response`);
     return null;
   }
 
-  const raw = lista[0];
   console.log(`[og-metadata] Found property:`, raw.titulo || raw.codigo);
+
+  // Get the main image - try multiple sources
+  let imagem = '';
+  if (raw.urlfotoprincipal) {
+    imagem = raw.urlfotoprincipal;
+  } else if (Array.isArray(raw.fotos) && raw.fotos.length > 0) {
+    imagem = raw.fotos[0]?.url || raw.fotos[0]?.urlFoto || '';
+  }
+  
+  console.log(`[og-metadata] Property image:`, imagem);
 
   return {
     codigo: raw.codigo,
     titulo: raw.titulo || `${raw.tipo || 'Imóvel'} em ${raw.bairro || 'Sorocaba'}`,
     descricao: raw.descricao || raw.metadescription || `Imóvel disponível em ${raw.bairro || ''}, ${raw.cidade || 'Sorocaba'}`,
-    imagem: raw.urlfotoprincipal || (Array.isArray(raw.fotos) && raw.fotos[0]?.url) || '',
+    imagem,
     bairro: raw.bairro || '',
     cidade: raw.cidade || 'Sorocaba',
     tipo: raw.tipo || 'Imóvel',
@@ -72,12 +86,15 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const codigo = url.searchParams.get('codigo');
+    // Allow dynamic redirect URL (for different environments)
+    const redirectBase = url.searchParams.get('redirect') || DEFAULT_SITE_URL;
+    const siteUrl = redirectBase.replace(/\/$/, ''); // Remove trailing slash
 
     if (!codigo) {
       // Redirect to homepage if no code
       return new Response(null, {
         status: 302,
-        headers: { ...corsHeaders, 'Location': SITE_URL },
+        headers: { ...corsHeaders, 'Location': siteUrl },
       });
     }
 
@@ -87,7 +104,7 @@ serve(async (req) => {
       // Redirect to properties page if not found
       return new Response(null, {
         status: 302,
-        headers: { ...corsHeaders, 'Location': `${SITE_URL}/imoveis` },
+        headers: { ...corsHeaders, 'Location': `${siteUrl}/imoveis` },
       });
     }
 
@@ -100,16 +117,14 @@ serve(async (req) => {
       ? `${property.tipo} para ${finalidadeTexto.toLowerCase()} em ${property.bairro}, ${property.cidade}. ${valorFormatado}`
       : property.descricao?.slice(0, 160) || `${property.tipo} disponível em ${property.bairro}, ${property.cidade}`;
     
-    const canonicalUrl = `${SITE_URL}/imovel/${codigo}`;
-    const imageUrl = property.imagem || `${SITE_URL}/og-image.jpg`;
+    const canonicalUrl = `${siteUrl}/imovel/${codigo}`;
+    const imageUrl = property.imagem || `${siteUrl}/og-image.jpg`;
     
     // Para WhatsApp, a imagem ideal é 1200x630px
-    // Algumas APIs de imóveis já fornecem imagens grandes, mas vamos adicionar parâmetros se possível
-    const optimizedImageUrl = imageUrl.includes('?') 
-      ? `${imageUrl}&w=1200&h=630&fit=cover`
-      : `${imageUrl}?w=1200&h=630&fit=cover`;
+    // Não adicionar parâmetros de resize que podem quebrar a URL da imagem
+    const optimizedImageUrl = imageUrl;
 
-    console.log(`[og-metadata] Generating OG for ${codigo}: title="${pageTitle}", image="${optimizedImageUrl}"`);
+    console.log(`[og-metadata] Generating OG for ${codigo}: title="${pageTitle}", image="${optimizedImageUrl}", redirect="${siteUrl}"`);
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -190,7 +205,7 @@ serve(async (req) => {
     console.error('[og-metadata] Error:', error);
     return new Response(null, {
       status: 302,
-      headers: { ...corsHeaders, 'Location': SITE_URL },
+      headers: { ...corsHeaders, 'Location': DEFAULT_SITE_URL },
     });
   }
 });
