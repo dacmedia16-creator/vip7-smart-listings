@@ -102,8 +102,14 @@ serve(async (req) => {
     
     const canonicalUrl = `${SITE_URL}/imovel/${codigo}`;
     const imageUrl = property.imagem || `${SITE_URL}/og-image.jpg`;
+    
+    // Para WhatsApp, a imagem ideal é 1200x630px
+    // Algumas APIs de imóveis já fornecem imagens grandes, mas vamos adicionar parâmetros se possível
+    const optimizedImageUrl = imageUrl.includes('?') 
+      ? `${imageUrl}&w=1200&h=630&fit=cover`
+      : `${imageUrl}?w=1200&h=630&fit=cover`;
 
-    console.log(`[og-metadata] Generating OG for ${codigo}: title="${pageTitle}", image="${imageUrl}"`);
+    console.log(`[og-metadata] Generating OG for ${codigo}: title="${pageTitle}", image="${optimizedImageUrl}"`);
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -115,22 +121,29 @@ serve(async (req) => {
   <title>${escapeHtml(pageTitle)}</title>
   <meta name="description" content="${escapeHtml(pageDescription)}">
   
-  <!-- Open Graph / Facebook / WhatsApp -->
+  <!-- Open Graph / Facebook / WhatsApp - Otimizado para 1200x630px -->
   <meta property="og:type" content="product">
   <meta property="og:url" content="${canonicalUrl}">
   <meta property="og:title" content="${escapeHtml(pageTitle)}">
   <meta property="og:description" content="${escapeHtml(pageDescription)}">
-  <meta property="og:image" content="${escapeHtml(imageUrl)}">
+  <meta property="og:image" content="${escapeHtml(optimizedImageUrl)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(optimizedImageUrl)}">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(pageTitle)}">
   <meta property="og:site_name" content="VIP7 Imóveis">
   <meta property="og:locale" content="pt_BR">
   
-  <!-- Twitter Card -->
+  <!-- Twitter Card - Otimizado para large image -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(pageTitle)}">
   <meta name="twitter:description" content="${escapeHtml(pageDescription)}">
-  <meta name="twitter:image" content="${escapeHtml(imageUrl)}">
+  <meta name="twitter:image" content="${escapeHtml(optimizedImageUrl)}">
+  <meta name="twitter:image:alt" content="${escapeHtml(pageTitle)}">
+  
+  <!-- WhatsApp specific -->
+  <meta property="og:image:url" content="${escapeHtml(optimizedImageUrl)}">
   
   <!-- Canonical -->
   <link rel="canonical" href="${canonicalUrl}">
