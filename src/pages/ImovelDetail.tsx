@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ChevronLeft, 
@@ -14,7 +15,9 @@ import {
   X,
   Home,
   Building,
-  Scale
+  Scale,
+  Copy,
+  CheckCheck
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -36,6 +39,7 @@ import { cn } from '@/lib/utils';
 export default function ImovelDetail() {
   const { codigo } = useParams<{ codigo: string }>();
   const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
 
   const { data: property, isLoading, error } = useImovelDetalhes(codigo);
   const { isFavorite, toggleFavorite } = useFavoritesContext();
@@ -141,10 +145,24 @@ export default function ImovelDetail() {
         // User cancelled or error
       }
     } else {
-      navigator.clipboard.writeText(shareUrl);
+      handleCopyLink();
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
       toast({
         title: 'Link copiado!',
         description: 'O link do imóvel foi copiado para a área de transferência',
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: 'Erro ao copiar',
+        description: 'Não foi possível copiar o link',
+        variant: 'destructive',
       });
     }
   };
@@ -414,7 +432,7 @@ export default function ImovelDetail() {
                     </a>
                   </Button>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <Button 
                       variant="outline" 
                       className={cn(
@@ -436,7 +454,22 @@ export default function ImovelDetail() {
                     >
                       <Scale className={cn("h-4 w-4")} />
                     </Button>
-                    <Button variant="outline" className="flex-1" onClick={handleShare}>
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "flex-1 transition-all duration-200",
+                        copied && "bg-green-500/10 border-green-500 text-green-600 hover:bg-green-500/20"
+                      )}
+                      onClick={handleCopyLink}
+                      title="Copiar link"
+                    >
+                      {copied ? (
+                        <CheckCheck className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button variant="outline" className="flex-1" onClick={handleShare} title="Compartilhar">
                       <Share2 className="h-4 w-4" />
                     </Button>
                   </div>
