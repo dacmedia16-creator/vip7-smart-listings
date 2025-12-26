@@ -124,11 +124,14 @@ export default function ImovelDetail() {
     ? property.descricao.slice(0, 155) + '...'
     : `${property.tipoDescricao || 'Imóvel'} para ${isRental ? 'alugar' : 'vender'} em ${property.bairro}, ${property.cidade}. ${property.qtdeQuartos || 0} quartos, ${property.areaConstruida || property.areaTotal || 0}m².`;
 
+  // URL for sharing with dynamic OG meta tags
+  const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-metadata?codigo=${property.codigo}`;
+
   const handleShare = async () => {
     const shareData = {
       title: property.titulo || 'Imóvel VIP7',
       text: `Confira este imóvel: ${property.titulo}`,
-      url: window.location.href,
+      url: shareUrl,
     };
     
     if (navigator.share) {
@@ -138,7 +141,7 @@ export default function ImovelDetail() {
         // User cancelled or error
       }
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(shareUrl);
       toast({
         title: 'Link copiado!',
         description: 'O link do imóvel foi copiado para a área de transferência',
