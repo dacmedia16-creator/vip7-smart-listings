@@ -220,10 +220,7 @@ export function HeroSection() {
                 condominios={condominiosFiltrados}
                 values={condominiosCodes}
                 onValuesChange={setCondominiosCodes}
-                placeholder={cidade 
-                  ? `Condomínios${condominiosFiltrados.length > 0 ? ` (${condominiosFiltrados.length})` : ''}`
-                  : `Todos os condomínios${todosCondominios.length > 0 ? ` (${todosCondominios.length})` : ''}`
-                }
+                placeholder="Todos os condomínios"
                 isLoading={isLoadingTodosCondominios}
                 triggerClassName="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors"
                 maxSelections={5}
