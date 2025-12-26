@@ -128,8 +128,9 @@ export default function ImovelDetail() {
     ? property.descricao.slice(0, 155) + '...'
     : `${property.tipoDescricao || 'Imóvel'} para ${isRental ? 'alugar' : 'vender'} em ${property.bairro}, ${property.cidade}. ${property.qtdeQuartos || 0} quartos, ${property.areaConstruida || property.areaTotal || 0}m².`;
 
-  // URL for sharing with dynamic OG meta tags - includes redirect to current origin
-  const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-metadata?codigo=${property.codigo}&redirect=${encodeURIComponent(window.location.origin)}`;
+  // URL for sharing with dynamic OG meta tags - cache buster forces WhatsApp to fetch fresh meta
+  const cacheBuster = Math.floor(Date.now() / 60000); // muda a cada minuto
+  const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-metadata?codigo=${property.codigo}&redirect=${encodeURIComponent(window.location.origin)}&v=${cacheBuster}`;
   
   // Direct WhatsApp share link with OG URL
   const whatsappShareLink = `https://wa.me/?text=${encodeURIComponent(`Confira este imóvel: ${property.titulo}\n${shareUrl}`)}`;
