@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash, BedDouble, Bath } from 'lucide-react';
+import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash, BedDouble, Bath, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -21,6 +21,7 @@ export function HeroSection() {
   const [bairro, setBairro] = useState<string>('');
   const [quartos, setQuartos] = useState<string>('');
   const [banheiros, setBanheiros] = useState<string>('');
+  const [areaMin, setAreaMin] = useState<string>('');
   const [condominiosCodes, setCondominiosCodes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const [codigoImovel, setCodigoImovel] = useState<string>('');
@@ -95,6 +96,7 @@ export function HeroSection() {
     if (bairro) params.set('bairro', bairro);
     if (quartos) params.set('quartos', quartos);
     if (banheiros) params.set('banheiros', banheiros);
+    if (areaMin) params.set('areaMin', areaMin);
     if (condominiosCodes.length > 0) params.set('condominios', condominiosCodes.join(','));
     if (priceRange[0] > PRICE_MIN) params.set('valorMin', String(priceRange[0]));
     if (priceRange[1] < PRICE_MAX) params.set('valorMax', String(priceRange[1]));
@@ -222,7 +224,7 @@ export function HeroSection() {
             </div>
 
             {/* Second Row Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {/* Quartos */}
               <Select value={quartos} onValueChange={setQuartos}>
                 <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
@@ -250,6 +252,22 @@ export function HeroSection() {
                   <SelectItem value="3">3 banheiros</SelectItem>
                   <SelectItem value="4">4 banheiros</SelectItem>
                   <SelectItem value="5">5+ banheiros</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Área mínima */}
+              <Select value={areaMin} onValueChange={setAreaMin}>
+                <SelectTrigger className="bg-secondary/50 border-border/50 h-12 rounded-xl hover:border-primary/50 transition-colors">
+                  <Ruler className="h-4 w-4 text-primary mr-2" />
+                  <SelectValue placeholder="Área mínima" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="50">A partir de 50m²</SelectItem>
+                  <SelectItem value="100">A partir de 100m²</SelectItem>
+                  <SelectItem value="150">A partir de 150m²</SelectItem>
+                  <SelectItem value="200">A partir de 200m²</SelectItem>
+                  <SelectItem value="300">A partir de 300m²</SelectItem>
+                  <SelectItem value="500">A partir de 500m²</SelectItem>
                 </SelectContent>
               </Select>
 
