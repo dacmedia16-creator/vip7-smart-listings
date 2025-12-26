@@ -193,13 +193,16 @@ serve(async (req) => {
 </body>
 </html>`;
 
+    // Use explicit Headers to ensure Content-Type is respected
+    const responseHeaders = new Headers();
+    responseHeaders.set('Content-Type', 'text/html; charset=utf-8');
+    responseHeaders.set('Cache-Control', 'public, max-age=3600');
+    responseHeaders.set('Access-Control-Allow-Origin', '*');
+    responseHeaders.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
+
     return new Response(html, {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error('[og-metadata] Error:', error);
