@@ -2,11 +2,8 @@
 export const buildOgShareUrl = (codigo: number | string): string => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-  // Envia o redirect como URL FINAL do imóvel (para evitar montar caminho errado no backend)
-  const usesHashRouting = typeof window !== 'undefined' && window.location.hash.startsWith('#/');
-  const redirectTarget = usesHashRouting
-    ? `${window.location.origin}/#/imovel/${codigo}`
-    : `${window.location.origin}/imovel/${codigo}`;
+  // Envia o redirect como URL FINAL do imóvel (mantendo #/ para funcionar mesmo sem rewrite no servidor)
+  const redirectTarget = `${window.location.origin}/#/imovel/${codigo}`;
 
   const redirectUrl = encodeURIComponent(redirectTarget);
   const cacheBuster = Math.floor(Date.now() / 60000); // muda a cada minuto para evitar cache
