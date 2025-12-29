@@ -473,8 +473,17 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
       simpleFilters as Record<string, unknown>
     );
     
-    const resultList = Array.isArray(data) ? data : data?.lista || [];
+    let resultList = Array.isArray(data) ? data : data?.lista || [];
     const resultQuantidade = Array.isArray(data) ? data.length : (data?.quantidade || data?.lista?.length || 0);
+
+    // Aplicar ordenação client-side para chamadas simples (API não suporta ordenação por data)
+    if (filters.ordenarPor === 'data_desc' || !filters.ordenarPor) {
+      resultList = [...resultList].sort((a, b) => {
+        const dateA = a.dataAtualizacao ? new Date(a.dataAtualizacao).getTime() : 0;
+        const dateB = b.dataAtualizacao ? new Date(b.dataAtualizacao).getTime() : 0;
+        return dateB - dateA; // Mais recentes primeiro
+      });
+    }
 
 
     // Fallback de segurança para múltiplos bairros
