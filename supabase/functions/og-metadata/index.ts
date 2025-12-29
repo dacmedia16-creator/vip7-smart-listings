@@ -255,7 +255,7 @@ function buildCanonicalUrl(redirectParam: string, siteUrl: string, codigo: strin
 function isSocialCrawlerUserAgent(userAgent: string): boolean {
   const ua = (userAgent || '').toLowerCase();
 
-  // Importante: não marcar "whatsapp" genérico como crawler, porque o clique humano abre no in-app browser.
+  // Crawlers conhecidos (sempre servir HTML com OG tags)
   const crawlerTokens = [
     'facebookexternalhit',
     'facebot',
@@ -267,7 +267,21 @@ function isSocialCrawlerUserAgent(userAgent: string): boolean {
     'pinterest',
   ];
 
-  return crawlerTokens.some((t) => ua.includes(t));
+  if (crawlerTokens.some((t) => ua.includes(t))) {
+    return true;
+  }
+
+  // WhatsApp: o fetcher de preview é "WhatsApp/2.x" (sem Mozilla)
+  // O clique humano abre no in-app browser com "Mozilla/... WhatsApp/..."
+  const isWhatsapp = ua.includes('whatsapp');
+  const hasMozilla = ua.includes('mozilla');
+  
+  if (isWhatsapp && !hasMozilla) {
+    console.log(`[og-metadata] WhatsApp crawler detected: ua="${userAgent}"`);
+    return true;
+  }
+
+  return false;
 }
 
 
