@@ -17,7 +17,8 @@ import {
   Building,
   Scale,
   Copy,
-  CheckCheck
+  CheckCheck,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -157,8 +158,8 @@ export default function ImovelDetail() {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       toast({
-        title: 'Link copiado!',
-        description: 'O link do imóvel foi copiado para a área de transferência',
+        title: '✨ Link especial copiado!',
+        description: 'Este link mostra a foto do imóvel quando compartilhado no WhatsApp.',
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -436,17 +437,24 @@ export default function ImovelDetail() {
                   </Button>
 
                   {/* Share on WhatsApp button - uses OG link for preview */}
-                  <Button variant="outline" className="w-full mb-4 border-green-500/50 text-green-600 hover:bg-green-500/10" asChild>
+                  <Button 
+                    variant="outline" 
+                    className="w-full mb-2 border-green-500 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:border-green-600" 
+                    asChild
+                  >
                     <a
                       href={whatsappShareLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2"
                     >
-                      <Share2 className="h-4 w-4" />
-                      Compartilhar no WhatsApp
+                      <ImageIcon className="h-4 w-4" />
+                      Compartilhar com Foto
                     </a>
                   </Button>
+                  <p className="text-xs text-muted-foreground text-center mb-4">
+                    Use este botão para a foto aparecer no WhatsApp
+                  </p>
 
                   <div className="grid grid-cols-4 gap-2">
                     <Button 
