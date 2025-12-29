@@ -160,7 +160,7 @@ export default function Imoveis() {
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,
-    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
+    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : 'data_desc',
     limite: ITEMS_PER_PAGE,
     pagina: paginaAtual,
   };
@@ -201,7 +201,7 @@ export default function Imoveis() {
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,
-    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : undefined,
+    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : 'data_desc',
   };
 
   // Fetch all properties for map view (only when map is active)
