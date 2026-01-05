@@ -2,7 +2,6 @@ import { ReactNode } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
-import { FloatingAvaliacaoButton } from '@/components/FloatingAvaliacaoButton';
 import { CompareDrawer } from '@/components/CompareDrawer';
 
 interface LayoutProps {
@@ -17,7 +16,6 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       <Footer />
-      <FloatingAvaliacaoButton />
       <WhatsAppButton />
       <CompareDrawer />
     </div>
