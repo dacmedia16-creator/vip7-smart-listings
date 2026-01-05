@@ -99,7 +99,7 @@ const areaMinUrl = searchParams.get('areaMin') || '';
   
   // Usar versão slim dos condomínios para múltiplas cidades
   const { data: condominios = [], isLoading: isLoadingCondominios } = useCondominiosSlimMultiCidade(
-    cidadesArray.length > 0 ? cidadesArray : undefined,
+    cidadesArray,
     codigosCidades,
     finalidadeCode
   );
