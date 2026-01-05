@@ -780,6 +780,71 @@ const areaMinUrl = searchParams.get('areaMin') || '';
                   />
                 </div>
 
+                {/* Quartos */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Quartos</h3>
+                  <Select 
+                    value={quartosUrl || "all"} 
+                    onValueChange={(v) => updateFilter('quartos', v === "all" ? "" : v)}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <BedDouble className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Qualquer" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="all">Qualquer</SelectItem>
+                      <SelectItem value="1">1+ quarto</SelectItem>
+                      <SelectItem value="2">2+ quartos</SelectItem>
+                      <SelectItem value="3">3+ quartos</SelectItem>
+                      <SelectItem value="4">4+ quartos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Banheiros */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Banheiros</h3>
+                  <Select 
+                    value={banheirosUrl || "all"} 
+                    onValueChange={(v) => updateFilter('banheiros', v === "all" ? "" : v)}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <Bath className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Qualquer" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="all">Qualquer</SelectItem>
+                      <SelectItem value="1">1+ banheiro</SelectItem>
+                      <SelectItem value="2">2+ banheiros</SelectItem>
+                      <SelectItem value="3">3+ banheiros</SelectItem>
+                      <SelectItem value="4">4+ banheiros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Área Mínima */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Área Mínima</h3>
+                  <Select 
+                    value={areaMinUrl || "all"} 
+                    onValueChange={(v) => updateFilter('areaMin', v === "all" ? "" : v)}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <Ruler className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Qualquer" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="all">Qualquer</SelectItem>
+                      <SelectItem value="50">50+ m²</SelectItem>
+                      <SelectItem value="100">100+ m²</SelectItem>
+                      <SelectItem value="150">150+ m²</SelectItem>
+                      <SelectItem value="200">200+ m²</SelectItem>
+                      <SelectItem value="300">300+ m²</SelectItem>
+                      <SelectItem value="500">500+ m²</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Price Range */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground">Faixa de Preço</h3>
@@ -868,71 +933,6 @@ const areaMinUrl = searchParams.get('areaMin') || '';
                       className="mt-2"
                     />
                   </div>
-                </div>
-
-                {/* Quartos */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">Quartos</h3>
-                  <Select 
-                    value={quartosUrl || "all"} 
-                    onValueChange={(v) => updateFilter('quartos', v === "all" ? "" : v)}
-                  >
-                    <SelectTrigger className="bg-secondary border-border">
-                      <BedDouble className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <SelectValue placeholder="Qualquer" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      <SelectItem value="all">Qualquer</SelectItem>
-                      <SelectItem value="1">1+ quarto</SelectItem>
-                      <SelectItem value="2">2+ quartos</SelectItem>
-                      <SelectItem value="3">3+ quartos</SelectItem>
-                      <SelectItem value="4">4+ quartos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Banheiros */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">Banheiros</h3>
-                  <Select 
-                    value={banheirosUrl || "all"} 
-                    onValueChange={(v) => updateFilter('banheiros', v === "all" ? "" : v)}
-                  >
-                    <SelectTrigger className="bg-secondary border-border">
-                      <Bath className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <SelectValue placeholder="Qualquer" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      <SelectItem value="all">Qualquer</SelectItem>
-                      <SelectItem value="1">1+ banheiro</SelectItem>
-                      <SelectItem value="2">2+ banheiros</SelectItem>
-                      <SelectItem value="3">3+ banheiros</SelectItem>
-                      <SelectItem value="4">4+ banheiros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Área Mínima */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-foreground">Área Mínima</h3>
-                  <Select 
-                    value={areaMinUrl || "all"} 
-                    onValueChange={(v) => updateFilter('areaMin', v === "all" ? "" : v)}
-                  >
-                    <SelectTrigger className="bg-secondary border-border">
-                      <Ruler className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <SelectValue placeholder="Qualquer" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      <SelectItem value="all">Qualquer</SelectItem>
-                      <SelectItem value="50">50+ m²</SelectItem>
-                      <SelectItem value="100">100+ m²</SelectItem>
-                      <SelectItem value="150">150+ m²</SelectItem>
-                      <SelectItem value="200">200+ m²</SelectItem>
-                      <SelectItem value="300">300+ m²</SelectItem>
-                      <SelectItem value="500">500+ m²</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {/* Apply Filters */}
