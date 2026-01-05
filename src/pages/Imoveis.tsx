@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon, Plus, Building2 } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon, Plus, Building2, BedDouble, Bath, Ruler } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyGridSkeleton } from '@/components/PropertyCardSkeleton';
@@ -31,8 +31,11 @@ export default function Imoveis() {
   const ordenar = searchParams.get('ordenar') || 'recentes';
   const paginaAtual = Number(searchParams.get('pagina')) || 1;
   const busca = searchParams.get('busca') || '';
-  const valorMinUrl = searchParams.get('valorMin');
-  const valorMaxUrl = searchParams.get('valorMax');
+const valorMinUrl = searchParams.get('valorMin');
+const valorMaxUrl = searchParams.get('valorMax');
+const quartosUrl = searchParams.get('quartos') || '';
+const banheirosUrl = searchParams.get('banheiros') || '';
+const areaMinUrl = searchParams.get('areaMin') || '';
 
   // Parse cidades from URL (comma-separated string to array) com fallback para parâmetro singular
   const cidadesArray = useMemo(() => {
@@ -160,6 +163,9 @@ export default function Imoveis() {
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,
+    quartos: quartosUrl ? Number(quartosUrl) : undefined,
+    banheiros: banheirosUrl ? Number(banheirosUrl) : undefined,
+    areaMin: areaMinUrl ? Number(areaMinUrl) : undefined,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : 'data_desc',
     limite: ITEMS_PER_PAGE,
     pagina: paginaAtual,
@@ -201,6 +207,9 @@ export default function Imoveis() {
     codigosCondominio: condominiosArray.length > 0 ? condominiosArray.map(Number) : undefined,
     valorMin: valorMinFiltro,
     valorMax: valorMaxFiltro,
+    quartos: quartosUrl ? Number(quartosUrl) : undefined,
+    banheiros: banheirosUrl ? Number(banheirosUrl) : undefined,
+    areaMin: areaMinUrl ? Number(areaMinUrl) : undefined,
     ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : 'data_desc',
   };
 
@@ -272,6 +281,24 @@ export default function Imoveis() {
 
     let list = (imoveisData?.lista || []).filter((property) => matchesTipoFiltro(property.tipo));
 
+    // Filtro local de quartos (caso API não suporte)
+    if (quartosUrl) {
+      const minQuartos = Number(quartosUrl);
+      list = list.filter((property) => (property.qtdeQuartos ?? 0) >= minQuartos);
+    }
+
+    // Filtro local de banheiros (caso API não suporte)
+    if (banheirosUrl) {
+      const minBanheiros = Number(banheirosUrl);
+      list = list.filter((property) => (property.qtdeBanheiros ?? 0) >= minBanheiros);
+    }
+
+    // Filtro local de área mínima (caso API não suporte)
+    if (areaMinUrl) {
+      const minArea = Number(areaMinUrl);
+      list = list.filter((property) => (property.areaTotal ?? property.areaConstruida ?? 0) >= minArea);
+    }
+
     if (busca.trim()) {
       const searchLower = busca.toLowerCase().trim();
       list = list.filter((property) => {
@@ -292,10 +319,28 @@ export default function Imoveis() {
     }
 
     return applyOrdering(list);
-  }, [imoveisData?.lista, busca, matchesTipoFiltro, ordenar]);
+  }, [imoveisData?.lista, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl]);
 
   const filteredMapProperties = useMemo(() => {
-    const list = (mapProperties || []).filter((property) => matchesTipoFiltro(property.tipo));
+    let list = (mapProperties || []).filter((property) => matchesTipoFiltro(property.tipo));
+
+    // Filtro local de quartos (caso API não suporte)
+    if (quartosUrl) {
+      const minQuartos = Number(quartosUrl);
+      list = list.filter((property) => (property.qtdeQuartos ?? 0) >= minQuartos);
+    }
+
+    // Filtro local de banheiros (caso API não suporte)
+    if (banheirosUrl) {
+      const minBanheiros = Number(banheirosUrl);
+      list = list.filter((property) => (property.qtdeBanheiros ?? 0) >= minBanheiros);
+    }
+
+    // Filtro local de área mínima (caso API não suporte)
+    if (areaMinUrl) {
+      const minArea = Number(areaMinUrl);
+      list = list.filter((property) => (property.areaTotal ?? property.areaConstruida ?? 0) >= minArea);
+    }
 
     if (ordenar === 'menor_preco') {
       return [...list].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));
@@ -305,7 +350,7 @@ export default function Imoveis() {
     }
 
     return list;
-  }, [mapProperties, matchesTipoFiltro, ordenar]);
+  }, [mapProperties, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl]);
 
   const properties = filteredProperties;
   const totalImoveis = busca.trim() ? filteredProperties.length : (imoveisData?.quantidade || 0);
@@ -823,6 +868,71 @@ export default function Imoveis() {
                       className="mt-2"
                     />
                   </div>
+                </div>
+
+                {/* Quartos */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Quartos</h3>
+                  <Select 
+                    value={quartosUrl || "all"} 
+                    onValueChange={(v) => updateFilter('quartos', v === "all" ? "" : v)}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <BedDouble className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Qualquer" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="all">Qualquer</SelectItem>
+                      <SelectItem value="1">1+ quarto</SelectItem>
+                      <SelectItem value="2">2+ quartos</SelectItem>
+                      <SelectItem value="3">3+ quartos</SelectItem>
+                      <SelectItem value="4">4+ quartos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Banheiros */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Banheiros</h3>
+                  <Select 
+                    value={banheirosUrl || "all"} 
+                    onValueChange={(v) => updateFilter('banheiros', v === "all" ? "" : v)}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <Bath className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Qualquer" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="all">Qualquer</SelectItem>
+                      <SelectItem value="1">1+ banheiro</SelectItem>
+                      <SelectItem value="2">2+ banheiros</SelectItem>
+                      <SelectItem value="3">3+ banheiros</SelectItem>
+                      <SelectItem value="4">4+ banheiros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Área Mínima */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Área Mínima</h3>
+                  <Select 
+                    value={areaMinUrl || "all"} 
+                    onValueChange={(v) => updateFilter('areaMin', v === "all" ? "" : v)}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <Ruler className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Qualquer" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="all">Qualquer</SelectItem>
+                      <SelectItem value="50">50+ m²</SelectItem>
+                      <SelectItem value="100">100+ m²</SelectItem>
+                      <SelectItem value="150">150+ m²</SelectItem>
+                      <SelectItem value="200">200+ m²</SelectItem>
+                      <SelectItem value="300">300+ m²</SelectItem>
+                      <SelectItem value="500">500+ m²</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Apply Filters */}
