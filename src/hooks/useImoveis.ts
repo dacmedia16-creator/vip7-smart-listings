@@ -206,9 +206,13 @@ export function useCondominiosSlimMultiCidade(
   return useQuery({
     queryKey: ['condominios-slim-multi', cidades, codigosCidades, finalidade],
     queryFn: async () => {
+      // Se não há cidades selecionadas, buscar TODOS os condomínios
       if (!codigosCidades || codigosCidades.length === 0) {
-        // Fallback: buscar por nomes
-        if (!cidades || cidades.length === 0) return [];
+        if (!cidades || cidades.length === 0) {
+          // Buscar sem filtro de cidade - retorna todos os condomínios
+          return listarCondominiosSlim(undefined, undefined, finalidade);
+        }
+        // Fallback: buscar por nomes de cidades
         const results = await Promise.all(
           cidades.map(cidade => listarCondominiosSlim(cidade, undefined, finalidade))
         );
@@ -242,7 +246,7 @@ export function useCondominiosSlimMultiCidade(
       }
       return combined.sort((a, b) => a.nome.localeCompare(b.nome));
     },
-    enabled: (cidades && cidades.length > 0) || (codigosCidades && codigosCidades.length > 0),
+    // Sempre habilitado - busca todos quando não há cidades selecionadas
     ...FILTER_CACHE_CONFIG,
   });
 }
