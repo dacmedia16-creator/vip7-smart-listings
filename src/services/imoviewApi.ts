@@ -378,7 +378,7 @@ export async function listarImoveis(filters: ImoviewFilters = {}): Promise<Imovi
     // Construir filtro explicitamente para garantir que todos os parâmetros estão presentes
     const simpleFilters: Record<string, unknown> = {
       finalidade: filters.finalidade,
-      codigoCidade: filters.codigoCidade,
+      codigoCidade: codigosCidadesFiltro.length > 0 ? codigosCidadesFiltro[0] : undefined,
       valorMin: filters.valorMin,
       valorMax: filters.valorMax,
       limite: filters.limite,
