@@ -1,15 +1,32 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight, Repeat, Scale } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight, Repeat, Scale, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ImoviewProperty, formatPropertyValue } from '@/services/imoviewApi';
 import { useCompareContext } from '@/contexts/CompareContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface PropertyCardProps {
   property: ImoviewProperty;
+}
+
+/**
+ * Formata a data de atualização para exibição relativa
+ * Ex: "há 2 horas", "há 3 dias"
+ */
+function formatUpdateTime(dateString?: string): string | null {
+  if (!dateString) return null;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
+  } catch {
+    return null;
+  }
 }
 
 export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProps>(
@@ -18,6 +35,7 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
     const isSelected = isInCompare(property.codigo);
     const isRental = property.finalidade === 1;
     const imageUrl = property.fotos?.[0]?.url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800';
+    const updateTimeText = formatUpdateTime(property.dataAtualizacao);
 
     const handleCompareClick = (e: React.MouseEvent) => {
       e.preventDefault();
@@ -117,12 +135,20 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
             </h3>
 
             {/* Location */}
-            <div className="flex items-center gap-2 text-muted-foreground mb-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-3">
               <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
               <span className="text-sm truncate">
                 {property.bairro}{property.cidade ? `, ${property.cidade}` : ''}
               </span>
             </div>
+
+            {/* Update Time Indicator */}
+            {updateTimeText && (
+              <div className="flex items-center gap-1.5 text-muted-foreground/70 mb-3 text-xs">
+                <Clock className="h-3 w-3" />
+                <span>Atualizado {updateTimeText}</span>
+              </div>
+            )}
 
             {/* Features - Compact Icons */}
             <div className="flex items-center gap-4 text-muted-foreground mb-5 text-sm">
