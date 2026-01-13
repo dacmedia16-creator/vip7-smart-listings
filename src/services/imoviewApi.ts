@@ -121,6 +121,46 @@ function matchesBairroFilter(imovelBairro: string | undefined, filtrosBairros: s
   });
 }
 
+/**
+ * Busca imóveis recentemente alterados usando o endpoint específico da API
+ * Este endpoint já retorna os imóveis ordenados por data de alteração (mais recentes primeiro)
+ */
+export async function listarImoveisRecentes(filters: {
+  finalidade?: number;
+  codigoCidade?: number;
+  codigoTipo?: number;
+  pagina?: number;
+  limite?: number;
+  diasAtras?: number;
+} = {}): Promise<ImoviewListResult> {
+  const isDev = import.meta.env.DEV;
+  try {
+    if (isDev) console.log('[imoview-service] === listarImoveisRecentes ===');
+    
+    const data = await callImoviewApi<{ lista: ImoviewProperty[]; quantidade: number }>(
+      'listarImoveisRecentes',
+      {
+        finalidade: filters.finalidade,
+        codigoCidade: filters.codigoCidade,
+        codigoTipo: filters.codigoTipo,
+        pagina: filters.pagina || 1,
+        limite: filters.limite || 50,
+        diasAtras: filters.diasAtras || 60,
+      }
+    );
+    
+    if (isDev) console.log(`[imoview-service] listarImoveisRecentes: ${data.lista?.length} imóveis`);
+    
+    return {
+      lista: data.lista || [],
+      quantidade: data.quantidade || 0,
+    };
+  } catch (error) {
+    if (isDev) console.error('[imoview-service] listarImoveisRecentes error:', error);
+    return { lista: [], quantidade: 0 };
+  }
+}
+
 export async function listarImoveis(filters: ImoviewFilters = {}): Promise<ImoviewListResult> {
   const isDev = import.meta.env.DEV;
   try {
