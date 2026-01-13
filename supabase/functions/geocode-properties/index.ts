@@ -106,8 +106,8 @@ serve(async (req) => {
         });
       }
 
-      // Limit batch size to avoid rate limits
-      const BATCH_SIZE = 10;
+      // Limit batch size to avoid rate limits (increased for faster geocoding)
+      const BATCH_SIZE = 25;
       const batch = (properties as PropertyToGeocode[]).slice(0, BATCH_SIZE);
       
       console.log(`[geocode-properties] Geocoding ${batch.length} properties (of ${properties.length} requested)`);
