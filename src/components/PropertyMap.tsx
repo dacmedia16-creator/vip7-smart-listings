@@ -318,34 +318,63 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       const isRental = property.finalidade === 1;
       const isApproximate = (property as any)._isApproximate === true;
       
-      // Color: blue for rental, green for sale, with amber border for approximate
+      // Color: blue for rental, green for sale
       const color = isRental ? '#3b82f6' : '#10b981';
-      const borderColor = isApproximate ? '#f59e0b' : 'white';
 
       // Create custom marker element with container for stable hover
       const el = document.createElement('div');
       el.className = 'property-marker-container';
       el.style.cssText = `
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
+        position: relative;
       `;
 
       const markerDot = document.createElement('div');
       markerDot.className = 'property-marker-dot';
-      markerDot.style.cssText = `
-        width: 24px;
-        height: 24px;
-        background-color: ${color};
-        border: 3px solid ${borderColor};
-        border-radius: 50%;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        pointer-events: none;
-      `;
+      
+      if (isApproximate) {
+        // Approximate location: dashed ring + smaller dot
+        markerDot.style.cssText = `
+          width: 20px;
+          height: 20px;
+          background-color: ${color};
+          border: 2px dashed #f59e0b;
+          border-radius: 50%;
+          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3), 0 4px 12px rgba(0,0,0,0.3);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          pointer-events: none;
+        `;
+        
+        // Add pulsing ring for approximate locations
+        const pulseRing = document.createElement('div');
+        pulseRing.style.cssText = `
+          position: absolute;
+          width: 32px;
+          height: 32px;
+          border: 2px solid rgba(245, 158, 11, 0.5);
+          border-radius: 50%;
+          animation: pulse-ring 2s ease-out infinite;
+          pointer-events: none;
+        `;
+        el.appendChild(pulseRing);
+      } else {
+        // Exact location: solid border
+        markerDot.style.cssText = `
+          width: 24px;
+          height: 24px;
+          background-color: ${color};
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          pointer-events: none;
+        `;
+      }
 
       el.appendChild(markerDot);
 
@@ -558,19 +587,25 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
 
       {/* Legend */}
       <div className="absolute bottom-4 left-4 z-10 bg-card/90 backdrop-blur-sm rounded-lg px-4 py-3 border border-border shadow-lg">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
-            <span className="text-muted-foreground">Venda</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white" />
-            <span className="text-muted-foreground">Aluguel</span>
+        <p className="text-xs text-muted-foreground mb-2 font-medium">Legenda</p>
+        <div className="flex flex-col gap-2 text-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+              <span className="text-muted-foreground">Venda</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
+              <span className="text-muted-foreground">Aluguel</span>
+            </div>
           </div>
           {withApproximateCoords.length > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-amber-500" />
-              <span className="text-muted-foreground">Loc. aproximada</span>
+            <div className="flex items-center gap-2 pt-1 border-t border-border">
+              <div className="relative flex items-center justify-center w-5 h-5">
+                <div className="absolute w-4 h-4 rounded-full border-2 border-dashed border-amber-500 opacity-50" />
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              </div>
+              <span className="text-muted-foreground text-xs">Localização aproximada (bairro/CEP)</span>
             </div>
           )}
         </div>
