@@ -128,12 +128,29 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
     : null;
   console.log(`[imoview-api] urlVideo mapped value for ${raw.codigo}:`, urlVideo);
 
-  // Parse data de atualização
+  // Parse data de atualização - converte formato brasileiro para ISO
   const parseDate = (val: unknown): string | null => {
     if (!val) return null;
     if (typeof val === 'string') {
-      // Formato esperado: "2024-01-15T10:30:00" ou similar
-      return val.trim() || null;
+      const trimmed = val.trim();
+      if (!trimmed) return null;
+      
+      // Formato brasileiro: "DD/MM/YYYY HH:mm:ss"
+      const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+      if (brMatch) {
+        const [, day, month, year, hour, min, sec] = brMatch;
+        return `${year}-${month}-${day}T${hour}:${min}:${sec}`;
+      }
+      
+      // Formato brasileiro sem hora: "DD/MM/YYYY"
+      const brDateOnly = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (brDateOnly) {
+        const [, day, month, year] = brDateOnly;
+        return `${year}-${month}-${day}T00:00:00`;
+      }
+      
+      // Já está em formato ISO ou outro formato válido
+      return trimmed;
     }
     return null;
   };
