@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.og-metadata]
 verify_jwt = false
+
+[functions.sync-condominios]
+verify_jwt = false

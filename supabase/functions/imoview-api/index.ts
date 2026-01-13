@@ -1,8 +1,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const IMOVIEW_API_KEY = Deno.env.get('IMOVIEW_API_KEY');
 const IMOVIEW_API_URL = 'https://api.imoview.com.br';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -236,13 +239,46 @@ serve(async (req) => {
         });
       }
 
-      // ========= NOVO: Condomínios slim (apenas codigo e nome) =========
+      // ========= NOVO: Condomínios slim (apenas codigo e nome) - USA CACHE DO BANCO =========
       case 'listarCondominiosSlim': {
         console.log('[imoview-api] listarCondominiosSlim params:', JSON.stringify(params));
         
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Build query based on filters
+        let query = supabase
+          .from('condominios_cache')
+          .select('codigo, nome, cidade');
+        
+        // Filter by city code if provided
+        if (params?.codigoCidade) {
+          query = query.eq('cidade_codigo', params.codigoCidade);
+        } else if (params?.cidade) {
+          query = query.ilike('cidade', `%${params.cidade}%`);
+        }
+        
+        // Execute query
+        const { data: cachedCondominios, error: cacheError } = await query.order('nome');
+        
+        if (cacheError) {
+          console.error('[imoview-api] Error fetching from cache:', cacheError);
+          // Fallback to API if cache fails
+        }
+        
+        // If we have cached data, return it
+        if (cachedCondominios && cachedCondominios.length > 0) {
+          console.log(`[imoview-api] listarCondominiosSlim: returned ${cachedCondominios.length} condominios from cache`);
+          return new Response(JSON.stringify(cachedCondominios), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // Fallback: fetch from API if cache is empty
+        console.log('[imoview-api] Cache empty, falling back to API...');
         const cityCode = params?.codigoCidade as number | undefined;
         const cityName = String(params?.cidade ?? '').trim();
         const pageSize = 20;
+        const BATCH_SIZE = 5;
         
         const fetchCondominiosPageSlim = async (payload: Record<string, unknown>) => {
           const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarCondominiosDisponiveis`, {
@@ -264,49 +300,94 @@ serve(async (req) => {
         
         const allCondominios: Array<{ codigo: number; nome: string; cidade: string }> = [];
         const seenCodigos = new Set<number>();
-        let pagina = 1;
-        const maxPages = 100;
+        
+        // First page to get total
+        const firstPayload: Record<string, unknown> = {
+          finalidade: params?.finalidade,
+          numeroPagina: 1,
+          numeroRegistros: pageSize,
+        };
+        
+        if (cityCode) {
+          firstPayload.codigoCidade = cityCode;
+        } else if (cityName) {
+          firstPayload.cidade = cityName;
+        }
 
-        while (pagina <= maxPages) {
-          const payload: Record<string, unknown> = {
-            finalidade: params?.finalidade,
-            numeroPagina: pagina,
-            numeroRegistros: pageSize,
-          };
-          
-          if (cityCode) {
-            payload.codigoCidade = cityCode;
-          } else if (cityName) {
-            payload.cidade = cityName;
+        const firstPageData = await fetchCondominiosPageSlim(firstPayload);
+        const firstPageList = Array.isArray(firstPageData) 
+          ? firstPageData 
+          : Array.isArray(firstPageData?.lista) 
+            ? firstPageData.lista 
+            : [];
+        const totalQuantity = firstPageData?.quantidade || firstPageList.length;
+
+        // Add first page
+        for (const cond of firstPageList) {
+          const codigo = Number(cond.codigo);
+          if (codigo && !seenCodigos.has(codigo)) {
+            seenCodigos.add(codigo);
+            allCondominios.push({
+              codigo,
+              nome: String(cond.nome || cond.nomecondominio || cond.descricao || '').trim(),
+              cidade: String(cond.cidade || cityName || '').trim(),
+            });
           }
+        }
 
-          const condData = await fetchCondominiosPageSlim(payload);
-          const lista = Array.isArray(condData) 
-            ? condData 
-            : Array.isArray(condData?.lista) 
-              ? condData.lista 
-              : [];
+        if (firstPageList.length >= pageSize && totalQuantity > pageSize) {
+          // Calculate remaining pages and fetch in parallel
+          const totalPages = Math.min(Math.ceil(totalQuantity / pageSize), 100);
+          const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+          
+          for (let i = 0; i < remainingPages.length; i += BATCH_SIZE) {
+            const batch = remainingPages.slice(i, i + BATCH_SIZE);
+            
+            const batchResults = await Promise.all(
+              batch.map(async (pagina) => {
+                try {
+                  const payload: Record<string, unknown> = {
+                    finalidade: params?.finalidade,
+                    numeroPagina: pagina,
+                    numeroRegistros: pageSize,
+                  };
+                  
+                  if (cityCode) {
+                    payload.codigoCidade = cityCode;
+                  } else if (cityName) {
+                    payload.cidade = cityName;
+                  }
 
-          if (lista.length === 0) break;
+                  const data = await fetchCondominiosPageSlim(payload);
+                  return Array.isArray(data) 
+                    ? data 
+                    : Array.isArray(data?.lista) 
+                      ? data.lista 
+                      : [];
+                } catch {
+                  return [];
+                }
+              })
+            );
 
-          for (const cond of lista) {
-            const codigo = Number(cond.codigo);
-            if (codigo && !seenCodigos.has(codigo)) {
-              seenCodigos.add(codigo);
-              allCondominios.push({
-                codigo,
-                nome: String(cond.nome || cond.nomecondominio || cond.descricao || '').trim(),
-                cidade: String(cond.cidade || cityName || '').trim(),
-              });
+            for (const pageList of batchResults) {
+              for (const cond of pageList) {
+                const codigo = Number(cond.codigo);
+                if (codigo && !seenCodigos.has(codigo)) {
+                  seenCodigos.add(codigo);
+                  allCondominios.push({
+                    codigo,
+                    nome: String(cond.nome || cond.nomecondominio || cond.descricao || '').trim(),
+                    cidade: String(cond.cidade || cityName || '').trim(),
+                  });
+                }
+              }
             }
           }
-
-          if (lista.length < pageSize) break;
-          pagina++;
         }
 
         allCondominios.sort((a, b) => a.nome.localeCompare(b.nome));
-        console.log(`[imoview-api] listarCondominiosSlim: returned ${allCondominios.length} condominios (slim format)`);
+        console.log(`[imoview-api] listarCondominiosSlim: returned ${allCondominios.length} condominios from API fallback`);
 
         return new Response(JSON.stringify(allCondominios), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

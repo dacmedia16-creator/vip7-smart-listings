@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      condominios_cache: {
+        Row: {
+          cidade: string | null
+          cidade_codigo: number | null
+          codigo: number
+          created_at: string | null
+          finalidade: number | null
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          cidade?: string | null
+          cidade_codigo?: number | null
+          codigo: number
+          created_at?: string | null
+          finalidade?: number | null
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          cidade?: string | null
+          cidade_codigo?: number | null
+          codigo?: number
+          created_at?: string | null
+          finalidade?: number | null
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       property_geocodes: {
         Row: {
           created_at: string
