@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
-import { useCidades, useBairros, useCondominios } from '@/hooks/useImoveis';
+import { useCidades, useBairros, useCondominiosSlimMultiCidade } from '@/hooks/useImoveis';
 import { getFinalidadeCode } from '@/services/imoviewApi';
 
 const PRICE_MIN = 0;
@@ -29,9 +29,15 @@ export function HeroSection() {
   const finalidadeCode = getFinalidadeCode(finalidade);
   
   const { data: cidades = [] } = useCidades(finalidadeCode);
-  const { data: bairros = [] } = useBairros(cidade || undefined, finalidadeCode);
-  // Carregar TODOS os condomínios (sem filtro de cidade) para cache inicial
-  const { data: todosCondominios = [], isLoading: isLoadingTodosCondominios } = useCondominios(undefined, finalidadeCode);
+  // Fix: passar undefined como codigoCidade (2º param) e finalidadeCode como 3º
+  const { data: bairros = [] } = useBairros(cidade || undefined, undefined, finalidadeCode);
+  
+  // Usar hook otimizado que busca do cache (condominios_cache)
+  const { data: todosCondominios = [], isLoading: isLoadingTodosCondominios } = useCondominiosSlimMultiCidade(
+    [], // cidades (string[]) vazio = todas
+    [], // codigosCidades (number[]) vazio = todos
+    finalidadeCode
+  );
   
   // Filtrar localmente por cidade quando selecionada (muito mais rápido)
   const condominiosFiltrados = useMemo(() => {
