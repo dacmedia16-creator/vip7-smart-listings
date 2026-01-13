@@ -22,6 +22,29 @@ interface GeocodeResult {
   geocoded_address: string | null;
 }
 
+// Centro de referência: Sorocaba, SP
+const SOROCABA_CENTER = { lat: -23.5015, lng: -47.4526 };
+// Raio máximo aceitável em km (cobre Sorocaba e região)
+const MAX_DISTANCE_KM = 200;
+
+// Bounding box para região de São Paulo (aproximado)
+const SP_BBOX = '-54,-26,-44,-19';
+
+/**
+ * Calcula a distância entre dois pontos usando a fórmula de Haversine
+ * Retorna a distância em quilômetros
+ */
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Raio da Terra em km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -92,17 +115,27 @@ serve(async (req) => {
       const results: GeocodeResult[] = [];
 
       for (const property of batch) {
-        // Build address string
+        // Build address string - incluir estado SP para melhor precisão
         const addressParts: string[] = [];
         if (property.endereco) addressParts.push(property.endereco);
         if (property.bairro) addressParts.push(property.bairro);
-        if (property.cidade) addressParts.push(property.cidade);
+        if (property.cidade) {
+          // Adicionar estado se a cidade não contiver já
+          if (!property.cidade.includes('SP') && !property.cidade.includes('São Paulo')) {
+            addressParts.push(`${property.cidade}, SP`);
+          } else {
+            addressParts.push(property.cidade);
+          }
+        } else {
+          // Se não tiver cidade, assumir Sorocaba
+          addressParts.push('Sorocaba, SP');
+        }
         if (property.cep) addressParts.push(property.cep);
         addressParts.push('Brasil');
 
         const addressString = addressParts.join(', ');
         
-        if (addressParts.length <= 1) {
+        if (addressParts.length <= 2) {
           console.log(`[geocode-properties] Property ${property.codigo}: insufficient address data`);
           results.push({
             property_code: property.codigo,
@@ -116,7 +149,8 @@ serve(async (req) => {
 
         try {
           const encodedAddress = encodeURIComponent(addressString);
-          const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${mapboxToken}&country=BR&limit=1`;
+          // Usar bbox para limitar resultados à região de São Paulo
+          const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${mapboxToken}&country=BR&bbox=${SP_BBOX}&limit=1`;
           
           console.log(`[geocode-properties] Property ${property.codigo}: geocoding "${addressString}"`);
           
@@ -140,11 +174,26 @@ serve(async (req) => {
             const feature = data.features[0];
             const [lng, lat] = feature.center;
             
+            // Validar distância do centro de referência (Sorocaba)
+            const distance = haversineDistance(SOROCABA_CENTER.lat, SOROCABA_CENTER.lng, lat, lng);
+            
+            if (distance > MAX_DISTANCE_KM) {
+              console.log(`[geocode-properties] Property ${property.codigo}: result too far from Sorocaba (${distance.toFixed(0)}km), rejecting`);
+              results.push({
+                property_code: property.codigo,
+                latitude: null,
+                longitude: null,
+                is_approximate: false,
+                geocoded_address: null,
+              });
+              continue;
+            }
+            
             // Check if result is approximate (neighborhood/city level vs street address)
             const placeType = feature.place_type?.[0] || '';
             const isApproximate = ['neighborhood', 'locality', 'place', 'region', 'country'].includes(placeType);
             
-            console.log(`[geocode-properties] Property ${property.codigo}: found ${lat}, ${lng} (${placeType}, approximate: ${isApproximate})`);
+            console.log(`[geocode-properties] Property ${property.codigo}: found ${lat}, ${lng} (${placeType}, distance: ${distance.toFixed(0)}km, approximate: ${isApproximate})`);
             
             const result: GeocodeResult = {
               property_code: property.codigo,
