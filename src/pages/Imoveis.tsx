@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { BairroMultiSelect } from '@/components/BairroMultiSelect';
 import { CidadeMultiSelect } from '@/components/CidadeMultiSelect';
-import { useImoveis, useBairrosMultiCidade, useCondominiosSlimMultiCidade, useCondominiosPorBairro } from '@/hooks/useImoveis';
+import { useImoveis, useImoveisRecentes, useBairrosMultiCidade, useCondominiosSlimMultiCidade, useCondominiosPorBairro } from '@/hooks/useImoveis';
 import { useFiltrosIniciais } from '@/hooks/useFiltrosIniciais';
 import { useImoveisMap } from '@/hooks/useImoveisMap';
 import { getFinalidadeCode } from '@/services/imoviewApi';
@@ -194,7 +194,64 @@ const areaMinUrl = searchParams.get('areaMin') || '';
     }
   }, [debugEnabled, apiFiltersDebug]);
 
-  const { data: imoveisData, isLoading, error } = useImoveis(apiFilters);
+  // Mapeamento de tipo (texto) para código numérico da API
+  const tipoParaCodigo = (tipoStr?: string): number | undefined => {
+    if (!tipoStr) return undefined;
+    const tipoLower = tipoStr.toLowerCase();
+    // Mapeamento baseado nos tipos comuns da API Imoview
+    const mapa: Record<string, number> = {
+      'casa': 1,
+      'apartamento': 2,
+      'terreno': 3,
+      'comercial': 4,
+      'casa_condominio': 5,
+    };
+    return mapa[tipoLower];
+  };
+
+  // Determinar se podemos usar o endpoint de "recentes" (menos filtros complexos)
+  // O endpoint RetornarImoveisAlterados suporta: finalidade, codigoCidade, codigoTipo
+  // Não suporta: bairros, condominios, faixa de preço, busca de texto, quartos, banheiros, área
+  const hasAdvancedFilters = useMemo(() => {
+    return (
+      bairrosArray.length > 0 ||
+      condominiosArray.length > 0 ||
+      valorMinFiltro !== undefined ||
+      valorMaxFiltro !== undefined ||
+      quartosUrl !== '' ||
+      banheirosUrl !== '' ||
+      areaMinUrl !== '' ||
+      busca.trim() !== ''
+    );
+  }, [bairrosArray, condominiosArray, valorMinFiltro, valorMaxFiltro, quartosUrl, banheirosUrl, areaMinUrl, busca]);
+
+  // Usar endpoint de "recentes" quando ordenar=recentes E sem filtros avançados
+  const useRecentesEndpoint = ordenar === 'recentes' && !hasAdvancedFilters;
+
+  // Hook para imóveis recentes (quando apropriado)
+  const recentesFilters = useMemo(() => ({
+    finalidade: finalidadeCode,
+    codigoCidade: codigoCidadePrincipal,
+    codigoTipo: tipoParaCodigo(tipo),
+    pagina: paginaAtual,
+    limite: ITEMS_PER_PAGE,
+    diasAtras: 365, // Buscar últimos 365 dias para cobrir bem o histórico
+  }), [finalidadeCode, codigoCidadePrincipal, tipo, paginaAtual]);
+
+  const { 
+    data: imoveisRecentesData, 
+    isLoading: isLoadingRecentes 
+  } = useImoveisRecentes(useRecentesEndpoint ? recentesFilters : { limite: 0 });
+
+  // Hook para imóveis gerais (quando há filtros avançados ou ordenação por preço)
+  const { 
+    data: imoveisGeralData, 
+    isLoading: isLoadingGeral 
+  } = useImoveis(!useRecentesEndpoint ? apiFilters : { limite: 0 });
+
+  // Unificar dados baseado no endpoint usado
+  const imoveisData = useRecentesEndpoint ? imoveisRecentesData : imoveisGeralData;
+  const isLoading = useRecentesEndpoint ? isLoadingRecentes : isLoadingGeral;
 
   // Build filters for map (without pagination)
   const mapFilters = {
@@ -269,6 +326,8 @@ const areaMinUrl = searchParams.get('areaMin') || '';
 
   // Filtrar propriedades por tipo e busca de texto (local) + ordenar (cliente)
   const filteredProperties = useMemo(() => {
+    // Só aplica ordenação local se não estiver usando endpoint de recentes
+    // (o endpoint de recentes já retorna ordenado por data de alteração)
     const applyOrdering = <T extends { valor?: number | null }>(arr: T[]) => {
       if (ordenar === 'menor_preco') {
         return [...arr].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));
@@ -276,6 +335,7 @@ const areaMinUrl = searchParams.get('areaMin') || '';
       if (ordenar === 'maior_preco') {
         return [...arr].sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
       }
+      // Se ordenar=recentes E usando endpoint de recentes, não re-ordena (já vem correto)
       return arr;
     };
 
@@ -526,9 +586,13 @@ const areaMinUrl = searchParams.get('areaMin') || '';
               {/* Debug (dev ou ativado via ?debug=1) */}
               {debugEnabled && (
                 <details className="mt-2 text-xs text-muted-foreground/70 font-mono">
-                  <summary className="cursor-pointer hover:text-muted-foreground">Debug: filtros</summary>
+                  <summary className="cursor-pointer hover:text-muted-foreground">
+                    Debug: {useRecentesEndpoint ? '🚀 Endpoint RECENTES' : '📋 Endpoint GERAL'}
+                  </summary>
                   <pre className="mt-1 p-2 bg-secondary/50 rounded text-[10px] overflow-auto max-h-32">
-                    {apiFiltersDebug}
+                    Endpoint: {useRecentesEndpoint ? 'RetornarImoveisAlterados (ordenado por data)' : 'RetornarImoveisDisponiveis (geral)'}
+                    {'\n'}Filtros avançados: {hasAdvancedFilters ? 'SIM' : 'NÃO'}
+                    {'\n\n'}{apiFiltersDebug}
                   </pre>
                 </details>
               )}
