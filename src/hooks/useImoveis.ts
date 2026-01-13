@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import {
   listarImoveis,
+  listarImoveisRecentes,
   listarCidades,
   listarBairros,
   listarCondominios,
@@ -53,11 +54,39 @@ export function useImoveis(filters: ImoviewFilters = {}) {
   return query;
 }
 
+/**
+ * Hook para buscar imóveis recentemente atualizados
+ * Usa o endpoint específico da API que já retorna ordenado por data de alteração
+ */
+export function useImoveisRecentes(options: {
+  finalidade?: number;
+  codigoCidade?: number;
+  codigoTipo?: number;
+  pagina?: number;
+  limite?: number;
+  diasAtras?: number;
+} = {}) {
+  return useQuery({
+    queryKey: ['imoveis-recentes', options],
+    queryFn: () => listarImoveisRecentes(options),
+    ...IMOVEIS_CACHE_CONFIG,
+  });
+}
+
+/**
+ * Hook para buscar imóveis em destaque
+ * Usa o endpoint de imóveis recentes para garantir ordenação correta
+ */
 export function useImoveisDestaque(finalidade?: number) {
   return useQuery({
     queryKey: ['imoveis-destaque', finalidade],
     queryFn: async () => {
-      const result = await listarImoveis({ finalidade, destaque: true, limite: 8 });
+      // Usar endpoint de recentes que já retorna ordenado pela API
+      const result = await listarImoveisRecentes({ 
+        finalidade, 
+        limite: 8,
+        diasAtras: 60, // Últimos 60 dias
+      });
       return result.lista;
     },
     staleTime: 1000 * 60 * 5,

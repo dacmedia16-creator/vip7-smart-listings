@@ -412,6 +412,69 @@ serve(async (req) => {
       }
 
       // ========= NOVO: Buscar condomínios que têm imóveis nos bairros selecionados =========
+      // ========= NOVO: Retornar imóveis recentemente alterados (ordenados pela API) =========
+      case 'listarImoveisRecentes': {
+        console.log('[imoview-api] listarImoveisRecentes params:', JSON.stringify(params));
+        
+        // Calcular data de X dias atrás no formato brasileiro (dd/mm/yyyy hh:mm:ss)
+        const diasAtras = params?.diasAtras ?? 60; // padrão: últimos 60 dias
+        const dataInicio = new Date();
+        dataInicio.setDate(dataInicio.getDate() - Number(diasAtras));
+        const dataFormatada = `${String(dataInicio.getDate()).padStart(2, '0')}/${String(dataInicio.getMonth() + 1).padStart(2, '0')}/${dataInicio.getFullYear()} 00:00:00`;
+        
+        console.log(`[imoview-api] Buscando imóveis alterados desde: ${dataFormatada}`);
+        
+        const recentesBody = {
+          dataultimaAlteracaoInicio: dataFormatada,
+          finalidade: params?.finalidade,
+          numeroPagina: params?.pagina ?? 1,
+          numeroRegistros: Math.min(Number(params?.limite) || 50, 50), // API limita a 50
+        };
+        
+        // Adicionar filtros opcionais
+        if (params?.codigoCidade) {
+          (recentesBody as Record<string, unknown>).codigoCidade = params.codigoCidade;
+        }
+        if (params?.codigoTipo) {
+          (recentesBody as Record<string, unknown>).codigoTipo = params.codigoTipo;
+        }
+        
+        console.log('[imoview-api] listarImoveisRecentes body:', JSON.stringify(recentesBody));
+        
+        const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisAlterados`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'chave': IMOVIEW_API_KEY || '',
+          },
+          body: JSON.stringify(removeNullValues(recentesBody)),
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[imoview-api] Erro RetornarImoveisAlterados: ${response.status} - ${errorText}`);
+          throw new Error(`Failed to fetch recent properties: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('[imoview-api] RetornarImoveisAlterados raw response keys:', Object.keys(data));
+        
+        const lista = Array.isArray(data) ? data : data?.lista || [];
+        const quantidade = Array.isArray(data) ? lista.length : (data?.quantidade || lista.length);
+        
+        console.log(`[imoview-api] listarImoveisRecentes: ${lista.length} imóveis, quantidade: ${quantidade}`);
+        
+        // Mapear para formato frontend
+        const mappedList = lista.map((item: Record<string, unknown>) => mapImoviewProperty(item));
+        
+        return new Response(JSON.stringify({
+          lista: mappedList,
+          quantidade,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       case 'listarCondominiosPorBairro': {
         console.log('[imoview-api] listarCondominiosPorBairro params:', JSON.stringify(params));
         
