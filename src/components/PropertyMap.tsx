@@ -517,11 +517,23 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
                 )}
               </div>
               
-              {/* Geocoding status */}
+              {/* Geocoding status with progress */}
               {geocodeMutation.isPending && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  Buscando localizações...
+                <div className="flex flex-col gap-1 mt-1">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span>Buscando localizações...</span>
+                  </div>
+                  {propertiesWithoutCoords.length > 0 && (
+                    <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-primary h-full transition-all duration-500 ease-out"
+                        style={{ 
+                          width: `${Math.round((1 - (propertiesWithoutCoords.length - cachedGeocodes.length) / propertiesWithoutCoords.length) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -50,6 +50,7 @@ export function usePropertyGeocodes(propertyCodes: number[]) {
 
 /**
  * Trigger geocoding for properties without coordinates
+ * Now includes automatic retry to continue geocoding remaining properties
  */
 export function useGeocodeProperties() {
   const queryClient = useQueryClient();
@@ -63,30 +64,63 @@ export function useGeocodeProperties() {
       cep?: string;
     }>) => {
       if (properties.length === 0) {
-        return { results: [], remaining: 0 };
+        return { results: [], remaining: 0, totalProcessed: 0 };
       }
 
       console.log(`[useGeocodeProperties] Requesting geocode for ${properties.length} properties`);
 
-      const { data, error } = await supabase.functions.invoke('geocode-properties', {
-        body: {
-          action: 'geocode',
-          properties,
-        },
-      });
+      let allResults: GeocodeResult[] = [];
+      let remaining = properties.length;
+      let currentProperties = properties;
+      let batchCount = 0;
+      const MAX_BATCHES_PER_SESSION = 5; // Limit to avoid overwhelming the API
 
-      if (error) {
-        console.error('[useGeocodeProperties] Error geocoding:', error);
-        throw error;
+      // Process multiple batches automatically
+      while (remaining > 0 && batchCount < MAX_BATCHES_PER_SESSION) {
+        batchCount++;
+        console.log(`[useGeocodeProperties] Processing batch ${batchCount}, ${currentProperties.length} properties to geocode`);
+
+        const { data, error } = await supabase.functions.invoke('geocode-properties', {
+          body: {
+            action: 'geocode',
+            properties: currentProperties,
+          },
+        });
+
+        if (error) {
+          console.error('[useGeocodeProperties] Error geocoding:', error);
+          throw error;
+        }
+
+        const batchResults = data?.results || [];
+        allResults = [...allResults, ...batchResults];
+        remaining = data?.remaining || 0;
+
+        console.log(`[useGeocodeProperties] Batch ${batchCount} complete: ${batchResults.length} processed, ${remaining} remaining`);
+
+        if (remaining > 0 && batchCount < MAX_BATCHES_PER_SESSION) {
+          // Get the codes that were just processed
+          const processedCodes = new Set(batchResults.map((r: GeocodeResult) => r.property_code));
+          // Filter out processed properties for next batch
+          currentProperties = currentProperties.filter(p => !processedCodes.has(p.codigo));
+          
+          // Small delay between batches to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
-      return data as { results: GeocodeResult[]; remaining: number };
+      return { 
+        results: allResults, 
+        remaining, 
+        totalProcessed: allResults.length,
+        batchesCompleted: batchCount 
+      };
     },
     onSuccess: (data) => {
       // Invalidate cached geocodes to refetch with new data
       queryClient.invalidateQueries({ queryKey: ['property-geocodes'] });
       
-      console.log(`[useGeocodeProperties] Geocoded ${data.results.length} properties, ${data.remaining} remaining`);
+      console.log(`[useGeocodeProperties] Completed: ${data.totalProcessed} geocoded in ${data.batchesCompleted} batches, ${data.remaining} still remaining`);
     },
   });
 }
