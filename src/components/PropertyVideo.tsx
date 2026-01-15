@@ -10,19 +10,33 @@ interface PropertyVideoProps {
   className?: string;
 }
 
+// Normalize URL to ensure it has a protocol
+function normalizeUrl(url: string): string {
+  if (!url) return url;
+  const trimmed = url.trim();
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+}
+
 // Parse video URL to get embed URL and type
 function parseVideoUrl(url: string): { embedUrl: string; type: 'youtube' | 'vimeo' | 'direct' } | null {
   if (!url) return null;
 
-  // YouTube patterns
+  const normalizedUrl = normalizeUrl(url);
+
+  // YouTube patterns - v= can be anywhere in the query string
   const youtubePatterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/watch\?.*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    // Fallback: extract v= parameter from anywhere in URL
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
   ];
 
   for (const pattern of youtubePatterns) {
-    const match = url.match(pattern);
+    const match = normalizedUrl.match(pattern);
     if (match && match[1]) {
       return {
         embedUrl: `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0`,
@@ -38,7 +52,7 @@ function parseVideoUrl(url: string): { embedUrl: string; type: 'youtube' | 'vime
   ];
 
   for (const pattern of vimeoPatterns) {
-    const match = url.match(pattern);
+    const match = normalizedUrl.match(pattern);
     if (match && match[1]) {
       return {
         embedUrl: `https://player.vimeo.com/video/${match[1]}?autoplay=1`,
@@ -48,9 +62,9 @@ function parseVideoUrl(url: string): { embedUrl: string; type: 'youtube' | 'vime
   }
 
   // Check if it's a direct video file
-  if (url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) {
+  if (normalizedUrl.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) {
     return {
-      embedUrl: url,
+      embedUrl: normalizedUrl,
       type: 'direct',
     };
   }
@@ -61,9 +75,17 @@ function parseVideoUrl(url: string): { embedUrl: string; type: 'youtube' | 'vime
 
 // Get thumbnail URL for YouTube videos
 function getYoutubeThumbnail(videoUrl: string): string | null {
-  const match = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
-  if (match && match[1]) {
-    return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+  const normalizedUrl = normalizeUrl(videoUrl);
+  // Try multiple patterns to find the video ID
+  const patterns = [
+    /(?:youtube\.com\/watch\?.*v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const pattern of patterns) {
+    const match = normalizedUrl.match(pattern);
+    if (match && match[1]) {
+      return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+    }
   }
   return null;
 }
