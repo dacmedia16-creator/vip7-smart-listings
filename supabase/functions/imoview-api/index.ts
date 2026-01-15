@@ -424,52 +424,96 @@ serve(async (req) => {
         
         console.log(`[imoview-api] Buscando imóveis alterados desde: ${dataFormatada}`);
         
-        const recentesBody = {
-          dataultimaAlteracaoInicio: dataFormatada,
-          finalidade: params?.finalidade,
-          numeroPagina: params?.pagina ?? 1,
-          numeroRegistros: Math.min(Number(params?.limite) || 50, 50), // API limita a 50
-        };
+        const finalidadeRecentes = params?.finalidade as number | undefined;
+        const paginaSolicitada = Number(params?.pagina ?? 1);
+        const limiteSolicitado = Math.min(Number(params?.limite) || 20, 50);
         
-        // Adicionar filtros opcionais
-        if (params?.codigoCidade) {
-          (recentesBody as Record<string, unknown>).codigoCidade = params.codigoCidade;
+        // ========= PAGINAÇÃO COMPLETA PARA CONTAGEM CORRETA =========
+        // A API RetornarImoveisAlterados retorna quantidade total SEM filtrar por finalidade
+        // Então precisamos buscar todos e filtrar/contar manualmente
+        const PAGE_SIZE = 50; // Máximo permitido pela API
+        const MAX_PAGES = 100; // Limite de segurança (5000 imóveis max)
+        const allImoveis: Record<string, unknown>[] = [];
+        
+        let pagina = 1;
+        let continuarBuscando = true;
+        
+        while (continuarBuscando && pagina <= MAX_PAGES) {
+          const recentesBody: Record<string, unknown> = {
+            dataultimaAlteracaoInicio: dataFormatada,
+            finalidade: finalidadeRecentes,
+            numeroPagina: pagina,
+            numeroRegistros: PAGE_SIZE,
+          };
+          
+          // Adicionar filtros opcionais
+          if (params?.codigoCidade) {
+            recentesBody.codigoCidade = params.codigoCidade;
+          }
+          if (params?.codigoTipo) {
+            recentesBody.codigoTipo = params.codigoTipo;
+          }
+          
+          if (pagina === 1) {
+            console.log('[imoview-api] listarImoveisRecentes body (primeira página):', JSON.stringify(recentesBody));
+          }
+          
+          const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisAlterados`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'chave': IMOVIEW_API_KEY || '',
+            },
+            body: JSON.stringify(removeNullValues(recentesBody)),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[imoview-api] Erro RetornarImoveisAlterados página ${pagina}: ${response.status} - ${errorText}`);
+            break;
+          }
+          
+          const data = await response.json();
+          const lista = Array.isArray(data) ? data : data?.lista || [];
+          
+          console.log(`[imoview-api] Página ${pagina}: ${lista.length} imóveis retornados`);
+          
+          // Adicionar à lista geral
+          allImoveis.push(...lista);
+          
+          // Parar se retornou menos que o tamanho da página (última página)
+          if (lista.length < PAGE_SIZE) {
+            continuarBuscando = false;
+          }
+          
+          pagina++;
         }
-        if (params?.codigoTipo) {
-          (recentesBody as Record<string, unknown>).codigoTipo = params.codigoTipo;
-        }
         
-        console.log('[imoview-api] listarImoveisRecentes body:', JSON.stringify(recentesBody));
+        console.log(`[imoview-api] Total bruto de imóveis recentes: ${allImoveis.length}`);
         
-        const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisAlterados`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'chave': IMOVIEW_API_KEY || '',
-          },
-          body: JSON.stringify(removeNullValues(recentesBody)),
-        });
+        // Filtrar por finalidade (a API não filtra corretamente)
+        const imoveisFiltrados = finalidadeRecentes 
+          ? allImoveis.filter(imovel => {
+              const imovelFinalidade = Number(imovel.finalidade || imovel.codigofinalidade);
+              return imovelFinalidade === finalidadeRecentes;
+            })
+          : allImoveis;
         
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[imoview-api] Erro RetornarImoveisAlterados: ${response.status} - ${errorText}`);
-          throw new Error(`Failed to fetch recent properties: ${response.status}`);
-        }
+        const quantidadeReal = imoveisFiltrados.length;
+        console.log(`[imoview-api] Imóveis após filtro de finalidade (${finalidadeRecentes}): ${quantidadeReal}`);
         
-        const data = await response.json();
-        console.log('[imoview-api] RetornarImoveisAlterados raw response keys:', Object.keys(data));
+        // Aplicar paginação para retornar apenas a página solicitada
+        const startIdx = (paginaSolicitada - 1) * limiteSolicitado;
+        const paginatedList = imoveisFiltrados.slice(startIdx, startIdx + limiteSolicitado);
         
-        const lista = Array.isArray(data) ? data : data?.lista || [];
-        const quantidade = Array.isArray(data) ? lista.length : (data?.quantidade || lista.length);
-        
-        console.log(`[imoview-api] listarImoveisRecentes: ${lista.length} imóveis, quantidade: ${quantidade}`);
+        console.log(`[imoview-api] listarImoveisRecentes: retornando página ${paginaSolicitada} com ${paginatedList.length} imóveis de ${quantidadeReal} total`);
         
         // Mapear para formato frontend
-        const mappedList = lista.map((item: Record<string, unknown>) => mapImoviewProperty(item));
+        const mappedList = paginatedList.map((item: Record<string, unknown>) => mapImoviewProperty(item));
         
         return new Response(JSON.stringify({
           lista: mappedList,
-          quantidade,
+          quantidade: quantidadeReal, // Quantidade CORRETA após filtro de finalidade
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
