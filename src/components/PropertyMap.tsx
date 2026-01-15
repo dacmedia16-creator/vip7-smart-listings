@@ -74,13 +74,31 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     }
   }, [propertiesWithoutCoords, cachedGeocodes, geocodeMutation]);
 
-  // All properties to display on map
+  // Validate coordinates are within Brazil bounds
+  const isValidBrazilCoord = useCallback((lat: number, lng: number): boolean => {
+    // Brazil approximate bounds: lat -35 to 5, lng -75 to -30
+    return lat >= -35 && lat <= 5 && lng >= -75 && lng <= -30;
+  }, []);
+
+  // All properties to display on map (filtered for valid Brazil coordinates)
   const propertiesWithCoords = useMemo(() => {
-    if (showApproximate) {
-      return [...withCoords, ...withApproximateCoords];
-    }
-    return withCoords;
-  }, [withCoords, withApproximateCoords, showApproximate]);
+    const allProps = showApproximate 
+      ? [...withCoords, ...withApproximateCoords]
+      : withCoords;
+    
+    // Filter for valid Brazil coordinates
+    const validProps = allProps.filter(p => {
+      if (!p.latitude || !p.longitude) return false;
+      const isValid = isValidBrazilCoord(p.latitude, p.longitude);
+      if (!isValid) {
+        console.warn(`[PropertyMap] Invalid coordinates for property ${p.codigo}: lat=${p.latitude}, lng=${p.longitude}`);
+      }
+      return isValid;
+    });
+
+    console.log(`[PropertyMap] Filtered ${allProps.length} -> ${validProps.length} properties with valid Brazil coords`);
+    return validProps;
+  }, [withCoords, withApproximateCoords, showApproximate, isValidBrazilCoord]);
 
   // Create popup HTML content
   const createPopupContent = useCallback((property: ImoviewProperty) => {
@@ -405,13 +423,49 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       bounds.extend([property.longitude!, property.latitude!]);
     });
 
-    // Fit map to show all markers
+    // Fit map to show all markers - wait for map to be ready
     if (propertiesWithCoords.length > 0) {
-      map.current.fitBounds(bounds, {
-        padding: { top: 100, bottom: 50, left: 50, right: 50 },
-        maxZoom: 15,
-        duration: 1000,
-      });
+      const mapInstance = map.current;
+      
+      // Ensure bounds are valid before fitting
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      
+      console.log(`[PropertyMap] Fitting bounds: NE=${ne.lat},${ne.lng} SW=${sw.lat},${sw.lng}`);
+      
+      // Check if bounds are valid (not a single point)
+      const boundsAreValid = 
+        Math.abs(ne.lat - sw.lat) > 0.0001 || 
+        Math.abs(ne.lng - sw.lng) > 0.0001;
+      
+      if (boundsAreValid) {
+        // Wait for map to be idle before fitting bounds
+        const doFitBounds = () => {
+          mapInstance.fitBounds(bounds, {
+            padding: { top: 100, bottom: 50, left: 50, right: 50 },
+            maxZoom: 15,
+            duration: 1000,
+          });
+        };
+        
+        // If map is already loaded, fit bounds after a short delay
+        if (mapInstance.loaded()) {
+          setTimeout(doFitBounds, 100);
+        } else {
+          // Wait for map to load first
+          mapInstance.once('load', () => {
+            setTimeout(doFitBounds, 100);
+          });
+        }
+      } else {
+        // Single point - just center on it with a reasonable zoom
+        console.log(`[PropertyMap] Single point, centering on ${ne.lat},${ne.lng}`);
+        mapInstance.flyTo({
+          center: [ne.lng, ne.lat],
+          zoom: 14,
+          duration: 1000,
+        });
+      }
     }
   }, [propertiesWithCoords, createPopupContent]);
 
