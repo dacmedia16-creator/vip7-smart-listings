@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react'
 import mapboxgl from 'mapbox-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import * as turf from '@turf/turf';
-import type { Feature, Polygon } from 'geojson';
+import type { Feature, Polygon, FeatureCollection, Point } from 'geojson';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { ImoviewProperty } from '@/services/imoviewApi';
@@ -22,11 +22,25 @@ interface PropertyMapProps {
   onAreaFilter?: (filteredProperties: ImoviewProperty[] | null) => void;
 }
 
+interface PropertyFeatureProperties {
+  codigo: number;
+  finalidade: number;
+  valor: number;
+  titulo: string;
+  bairro: string;
+  cidade: string;
+  qtdeQuartos: number;
+  qtdeVagas: number;
+  areaConstruida: number;
+  fotoUrl: string;
+  isApproximate: boolean;
+  geocodedAddress?: string;
+}
+
 export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const draw = useRef<MapboxDraw | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const navigate = useNavigate();
   
@@ -35,6 +49,7 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
   const [hasArea, setHasArea] = useState(false);
   const [filteredCount, setFilteredCount] = useState<number | null>(null);
   const [showApproximate, setShowApproximate] = useState(true);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Find properties without coordinates to geocode
   const propertiesWithoutCoords = useMemo(() => {
@@ -100,34 +115,60 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     return validProps;
   }, [withCoords, withApproximateCoords, showApproximate, isValidBrazilCoord]);
 
+  // Convert properties to GeoJSON for clustering
+  const geojsonData = useMemo((): FeatureCollection<Point, PropertyFeatureProperties> => {
+    return {
+      type: 'FeatureCollection',
+      features: propertiesWithCoords.map((property) => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [property.longitude!, property.latitude!]
+        },
+        properties: {
+          codigo: property.codigo,
+          finalidade: property.finalidade,
+          valor: property.valor || 0,
+          titulo: property.titulo || 'Imóvel',
+          bairro: property.bairro || '',
+          cidade: property.cidade || '',
+          qtdeQuartos: property.qtdeQuartos || 0,
+          qtdeVagas: property.qtdeVagas || 0,
+          areaConstruida: property.areaConstruida || 0,
+          fotoUrl: property.fotos?.[0]?.url || '/placeholder.svg',
+          isApproximate: (property as any)._isApproximate === true,
+          geocodedAddress: (property as any)._geocodedAddress || '',
+        }
+      }))
+    };
+  }, [propertiesWithCoords]);
+
   // Create popup HTML content
-  const createPopupContent = useCallback((property: ImoviewProperty) => {
-    const isRental = property.finalidade === 1;
-    const price = formatPropertyValue(property.valor, isRental);
-    const imageUrl = property.fotos?.[0]?.url || '/placeholder.svg';
+  const createPopupContent = useCallback((props: PropertyFeatureProperties) => {
+    const isRental = props.finalidade === 1;
+    const price = formatPropertyValue(props.valor, isRental);
+    const imageUrl = props.fotoUrl || '/placeholder.svg';
     const finalidadeLabel = isRental ? 'Aluguel' : 'Venda';
     const finalidadeClass = isRental ? 'bg-blue-500' : 'bg-emerald-500';
-    const isApproximate = (property as any)._isApproximate === true;
-    const geocodedAddress = (property as any)._geocodedAddress;
 
     return `
       <div class="property-popup">
         <div class="popup-image-container">
-          <img src="${imageUrl}" alt="${property.titulo || 'Imóvel'}" class="popup-image" />
+          <img src="${imageUrl}" alt="${props.titulo}" class="popup-image" />
           <span class="popup-badge ${finalidadeClass}">${finalidadeLabel}</span>
-          ${isApproximate ? '<span class="popup-badge bg-amber-500" style="right: auto; left: 8px;">Loc. aproximada</span>' : ''}
+          ${props.isApproximate ? '<span class="popup-badge bg-amber-500" style="right: auto; left: 8px;">Loc. aproximada</span>' : ''}
         </div>
         <div class="popup-content">
-          <h3 class="popup-title">${property.titulo || 'Imóvel'}</h3>
-          <p class="popup-location">${property.bairro || ''}${property.bairro && property.cidade ? ', ' : ''}${property.cidade || ''}</p>
-          ${isApproximate && geocodedAddress ? `<p class="popup-location text-xs opacity-70">${geocodedAddress}</p>` : ''}
+          <h3 class="popup-title">${props.titulo}</h3>
+          <p class="popup-location">${props.bairro}${props.bairro && props.cidade ? ', ' : ''}${props.cidade}</p>
+          ${props.isApproximate && props.geocodedAddress ? `<p class="popup-location text-xs opacity-70">${props.geocodedAddress}</p>` : ''}
           <div class="popup-features">
-            ${property.qtdeQuartos ? `<span>${property.qtdeQuartos} quarto${property.qtdeQuartos > 1 ? 's' : ''}</span>` : ''}
-            ${property.qtdeVagas ? `<span>${property.qtdeVagas} vaga${property.qtdeVagas > 1 ? 's' : ''}</span>` : ''}
-            ${property.areaConstruida ? `<span>${property.areaConstruida}m²</span>` : ''}
+            ${props.qtdeQuartos ? `<span>${props.qtdeQuartos} quarto${props.qtdeQuartos > 1 ? 's' : ''}</span>` : ''}
+            ${props.qtdeVagas ? `<span>${props.qtdeVagas} vaga${props.qtdeVagas > 1 ? 's' : ''}</span>` : ''}
+            ${props.areaConstruida ? `<span>${props.areaConstruida}m²</span>` : ''}
           </div>
           <p class="popup-price">${price}</p>
-          <button class="popup-button" data-property-id="${property.codigo}">Ver detalhes</button>
+          <button class="popup-button" data-property-id="${props.codigo}">Ver detalhes</button>
         </div>
       </div>
     `;
@@ -141,26 +182,6 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       return turf.booleanPointInPolygon(point, polygon);
     });
     return filtered;
-  }, [propertiesWithCoords]);
-
-  // Update markers visibility based on filter
-  const updateMarkersVisibility = useCallback((filteredIds: Set<number> | null) => {
-    markersRef.current.forEach((marker, index) => {
-      const property = propertiesWithCoords[index];
-      if (!property) return;
-      
-      const el = marker.getElement();
-      if (filteredIds === null) {
-        el.style.opacity = '1';
-        el.style.pointerEvents = 'auto';
-      } else if (filteredIds.has(property.codigo)) {
-        el.style.opacity = '1';
-        el.style.pointerEvents = 'auto';
-      } else {
-        el.style.opacity = '0.25';
-        el.style.pointerEvents = 'none';
-      }
-    });
   }, [propertiesWithCoords]);
 
   // Handle draw events
@@ -178,16 +199,14 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     const feature = data.features[data.features.length - 1];
     if (feature.geometry.type === 'Polygon') {
       const filtered = filterPropertiesByPolygon(feature as Feature<Polygon>);
-      const filteredIds = new Set(filtered.map(p => p.codigo));
       
       setFilteredCount(filtered.length);
       setHasArea(true);
       setIsDrawing(false);
       setDrawMode(null);
-      updateMarkersVisibility(filteredIds);
       onAreaFilter?.(filtered);
     }
-  }, [filterPropertiesByPolygon, updateMarkersVisibility, onAreaFilter]);
+  }, [filterPropertiesByPolygon, onAreaFilter]);
 
   const handleDrawUpdate = useCallback((e: any) => {
     const data = draw.current?.getAll();
@@ -196,22 +215,19 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     const feature = data.features[0];
     if (feature.geometry.type === 'Polygon') {
       const filtered = filterPropertiesByPolygon(feature as Feature<Polygon>);
-      const filteredIds = new Set(filtered.map(p => p.codigo));
       
       setFilteredCount(filtered.length);
-      updateMarkersVisibility(filteredIds);
       onAreaFilter?.(filtered);
     }
-  }, [filterPropertiesByPolygon, updateMarkersVisibility, onAreaFilter]);
+  }, [filterPropertiesByPolygon, onAreaFilter]);
 
   const handleDrawDelete = useCallback(() => {
     setHasArea(false);
     setFilteredCount(null);
     setIsDrawing(false);
     setDrawMode(null);
-    updateMarkersVisibility(null);
     onAreaFilter?.(null);
-  }, [updateMarkersVisibility, onAreaFilter]);
+  }, [onAreaFilter]);
 
   // Initialize map
   useEffect(() => {
@@ -306,6 +322,10 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       }
     });
 
+    map.current.on('load', () => {
+      setMapLoaded(true);
+    });
+
     return () => {
       map.current?.remove();
       map.current = null;
@@ -313,161 +333,247 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     };
   }, [navigate, handleDrawCreate, handleDrawUpdate, handleDrawDelete]);
 
-  // Update markers when properties change
+  // Setup clustering layers when map loads
   useEffect(() => {
-    if (!map.current) return;
+    if (!map.current || !mapLoaded) return;
 
-    // Clear existing markers
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
+    const mapInstance = map.current;
 
-    // Close any open popup
-    if (popupRef.current) {
-      popupRef.current.remove();
-      popupRef.current = null;
-    }
+    // Add source for clustered properties
+    if (!mapInstance.getSource('properties')) {
+      mapInstance.addSource('properties', {
+        type: 'geojson',
+        data: geojsonData,
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 60,
+        clusterProperties: {
+          // Aggregate properties for cluster display
+          hasRental: ['any', ['==', ['get', 'finalidade'], 1]],
+          hasSale: ['any', ['==', ['get', 'finalidade'], 2]],
+        }
+      });
 
-    if (propertiesWithCoords.length === 0) return;
+      // Cluster circles layer
+      mapInstance.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'properties',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': [
+            'step',
+            ['get', 'point_count'],
+            '#d4a853',  // Small clusters (< 10) - gold
+            10,
+            '#f59e0b', // Medium clusters (10-30) - amber
+            30,
+            '#ea580c', // Large clusters (30-100) - orange
+            100,
+            '#dc2626'  // Very large clusters (100+) - red
+          ],
+          'circle-radius': [
+            'step',
+            ['get', 'point_count'],
+            20,  // Small clusters
+            10,
+            25,  // Medium
+            30,
+            32,  // Large
+            100,
+            40   // Very large
+          ],
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#ffffff'
+        }
+      });
 
-    // Create new markers
-    const bounds = new mapboxgl.LngLatBounds();
+      // Cluster count text layer
+      mapInstance.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'properties',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+          'text-size': 14
+        },
+        paint: {
+          'text-color': '#ffffff'
+        }
+      });
 
-    propertiesWithCoords.forEach((property) => {
-      const isRental = property.finalidade === 1;
-      const isApproximate = (property as any)._isApproximate === true;
-      
-      // Color: blue for rental, green for sale
-      const color = isRental ? '#3b82f6' : '#10b981';
+      // Individual property points - Sale (green)
+      mapInstance.addLayer({
+        id: 'unclustered-point-sale',
+        type: 'circle',
+        source: 'properties',
+        filter: ['all', 
+          ['!', ['has', 'point_count']], 
+          ['==', ['get', 'finalidade'], 2]
+        ],
+        paint: {
+          'circle-color': '#10b981',
+          'circle-radius': 10,
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#ffffff'
+        }
+      });
 
-      // Create custom marker element with container for stable hover
-      const el = document.createElement('div');
-      el.className = 'property-marker-container';
-      el.style.cssText = `
-        width: 44px;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        position: relative;
-      `;
+      // Individual property points - Rental (blue)
+      mapInstance.addLayer({
+        id: 'unclustered-point-rental',
+        type: 'circle',
+        source: 'properties',
+        filter: ['all', 
+          ['!', ['has', 'point_count']], 
+          ['==', ['get', 'finalidade'], 1]
+        ],
+        paint: {
+          'circle-color': '#3b82f6',
+          'circle-radius': 10,
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#ffffff'
+        }
+      });
 
-      const markerDot = document.createElement('div');
-      markerDot.className = 'property-marker-dot';
-      
-      if (isApproximate) {
-        // Approximate location: dashed ring + smaller dot
-        markerDot.style.cssText = `
-          width: 20px;
-          height: 20px;
-          background-color: ${color};
-          border: 2px dashed #f59e0b;
-          border-radius: 50%;
-          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3), 0 4px 12px rgba(0,0,0,0.3);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-          pointer-events: none;
-        `;
+      // Approximate location indicator (dashed ring)
+      mapInstance.addLayer({
+        id: 'approximate-ring',
+        type: 'circle',
+        source: 'properties',
+        filter: ['all', 
+          ['!', ['has', 'point_count']], 
+          ['==', ['get', 'isApproximate'], true]
+        ],
+        paint: {
+          'circle-color': 'transparent',
+          'circle-radius': 14,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#f59e0b',
+          'circle-stroke-opacity': 0.8
+        }
+      });
+
+      // Click on cluster to zoom
+      mapInstance.on('click', 'clusters', (e) => {
+        const features = mapInstance.queryRenderedFeatures(e.point, {
+          layers: ['clusters']
+        });
         
-        // Add pulsing ring for approximate locations
-        const pulseRing = document.createElement('div');
-        pulseRing.style.cssText = `
-          position: absolute;
-          width: 32px;
-          height: 32px;
-          border: 2px solid rgba(245, 158, 11, 0.5);
-          border-radius: 50%;
-          animation: pulse-ring 2s ease-out infinite;
-          pointer-events: none;
-        `;
-        el.appendChild(pulseRing);
-      } else {
-        // Exact location: solid border
-        markerDot.style.cssText = `
-          width: 24px;
-          height: 24px;
-          background-color: ${color};
-          border: 3px solid white;
-          border-radius: 50%;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-          pointer-events: none;
-        `;
-      }
-
-      el.appendChild(markerDot);
-
-      el.addEventListener('mouseenter', () => {
-        markerDot.style.transform = 'scale(1.3)';
-        markerDot.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+        if (!features.length) return;
+        
+        const clusterId = features[0].properties?.cluster_id;
+        const source = mapInstance.getSource('properties') as mapboxgl.GeoJSONSource;
+        
+        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err) return;
+          
+          const geometry = features[0].geometry;
+          if (geometry.type === 'Point') {
+            mapInstance.easeTo({
+              center: geometry.coordinates as [number, number],
+              zoom: zoom || 14,
+              duration: 500
+            });
+          }
+        });
       });
 
-      el.addEventListener('mouseleave', () => {
-        markerDot.style.transform = 'scale(1)';
-        markerDot.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+      // Click on individual property to show popup
+      const showPopup = (e: mapboxgl.MapLayerMouseEvent) => {
+        const features = e.features;
+        if (!features?.length) return;
+
+        const feature = features[0];
+        const geometry = feature.geometry;
+        if (geometry.type !== 'Point') return;
+
+        const coordinates = geometry.coordinates.slice() as [number, number];
+        const props = feature.properties as PropertyFeatureProperties;
+
+        // Close existing popup
+        if (popupRef.current) {
+          popupRef.current.remove();
+        }
+
+        popupRef.current = new mapboxgl.Popup({
+          offset: 15,
+          closeButton: true,
+          closeOnClick: false,
+          maxWidth: '320px',
+          className: 'property-map-popup',
+        })
+          .setLngLat(coordinates)
+          .setHTML(createPopupContent(props))
+          .addTo(mapInstance);
+      };
+
+      mapInstance.on('click', 'unclustered-point-sale', showPopup);
+      mapInstance.on('click', 'unclustered-point-rental', showPopup);
+
+      // Change cursor on hover
+      mapInstance.on('mouseenter', 'clusters', () => {
+        mapInstance.getCanvas().style.cursor = 'pointer';
       });
+      mapInstance.on('mouseleave', 'clusters', () => {
+        mapInstance.getCanvas().style.cursor = '';
+      });
+      mapInstance.on('mouseenter', 'unclustered-point-sale', () => {
+        mapInstance.getCanvas().style.cursor = 'pointer';
+      });
+      mapInstance.on('mouseleave', 'unclustered-point-sale', () => {
+        mapInstance.getCanvas().style.cursor = '';
+      });
+      mapInstance.on('mouseenter', 'unclustered-point-rental', () => {
+        mapInstance.getCanvas().style.cursor = 'pointer';
+      });
+      mapInstance.on('mouseleave', 'unclustered-point-rental', () => {
+        mapInstance.getCanvas().style.cursor = '';
+      });
+    }
+  }, [mapLoaded, createPopupContent]);
 
-      const popup = new mapboxgl.Popup({
-        offset: 25,
-        closeButton: true,
-        closeOnClick: false,
-        maxWidth: '320px',
-        className: 'property-map-popup',
-      }).setHTML(createPopupContent(property));
+  // Update GeoJSON data when properties change
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
 
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([property.longitude!, property.latitude!])
-        .setPopup(popup)
-        .addTo(map.current!);
+    const source = map.current.getSource('properties') as mapboxgl.GeoJSONSource;
+    if (source) {
+      source.setData(geojsonData);
 
-      markersRef.current.push(marker);
-      bounds.extend([property.longitude!, property.latitude!]);
-    });
+      // Fit bounds to show all properties
+      if (propertiesWithCoords.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        
+        propertiesWithCoords.forEach((property) => {
+          bounds.extend([property.longitude!, property.latitude!]);
+        });
 
-    // Fit map to show all markers - wait for map to be ready
-    if (propertiesWithCoords.length > 0) {
-      const mapInstance = map.current;
-      
-      // Ensure bounds are valid before fitting
-      const ne = bounds.getNorthEast();
-      const sw = bounds.getSouthWest();
-      
-      console.log(`[PropertyMap] Fitting bounds: NE=${ne.lat},${ne.lng} SW=${sw.lat},${sw.lng}`);
-      
-      // Check if bounds are valid (not a single point)
-      const boundsAreValid = 
-        Math.abs(ne.lat - sw.lat) > 0.0001 || 
-        Math.abs(ne.lng - sw.lng) > 0.0001;
-      
-      if (boundsAreValid) {
-        // Wait for map to be idle before fitting bounds
-        const doFitBounds = () => {
-          mapInstance.fitBounds(bounds, {
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+        
+        const boundsAreValid = 
+          Math.abs(ne.lat - sw.lat) > 0.0001 || 
+          Math.abs(ne.lng - sw.lng) > 0.0001;
+        
+        if (boundsAreValid) {
+          map.current.fitBounds(bounds, {
             padding: { top: 100, bottom: 50, left: 50, right: 50 },
             maxZoom: 15,
             duration: 1000,
           });
-        };
-        
-        // If map is already loaded, fit bounds after a short delay
-        if (mapInstance.loaded()) {
-          setTimeout(doFitBounds, 100);
         } else {
-          // Wait for map to load first
-          mapInstance.once('load', () => {
-            setTimeout(doFitBounds, 100);
+          map.current.flyTo({
+            center: [ne.lng, ne.lat],
+            zoom: 14,
+            duration: 1000,
           });
         }
-      } else {
-        // Single point - just center on it with a reasonable zoom
-        console.log(`[PropertyMap] Single point, centering on ${ne.lat},${ne.lng}`);
-        mapInstance.flyTo({
-          center: [ne.lng, ne.lat],
-          zoom: 14,
-          duration: 1000,
-        });
       }
     }
-  }, [propertiesWithCoords, createPopupContent]);
+  }, [geojsonData, propertiesWithCoords, mapLoaded]);
 
   // Handle drawing mode changes
   const startDrawPolygon = () => {
@@ -478,7 +584,6 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     setDrawMode('polygon');
     setHasArea(false);
     setFilteredCount(null);
-    updateMarkersVisibility(null);
     onAreaFilter?.(null);
   };
 
@@ -491,7 +596,6 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
     setDrawMode('rectangle');
     setHasArea(false);
     setFilteredCount(null);
-    updateMarkersVisibility(null);
     onAreaFilter?.(null);
   };
 
@@ -663,6 +767,13 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
             <div className="flex items-center gap-2">
               <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
               <span className="text-muted-foreground">Aluguel</span>
+            </div>
+          </div>
+          {/* Cluster legend */}
+          <div className="flex items-center gap-2 pt-1 border-t border-border">
+            <div className="flex items-center gap-1">
+              <div className="w-5 h-5 rounded-full bg-[#d4a853] flex items-center justify-center text-[10px] text-white font-bold">5</div>
+              <span className="text-muted-foreground text-xs">Agrupamento de imóveis</span>
             </div>
           </div>
           {withApproximateCoords.length > 0 && (
