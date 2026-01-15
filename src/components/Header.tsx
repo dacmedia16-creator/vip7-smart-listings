@@ -44,10 +44,10 @@ export function Header() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <img 
+          <img 
               src={logoVip7} 
               alt="VIP7 Imóveis" 
-              className="h-10 md:h-12 w-auto"
+              className="w-24 md:w-32 lg:w-36 h-auto object-contain"
             />
           </Link>
 
