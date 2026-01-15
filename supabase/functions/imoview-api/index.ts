@@ -492,9 +492,21 @@ serve(async (req) => {
         console.log(`[imoview-api] Total bruto de imóveis recentes: ${allImoveis.length}`);
         
         // Filtrar por finalidade (a API não filtra corretamente)
+        // A API retorna finalidade como string ("Venda"/"Aluguel"), precisamos converter
         const imoveisFiltrados = finalidadeRecentes 
           ? allImoveis.filter(imovel => {
-              const imovelFinalidade = Number(imovel.finalidade || imovel.codigofinalidade);
+              const rawFinalidade = imovel.finalidade || imovel.codigofinalidade;
+              let imovelFinalidade: number;
+              
+              if (typeof rawFinalidade === 'string') {
+                // Converter "Venda" -> 2, "Aluguel" -> 1
+                imovelFinalidade = rawFinalidade.toLowerCase().includes('aluguel') ? 1 : 2;
+              } else if (typeof rawFinalidade === 'number') {
+                imovelFinalidade = rawFinalidade;
+              } else {
+                imovelFinalidade = 2; // default venda
+              }
+              
               return imovelFinalidade === finalidadeRecentes;
             })
           : allImoveis;
