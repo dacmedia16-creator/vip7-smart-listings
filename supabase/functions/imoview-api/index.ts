@@ -428,17 +428,15 @@ serve(async (req) => {
         const paginaSolicitada = Number(params?.pagina ?? 1);
         const limiteSolicitado = Math.min(Number(params?.limite) || 20, 50);
         
-        // ========= PAGINAÇÃO COMPLETA PARA CONTAGEM CORRETA =========
-        // A API RetornarImoveisAlterados retorna quantidade total SEM filtrar por finalidade
-        // Então precisamos buscar todos e filtrar/contar manualmente
+        // ========= PAGINAÇÃO PARALELA OTIMIZADA =========
+        // Buscar páginas em paralelo para performance
         const PAGE_SIZE = 50; // Máximo permitido pela API
-        const MAX_PAGES = 100; // Limite de segurança (5000 imóveis max)
+        const MAX_PAGES = 20; // Reduzido para 1000 imóveis max (performance)
+        const BATCH_SIZE = 5; // Páginas paralelas por lote
         const allImoveis: Record<string, unknown>[] = [];
         
-        let pagina = 1;
-        let continuarBuscando = true;
-        
-        while (continuarBuscando && pagina <= MAX_PAGES) {
+        // Função helper para buscar uma página
+        const fetchPage = async (pagina: number): Promise<Record<string, unknown>[]> => {
           const recentesBody: Record<string, unknown> = {
             dataultimaAlteracaoInicio: dataFormatada,
             finalidade: finalidadeRecentes,
@@ -446,7 +444,6 @@ serve(async (req) => {
             numeroRegistros: PAGE_SIZE,
           };
           
-          // Adicionar filtros opcionais
           if (params?.codigoCidade) {
             recentesBody.codigoCidade = params.codigoCidade;
           }
@@ -454,42 +451,60 @@ serve(async (req) => {
             recentesBody.codigoTipo = params.codigoTipo;
           }
           
-          if (pagina === 1) {
-            console.log('[imoview-api] listarImoveisRecentes body (primeira página):', JSON.stringify(recentesBody));
+          try {
+            const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisAlterados`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'chave': IMOVIEW_API_KEY || '',
+              },
+              body: JSON.stringify(removeNullValues(recentesBody)),
+            });
+            
+            if (!response.ok) {
+              console.error(`[imoview-api] Erro página ${pagina}: ${response.status}`);
+              return [];
+            }
+            
+            const data = await response.json();
+            return Array.isArray(data) ? data : data?.lista || [];
+          } catch (error) {
+            console.error(`[imoview-api] Erro fetchPage ${pagina}:`, error);
+            return [];
           }
+        };
+        
+        console.log('[imoview-api] Iniciando busca paralela de imóveis recentes...');
+        const startTime = Date.now();
+        
+        // Primeira página para estimar total
+        const firstPage = await fetchPage(1);
+        allImoveis.push(...firstPage);
+        
+        if (firstPage.length === PAGE_SIZE) {
+          // Há mais páginas - buscar em paralelo
+          const remainingPages = Array.from({ length: MAX_PAGES - 1 }, (_, i) => i + 2);
           
-          const response = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarImoveisAlterados`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'chave': IMOVIEW_API_KEY || '',
-            },
-            body: JSON.stringify(removeNullValues(recentesBody)),
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[imoview-api] Erro RetornarImoveisAlterados página ${pagina}: ${response.status} - ${errorText}`);
-            break;
+          for (let i = 0; i < remainingPages.length; i += BATCH_SIZE) {
+            const batch = remainingPages.slice(i, i + BATCH_SIZE);
+            
+            const batchResults = await Promise.all(batch.map(p => fetchPage(p)));
+            
+            let shouldStop = false;
+            for (const pageResults of batchResults) {
+              allImoveis.push(...pageResults);
+              if (pageResults.length < PAGE_SIZE) {
+                shouldStop = true;
+                break;
+              }
+            }
+            
+            if (shouldStop) break;
           }
-          
-          const data = await response.json();
-          const lista = Array.isArray(data) ? data : data?.lista || [];
-          
-          console.log(`[imoview-api] Página ${pagina}: ${lista.length} imóveis retornados`);
-          
-          // Adicionar à lista geral
-          allImoveis.push(...lista);
-          
-          // Parar se retornou menos que o tamanho da página (última página)
-          if (lista.length < PAGE_SIZE) {
-            continuarBuscando = false;
-          }
-          
-          pagina++;
         }
         
-        console.log(`[imoview-api] Total bruto de imóveis recentes: ${allImoveis.length}`);
+        const duration = Date.now() - startTime;
+        console.log(`[imoview-api] Total bruto de imóveis recentes: ${allImoveis.length} em ${duration}ms`);
         
         // Filtrar por finalidade (a API não filtra corretamente)
         // A API retorna finalidade como string ("Venda"/"Aluguel"), precisamos converter

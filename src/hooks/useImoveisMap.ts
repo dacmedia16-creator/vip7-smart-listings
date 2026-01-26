@@ -10,12 +10,12 @@ export function useImoveisMap(filters: ImoviewFilters = {}, enabled: boolean = t
     queryKey: ['imoveis-map', filters],
     queryFn: async () => {
       const PAGE_SIZE = 20; // Limite da API Imoview
-      const MAX_PAGES = 100;
-      const BATCH_SIZE = 10; // Requests paralelas por lote
+      const MAX_PAGES = 50; // Reduzido de 100 para melhor performance
+      const BATCH_SIZE = 15; // Aumentado de 10 para mais paralelismo
       const allProperties: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
 
-      console.log('[useImoveisMap] Starting parallel fetch with filters:', filters);
+      console.log('[useImoveisMap] Starting optimized parallel fetch with filters:', filters);
       const startTime = Date.now();
 
       // 1. Primeira requisição para obter o total
@@ -99,6 +99,7 @@ export function useImoveisMap(filters: ImoviewFilters = {}, enabled: boolean = t
       return allProperties;
     },
     enabled,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 30, // 30 minutes - cache mais agressivo
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 }
