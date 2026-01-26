@@ -799,12 +799,17 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
         </div>
       )}
 
-      {/* Loading overlay */}
+      {/* Loading overlay with progress */}
       {isLoading && (
-        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-20">
-          <div className="flex items-center gap-3 bg-card px-6 py-4 rounded-lg border border-border shadow-lg">
-            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-foreground">Carregando mapa...</span>
+        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center z-20 gap-4">
+          <div className="relative w-16 h-16">
+            <div className="absolute inset-0 border-4 border-muted rounded-full" />
+            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <MapPin className="absolute inset-0 m-auto w-6 h-6 text-primary" />
+          </div>
+          <div className="text-center">
+            <p className="text-foreground font-medium">Carregando imóveis no mapa...</p>
+            <p className="text-sm text-muted-foreground mt-1">Isso pode levar alguns segundos</p>
           </div>
         </div>
       )}
