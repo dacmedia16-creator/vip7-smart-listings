@@ -202,9 +202,9 @@ const areaMinUrl = searchParams.get('areaMin') || '';
     const mapa: Record<string, number> = {
       'casa': 1,
       'apartamento': 2,
-      'terreno': 3,
-      'comercial': 4,
-      'casa_condominio': 5,
+      'terreno': 19,        // Código correto da API Imoview
+      'comercial': 6,       // Código correto da API Imoview
+      'casa_condominio': 28, // Código correto da API Imoview
     };
     return mapa[tipoLower];
   };
