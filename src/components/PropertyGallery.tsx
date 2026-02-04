@@ -70,14 +70,21 @@ interface PropertyGalleryProps {
   title: string;
 }
 
+// Debounce time between navigations (ms)
+const NAVIGATION_DEBOUNCE = 250;
+
 export function PropertyGallery({ images, title }: PropertyGalleryProps) {
   const [currentImage, setCurrentImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [showAllThumbnails, setShowAllThumbnails] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Use refs instead of state for touch tracking (avoids re-renders)
+  const touchStartRef = useRef<number | null>(null);
+  const touchEndRef = useRef<number | null>(null);
+  const lastNavigationRef = useRef<number>(0);
+  
   const thumbnailsRef = useRef<HTMLDivElement>(null);
   const lightboxThumbnailsRef = useRef<HTMLDivElement>(null);
 
@@ -103,43 +110,59 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
     scrollToThumbnail(lightboxThumbnailsRef);
   }, [currentImage]);
 
+  // Handle transition end to reset animating state
+  const handleTransitionEnd = useCallback((e: React.TransitionEvent) => {
+    // Only handle opacity transitions to avoid multiple triggers
+    if (e.propertyName === 'opacity') {
+      setIsAnimating(false);
+    }
+  }, []);
+
   const nextImage = useCallback(() => {
-    if (isAnimating) return;
+    const now = Date.now();
+    if (now - lastNavigationRef.current < NAVIGATION_DEBOUNCE) return;
+    lastNavigationRef.current = now;
+    
     setIsAnimating(true);
     setCurrentImage((prev) => (prev + 1) % images.length);
-    setTimeout(() => setIsAnimating(false), 300);
-  }, [images.length, isAnimating]);
+  }, [images.length]);
 
   const prevImage = useCallback(() => {
-    if (isAnimating) return;
+    const now = Date.now();
+    if (now - lastNavigationRef.current < NAVIGATION_DEBOUNCE) return;
+    lastNavigationRef.current = now;
+    
     setIsAnimating(true);
     setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
-    setTimeout(() => setIsAnimating(false), 300);
-  }, [images.length, isAnimating]);
+  }, [images.length]);
 
-  // Touch handlers for swipe
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
+  // Touch handlers for swipe - using refs to avoid re-renders
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchEndRef.current = null;
+    touchStartRef.current = e.targetTouches[0].clientX;
+  }, []);
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    touchEndRef.current = e.targetTouches[0].clientX;
+  }, []);
 
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+  const onTouchEnd = useCallback(() => {
+    if (!touchStartRef.current || !touchEndRef.current) return;
     
-    if (isLeftSwipe) {
-      nextImage();
+    const distance = touchStartRef.current - touchEndRef.current;
+    
+    if (Math.abs(distance) > minSwipeDistance) {
+      if (distance > 0) {
+        nextImage();
+      } else {
+        prevImage();
+      }
     }
-    if (isRightSwipe) {
-      prevImage();
-    }
-  };
+    
+    // Reset refs
+    touchStartRef.current = null;
+    touchEndRef.current = null;
+  }, [nextImage, prevImage, minSwipeDistance]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -168,6 +191,16 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
       document.body.style.overflow = '';
     };
   }, [lightboxOpen, showAllThumbnails]);
+
+  // Direct navigation to specific image (for thumbnails)
+  const goToImage = useCallback((index: number) => {
+    const now = Date.now();
+    if (now - lastNavigationRef.current < NAVIGATION_DEBOUNCE) return;
+    lastNavigationRef.current = now;
+    
+    setIsAnimating(true);
+    setCurrentImage(index);
+  }, []);
 
   if (!images.length) return null;
 
@@ -258,9 +291,10 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                 src={images[currentImage]}
                 alt={`${title} - Foto ${currentImage + 1}`}
                 className={cn(
-                  "max-h-[85vh] max-w-[95vw] md:max-w-[90vw] object-contain transition-all duration-300",
-                  isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"
+                  "max-h-[85vh] max-w-[95vw] md:max-w-[90vw] object-contain transition-opacity duration-300",
+                  isAnimating ? "opacity-0" : "opacity-100"
                 )}
+                onTransitionEnd={handleTransitionEnd}
                 style={{ animation: 'scale-in 0.3s ease-out' }}
                 onClick={(e) => {
                   if (isZoomed) {
@@ -281,11 +315,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
               {images.map((img, index) => (
                 <button
                   key={index}
-                  onClick={() => {
-                    setIsAnimating(true);
-                    setCurrentImage(index);
-                    setTimeout(() => setIsAnimating(false), 300);
-                  }}
+                  onClick={() => goToImage(index)}
                   className={cn(
                     "flex-shrink-0 w-16 h-12 md:w-24 md:h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 relative",
                     index === currentImage
@@ -384,19 +414,18 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {/* Main Image with Ken Burns Effect */}
+        {/* Main Image with Ken Burns Effect - paused during transitions */}
         <div className="absolute inset-0 overflow-hidden">
           <img
             src={images[currentImage]}
             alt={title}
-            className={cn(
-              "w-full h-full object-cover cursor-pointer transition-all duration-700",
-              isAnimating ? "opacity-0 scale-110" : "opacity-100 scale-100",
-              "hover:scale-105"
-            )}
+            className="w-full h-full object-cover cursor-pointer hover:scale-105"
             style={{ 
-              animation: !isAnimating ? 'subtle-zoom 20s ease-in-out infinite alternate' : 'none' 
+              animation: !isAnimating ? 'subtle-zoom 20s ease-in-out infinite alternate' : 'none',
+              transition: 'opacity 0.3s ease-out',
+              opacity: isAnimating ? 0 : 1
             }}
+            onTransitionEnd={handleTransitionEnd}
             onClick={() => setLightboxOpen(true)}
           />
         </div>
@@ -457,11 +486,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
               {images.slice(0, 6).map((img, index) => (
                 <button
                   key={index}
-                  onClick={() => {
-                    setIsAnimating(true);
-                    setCurrentImage(index);
-                    setTimeout(() => setIsAnimating(false), 300);
-                  }}
+                  onClick={() => goToImage(index)}
                   className={cn(
                     "flex-shrink-0 w-14 h-10 md:w-20 md:h-14 rounded-lg overflow-hidden border-2 transition-all duration-300",
                     index === currentImage
@@ -497,7 +522,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
             {images.map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentImage(index)}
+                onClick={() => goToImage(index)}
                 className={cn(
                   "w-2 h-2 rounded-full transition-all duration-300",
                   index === currentImage
