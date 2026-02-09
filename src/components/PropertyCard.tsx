@@ -119,11 +119,25 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
               {isRental && (
                 <span className="text-sm text-muted-foreground">/mês</span>
               )}
-              {property.valorCondominio !== undefined && property.valorCondominio > 0 && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  Condomínio: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.valorCondominio)}
-                </p>
-              )}
+              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                {property.valorCondominio !== undefined && property.valorCondominio > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Cond: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.valorCondominio)}
+                  </p>
+                )}
+                {(() => {
+                  const area = property.areaTotal || property.areaConstruida || 0;
+                  if (area > 0 && property.valor) {
+                    const precoM2 = property.valor / area;
+                    return (
+                      <p className="text-sm text-muted-foreground">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(precoM2)}/m²
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
             </div>
           </div>
 
