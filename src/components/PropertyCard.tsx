@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight, Repeat, Scale, Clock } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Car, Maximize, ArrowRight, Repeat, Scale, Clock, TrendingDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ImoviewProperty, formatPropertyValue } from '@/services/imoviewApi';
@@ -12,6 +12,8 @@ import { ptBR } from 'date-fns/locale';
 
 interface PropertyCardProps {
   property: ImoviewProperty;
+  /** Média de R$/m² do bairro, para exibir badge "Abaixo da média" */
+  mediaPrecoM2Bairro?: number;
 }
 
 /**
@@ -30,12 +32,22 @@ function formatUpdateTime(dateString?: string): string | null {
 }
 
 export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProps>(
-  ({ property }, ref) => {
+  ({ property, mediaPrecoM2Bairro }, ref) => {
     const { isInCompare, toggleCompare, canAddMore } = useCompareContext();
     const isSelected = isInCompare(property.codigo);
     const isRental = property.finalidade === 1;
     const imageUrl = property.fotos?.[0]?.url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800';
     const updateTimeText = formatUpdateTime(property.dataAtualizacao);
+
+    // Calcular R$/m² e verificar se está abaixo da média do bairro
+    const precoM2Info = React.useMemo(() => {
+      const area = property.areaTotal || property.areaConstruida || 0;
+      if (area <= 0 || !property.valor) return null;
+      const precoM2 = property.valor / area;
+      const abaixoDaMedia = mediaPrecoM2Bairro != null && mediaPrecoM2Bairro > 0 && precoM2 < mediaPrecoM2Bairro;
+      const percentAbaixo = abaixoDaMedia ? Math.round((1 - precoM2 / mediaPrecoM2Bairro) * 100) : 0;
+      return { precoM2, abaixoDaMedia, percentAbaixo };
+    }, [property.valor, property.areaTotal, property.areaConstruida, mediaPrecoM2Bairro]);
 
     const handleCompareClick = (e: React.MouseEvent) => {
       e.preventDefault();
@@ -68,6 +80,12 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
               {property.condominio && (
                 <Badge className="bg-primary/90 text-primary-foreground border-none text-xs font-medium w-fit">
                   {property.condominio}
+                </Badge>
+              )}
+              {precoM2Info?.abaixoDaMedia && precoM2Info.percentAbaixo >= 5 && (
+                <Badge className="bg-accent/90 text-accent-foreground border-none text-xs font-medium flex items-center gap-1 w-fit">
+                  <TrendingDown className="h-3 w-3" />
+                  {precoM2Info.percentAbaixo}% abaixo do m² do bairro
                 </Badge>
               )}
               {property.aceitaPermuta && (
@@ -125,18 +143,11 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
                     Cond: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(property.valorCondominio)}
                   </p>
                 )}
-                {(() => {
-                  const area = property.areaTotal || property.areaConstruida || 0;
-                  if (area > 0 && property.valor) {
-                    const precoM2 = property.valor / area;
-                    return (
-                      <p className="text-sm text-muted-foreground">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(precoM2)}/m²
-                      </p>
-                    );
-                  }
-                  return null;
-                })()}
+                {precoM2Info && (
+                  <p className="text-sm text-muted-foreground">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(precoM2Info.precoM2)}/m²
+                  </p>
+                )}
               </div>
             </div>
           </div>
