@@ -191,6 +191,8 @@ function mapImoviewProperty(raw: Record<string, unknown>): Record<string, unknow
                    raw.aceitapermuta === true || raw.aceitapermuta === 1 || raw.aceitapermuta === '1' || raw.aceitapermuta === 'Sim' ||
                    raw.aceita_permuta === true || raw.aceita_permuta === 1 || raw.aceita_permuta === '1' || raw.aceita_permuta === 'Sim' ||
                    raw.Permuta === true || raw.Permuta === 1 || raw.Permuta === '1' || raw.Permuta === 'Sim',
+    // Valor por m² calculado pela API Imoview (mais preciso que cálculo manual)
+    valorM2: parseCurrencyValue(raw.valorm2) || undefined,
     // Datas para ordenação
     dataAtualizacao: parseDate(raw.datahoraultimaalteracao) || parseDate(raw.datahoracadastro),
     dataCadastro: parseDate(raw.datahoracadastro),

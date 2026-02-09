@@ -28,6 +28,7 @@ export interface ImoviewProperty {
   longitude?: number;
   aceitaPermuta?: boolean;
   urlVideo?: string;
+  valorM2?: number; // Valor por m² calculado pela API Imoview
   dataAtualizacao?: string; // Data da última atualização (ISO string)
   dataCadastro?: string; // Data de cadastro (ISO string)
 }
