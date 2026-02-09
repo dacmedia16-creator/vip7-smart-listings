@@ -409,6 +409,33 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
     return applyOrdering(list);
   }, [imoveisData?.lista, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
 
+  // Calcular média de R$/m² por bairro (para badge "abaixo da média")
+  const mediasPrecoM2PorBairro = useMemo(() => {
+    const source = imoveisData?.lista || [];
+    const bairroMap = new Map<string, { soma: number; count: number }>();
+    for (const p of source) {
+      const bairro = p.bairro;
+      if (!bairro) continue;
+      const area = p.areaTotal || p.areaConstruida || 0;
+      if (area <= 0 || !p.valor) continue;
+      const precoM2 = p.valor / area;
+      const entry = bairroMap.get(bairro);
+      if (entry) {
+        entry.soma += precoM2;
+        entry.count += 1;
+      } else {
+        bairroMap.set(bairro, { soma: precoM2, count: 1 });
+      }
+    }
+    const result = new Map<string, number>();
+    for (const [bairro, { soma, count }] of bairroMap) {
+      if (count >= 2) { // Só calcula média com pelo menos 2 imóveis no bairro
+        result.set(bairro, soma / count);
+      }
+    }
+    return result;
+  }, [imoveisData?.lista]);
+
   const filteredMapProperties = useMemo(() => {
     let list = (mapProperties || []).filter((property) => matchesTipoFiltro(property.tipo));
 
@@ -1176,7 +1203,7 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
                             className="animate-slide-up"
                             style={{ animationDelay: `${index * 50}ms` }}
                           >
-                            <PropertyCard property={property} />
+                            <PropertyCard property={property} mediaPrecoM2Bairro={property.bairro ? mediasPrecoM2PorBairro.get(property.bairro) : undefined} />
                           </div>
                         ))}
                       </div>
