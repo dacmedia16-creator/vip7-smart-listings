@@ -36,6 +36,8 @@ const valorMaxUrl = searchParams.get('valorMax');
 const quartosUrl = searchParams.get('quartos') || '';
 const banheirosUrl = searchParams.get('banheiros') || '';
 const areaMinUrl = searchParams.get('areaMin') || '';
+const precoM2MinUrl = searchParams.get('precoM2Min') || '';
+const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
 
   // Parse cidades from URL (comma-separated string to array) com fallback para parâmetro singular
   const cidadesArray = useMemo(() => {
@@ -221,9 +223,11 @@ const areaMinUrl = searchParams.get('areaMin') || '';
       quartosUrl !== '' ||
       banheirosUrl !== '' ||
       areaMinUrl !== '' ||
+      precoM2MinUrl !== '' ||
+      precoM2MaxUrl !== '' ||
       busca.trim() !== ''
     );
-  }, [bairrosArray, condominiosArray, valorMinFiltro, valorMaxFiltro, quartosUrl, banheirosUrl, areaMinUrl, busca]);
+  }, [bairrosArray, condominiosArray, valorMinFiltro, valorMaxFiltro, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl, busca]);
 
   // Usar endpoint de "recentes" quando ordenar=recentes E sem filtros avançados
   const useRecentesEndpoint = ordenar === 'recentes' && !hasAdvancedFilters;
@@ -378,8 +382,20 @@ const areaMinUrl = searchParams.get('areaMin') || '';
       });
     }
 
+    // Filtro local de preço por m²
+    if (precoM2MinUrl || precoM2MaxUrl) {
+      const minM2 = precoM2MinUrl ? Number(precoM2MinUrl) : 0;
+      const maxM2 = precoM2MaxUrl ? Number(precoM2MaxUrl) : Infinity;
+      list = list.filter((property) => {
+        const area = property.areaTotal || property.areaConstruida || 0;
+        if (area <= 0 || !property.valor) return false;
+        const precoM2 = property.valor / area;
+        return precoM2 >= minM2 && precoM2 <= maxM2;
+      });
+    }
+
     return applyOrdering(list);
-  }, [imoveisData?.lista, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl]);
+  }, [imoveisData?.lista, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
 
   const filteredMapProperties = useMemo(() => {
     let list = (mapProperties || []).filter((property) => matchesTipoFiltro(property.tipo));
@@ -402,6 +418,18 @@ const areaMinUrl = searchParams.get('areaMin') || '';
       list = list.filter((property) => (property.areaTotal ?? property.areaConstruida ?? 0) >= minArea);
     }
 
+    // Filtro local de preço por m²
+    if (precoM2MinUrl || precoM2MaxUrl) {
+      const minM2 = precoM2MinUrl ? Number(precoM2MinUrl) : 0;
+      const maxM2 = precoM2MaxUrl ? Number(precoM2MaxUrl) : Infinity;
+      list = list.filter((property) => {
+        const area = property.areaTotal || property.areaConstruida || 0;
+        if (area <= 0 || !property.valor) return false;
+        const precoM2 = property.valor / area;
+        return precoM2 >= minM2 && precoM2 <= maxM2;
+      });
+    }
+
     if (ordenar === 'menor_preco') {
       return [...list].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));
     }
@@ -410,7 +438,7 @@ const areaMinUrl = searchParams.get('areaMin') || '';
     }
 
     return list;
-  }, [mapProperties, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl]);
+  }, [mapProperties, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
 
   const properties = filteredProperties;
   const totalImoveis = busca.trim() ? filteredProperties.length : (imoveisData?.quantidade || 0);
@@ -996,6 +1024,60 @@ const areaMinUrl = searchParams.get('areaMin') || '';
                       step={100000}
                       className="mt-2"
                     />
+                  </div>
+                </div>
+
+                {/* Preço por m² */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Preço por m²</h3>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Mínimo</label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px]">R$/m²</span>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={precoM2MinUrl ? Number(precoM2MinUrl).toLocaleString('pt-BR') : ''}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '');
+                            const newParams = new URLSearchParams(searchParams);
+                            if (value) {
+                              newParams.set('precoM2Min', value);
+                            } else {
+                              newParams.delete('precoM2Min');
+                            }
+                            setSearchParams(newParams);
+                          }}
+                          className="pl-11 bg-secondary border-border text-sm"
+                        />
+                      </div>
+                    </div>
+                    <span className="text-muted-foreground mt-5">-</span>
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Máximo</label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px]">R$/m²</span>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Sem limite"
+                          value={precoM2MaxUrl ? Number(precoM2MaxUrl).toLocaleString('pt-BR') : ''}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '');
+                            const newParams = new URLSearchParams(searchParams);
+                            if (value) {
+                              newParams.set('precoM2Max', value);
+                            } else {
+                              newParams.delete('precoM2Max');
+                            }
+                            setSearchParams(newParams);
+                          }}
+                          className="pl-11 bg-secondary border-border text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
