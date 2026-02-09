@@ -165,6 +165,11 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
               {property.titulo || property.tipoDescricao || 'Imóvel disponível'}
             </h3>
 
+            {/* Código */}
+            <span className="text-xs text-muted-foreground/70 font-mono">
+              Cód. {property.codigo}
+            </span>
+
             {/* Location */}
             <div className="flex items-center gap-2 text-muted-foreground mb-3">
               <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
