@@ -1,97 +1,64 @@
 
 
-## Plano: Adicionar Filtro de Preco por Metro Quadrado (R$/m2)
+## Plano: Adicionar Ordenacao por Preco por Metro Quadrado (R$/m2)
 
 ### Objetivo
 
-Adicionar dois campos de filtro (minimo e maximo) para preco por metro quadrado na pagina de listagem de imoveis. O calculo sera: `valor / area` (usando areaTotal ou areaConstruida).
-
-### Como Funciona
-
-O filtro sera **100% client-side** (calculado no navegador), pois a API Imoview nao suporta esse tipo de filtro. O valor por m2 sera calculado para cada imovel retornado e comparado com os limites definidos pelo usuario.
+Adicionar duas novas opcoes de ordenacao na listagem de imoveis: "Menor R$/m2" e "Maior R$/m2". Isso permite ao usuario ordenar os resultados pelo valor por metro quadrado calculado.
 
 ### Alteracoes Necessarias
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/pages/Imoveis.tsx` | 1. Ler novos parametros `precoM2Min` e `precoM2Max` da URL |
-| `src/pages/Imoveis.tsx` | 2. Adicionar filtro client-side nos `filteredProperties` e `filteredMapProperties` |
-| `src/pages/Imoveis.tsx` | 3. Adicionar UI com dois campos de input (min/max R$/m2) na sidebar de filtros |
-| `src/pages/Imoveis.tsx` | 4. Incluir no `hasAdvancedFilters` para correta deteccao de filtros ativos |
-| `src/pages/Imoveis.tsx` | 5. Limpar valores no `clearFilters` |
+Todas as alteracoes serao no arquivo `src/pages/Imoveis.tsx`:
 
-### Posicao na Interface
-
-O novo filtro sera adicionado **logo apos a Faixa de Preco** existente (linha 1000), mantendo a ordem logica dos filtros:
-
-1. Busca
-2. Finalidade
-3. Tipo
-4. Cidades
-5. Bairros
-6. Condominios
-7. Quartos
-8. Banheiros
-9. Area Minima
-10. Faixa de Preco
-11. **Preco por m2** (NOVO)
+| Local | Alteracao |
+|-------|-----------|
+| Dropdown de ordenacao (linha 661-665) | Adicionar 2 novos `SelectItem`: "Menor R$/m2" e "Maior R$/m2" |
+| Funcao `applyOrdering` (linhas 335-344) | Adicionar logica de ordenacao por R$/m2 |
+| `filteredMapProperties` (linhas 433-438) | Adicionar ordenacao por R$/m2 para propriedades do mapa |
+| `useRecentesEndpoint` (linha 233) | Considerar novas opcoes de ordenacao como "nao-recentes" |
+| `ordenarPor` no `apiFilters` (linha 171) | Mapear novas opcoes para fallback (data_desc) |
 
 ### Detalhes Tecnicos
 
-**Parametros de URL:**
-- `precoM2Min` - Valor minimo de R$/m2 (ex: `precoM2Min=5000`)
-- `precoM2Max` - Valor maximo de R$/m2 (ex: `precoM2Max=15000`)
+**Novos valores de `ordenar` na URL:**
+- `menor_m2` - Ordenar do menor para maior R$/m2
+- `maior_m2` - Ordenar do maior para menor R$/m2
 
-**Calculo do preco por m2:**
+**Calculo para ordenacao:**
 ```typescript
-const area = property.areaTotal || property.areaConstruida || 0;
-const precoM2 = area > 0 && property.valor ? property.valor / area : 0;
+const calcPrecoM2 = (p: { valor?: number | null; areaTotal?: number | null; areaConstruida?: number | null }) => {
+  const area = p.areaTotal || p.areaConstruida || 0;
+  return area > 0 && p.valor ? p.valor / area : 0;
+};
 ```
 
-**Filtro client-side (adicionado em `filteredProperties` e `filteredMapProperties`):**
+**Logica de ordenacao adicionada em `applyOrdering`:**
 ```typescript
-if (precoM2MinUrl || precoM2MaxUrl) {
-  const minM2 = precoM2MinUrl ? Number(precoM2MinUrl) : 0;
-  const maxM2 = precoM2MaxUrl ? Number(precoM2MaxUrl) : Infinity;
-  list = list.filter((property) => {
-    const area = property.areaTotal || property.areaConstruida || 0;
-    if (area <= 0 || !property.valor) return false; // Excluir imoveis sem area ou valor
-    const precoM2 = property.valor / area;
-    return precoM2 >= minM2 && precoM2 <= maxM2;
-  });
+if (ordenar === 'menor_m2') {
+  return [...arr].sort((a, b) => calcPrecoM2(a) - calcPrecoM2(b));
+}
+if (ordenar === 'maior_m2') {
+  return [...arr].sort((a, b) => calcPrecoM2(b) - calcPrecoM2(a));
 }
 ```
 
-**UI dos campos (seguindo o padrao existente da Faixa de Preco):**
-- Titulo: "Preco por m2"
-- Icone: Ruler (ja importado)
-- Dois inputs lado a lado: "Min R$/m2" e "Max R$/m2"
-- Formatacao numerica com separador de milhares
-- Aplicacao do filtro no `onBlur` (mesmo padrao do filtro de preco)
-
-**Inclusao no `hasAdvancedFilters`:**
-```typescript
-precoM2MinUrl !== '' ||
-precoM2MaxUrl !== ''
-```
-
-### Interface Visual
-
+**Dropdown atualizado:**
 ```text
-+---------------------------+
-| Preco por m2              |
-+---------------------------+
-| R$/m2  |      | R$/m2     |
-| Min    |  -   | Max       |
-| [_____]|      | [________]|
-+---------------------------+
++---------------------+
+| Mais recentes       |
+| Menor preco         |
+| Maior preco         |
+| Menor R$/m2   (NOVO)|
+| Maior R$/m2   (NOVO)|
++---------------------+
 ```
+
+**Endpoint de recentes vs geral:**
+Quando o usuario seleciona ordenacao por R$/m2, o sistema usara o endpoint geral (nao o de recentes), pois a ordenacao e 100% client-side. Na construcao de `apiFilters.ordenarPor`, essas opcoes farao fallback para `data_desc` ja que a API nao suporta essa ordenacao.
 
 ### Resultado Esperado
 
-- Usuario pode filtrar imoveis por faixa de preco por metro quadrado
-- Imoveis sem area cadastrada serao excluidos quando o filtro estiver ativo
-- Filtro funciona em conjunto com todos os outros filtros existentes
-- Valores persistem na URL para compartilhamento
-- Botao "Limpar Filtros" reseta os valores
-
+- Duas novas opcoes aparecem no dropdown de ordenacao
+- Imoveis sem area cadastrada (R$/m2 = 0) ficam no final da lista
+- Ordenacao funciona em conjunto com todos os filtros existentes
+- Funciona tanto na visualizacao em lista quanto no mapa
