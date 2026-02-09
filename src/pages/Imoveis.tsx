@@ -333,8 +333,9 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
   const filteredProperties = useMemo(() => {
     // Só aplica ordenação local se não estiver usando endpoint de recentes
     // (o endpoint de recentes já retorna ordenado por data de alteração)
-    const calcPrecoM2 = (p: { valor?: number | null; areaTotal?: number | null; areaConstruida?: number | null }) => {
-      const area = p.areaTotal || p.areaConstruida || 0;
+    const calcPrecoM2 = (p: { valor?: number | null; valorM2?: number | null; areaTotal?: number | null; areaConstruida?: number | null }) => {
+      if (p.valorM2 && p.valorM2 > 0) return p.valorM2;
+      const area = p.areaConstruida || p.areaTotal || 0;
       return area > 0 && p.valor ? p.valor / area : 0;
     };
 
@@ -399,10 +400,9 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
       const minM2 = precoM2MinUrl ? Number(precoM2MinUrl) : 0;
       const maxM2 = precoM2MaxUrl ? Number(precoM2MaxUrl) : Infinity;
       list = list.filter((property) => {
-        const area = property.areaTotal || property.areaConstruida || 0;
-        if (area <= 0 || !property.valor) return false;
-        const precoM2 = property.valor / area;
-        return precoM2 >= minM2 && precoM2 <= maxM2;
+        const pm2 = calcPrecoM2(property);
+        if (pm2 <= 0) return false;
+        return pm2 >= minM2 && pm2 <= maxM2;
       });
     }
 
@@ -412,13 +412,17 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
   // Calcular média de R$/m² por bairro (para badge "abaixo da média")
   const mediasPrecoM2PorBairro = useMemo(() => {
     const source = imoveisData?.lista || [];
+    const getPrecoM2 = (p: { valor?: number | null; valorM2?: number | null; areaConstruida?: number | null; areaTotal?: number | null }) => {
+      if (p.valorM2 && p.valorM2 > 0) return p.valorM2;
+      const area = p.areaConstruida || p.areaTotal || 0;
+      return area > 0 && p.valor ? p.valor / area : 0;
+    };
     const bairroMap = new Map<string, { soma: number; count: number }>();
     for (const p of source) {
       const bairro = p.bairro;
       if (!bairro) continue;
-      const area = p.areaTotal || p.areaConstruida || 0;
-      if (area <= 0 || !p.valor) continue;
-      const precoM2 = p.valor / area;
+      const precoM2 = getPrecoM2(p);
+      if (precoM2 <= 0) continue;
       const entry = bairroMap.get(bairro);
       if (entry) {
         entry.soma += precoM2;
@@ -457,22 +461,22 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
       list = list.filter((property) => (property.areaTotal ?? property.areaConstruida ?? 0) >= minArea);
     }
 
+    const calcPrecoM2Map = (p: { valor?: number | null; valorM2?: number | null; areaTotal?: number | null; areaConstruida?: number | null }) => {
+      if (p.valorM2 && p.valorM2 > 0) return p.valorM2;
+      const area = p.areaConstruida || p.areaTotal || 0;
+      return area > 0 && p.valor ? p.valor / area : 0;
+    };
+
     // Filtro local de preço por m²
     if (precoM2MinUrl || precoM2MaxUrl) {
       const minM2 = precoM2MinUrl ? Number(precoM2MinUrl) : 0;
       const maxM2 = precoM2MaxUrl ? Number(precoM2MaxUrl) : Infinity;
       list = list.filter((property) => {
-        const area = property.areaTotal || property.areaConstruida || 0;
-        if (area <= 0 || !property.valor) return false;
-        const precoM2 = property.valor / area;
-        return precoM2 >= minM2 && precoM2 <= maxM2;
+        const pm2 = calcPrecoM2Map(property);
+        if (pm2 <= 0) return false;
+        return pm2 >= minM2 && pm2 <= maxM2;
       });
     }
-
-    const calcPrecoM2Map = (p: { valor?: number | null; areaTotal?: number | null; areaConstruida?: number | null }) => {
-      const area = p.areaTotal || p.areaConstruida || 0;
-      return area > 0 && p.valor ? p.valor / area : 0;
-    };
 
     if (ordenar === 'menor_preco') {
       return [...list].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));

@@ -40,14 +40,20 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
     const updateTimeText = formatUpdateTime(property.dataAtualizacao);
 
     // Calcular R$/m² e verificar se está abaixo da média do bairro
+    // Prioridade: 1) valorM2 da API, 2) cálculo com areaConstruida, 3) fallback areaTotal
     const precoM2Info = React.useMemo(() => {
-      const area = property.areaTotal || property.areaConstruida || 0;
-      if (area <= 0 || !property.valor) return null;
-      const precoM2 = property.valor / area;
+      let precoM2: number;
+      if (property.valorM2 && property.valorM2 > 0) {
+        precoM2 = property.valorM2;
+      } else {
+        const area = property.areaConstruida || property.areaTotal || 0;
+        if (area <= 0 || !property.valor) return null;
+        precoM2 = property.valor / area;
+      }
       const abaixoDaMedia = mediaPrecoM2Bairro != null && mediaPrecoM2Bairro > 0 && precoM2 < mediaPrecoM2Bairro;
       const percentAbaixo = abaixoDaMedia ? Math.round((1 - precoM2 / mediaPrecoM2Bairro) * 100) : 0;
       return { precoM2, abaixoDaMedia, percentAbaixo };
-    }, [property.valor, property.areaTotal, property.areaConstruida, mediaPrecoM2Bairro]);
+    }, [property.valor, property.valorM2, property.areaConstruida, property.areaTotal, mediaPrecoM2Bairro]);
 
     const handleCompareClick = (e: React.MouseEvent) => {
       e.preventDefault();
