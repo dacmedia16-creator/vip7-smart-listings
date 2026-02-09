@@ -168,7 +168,7 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
     quartos: quartosUrl ? Number(quartosUrl) : undefined,
     banheiros: banheirosUrl ? Number(banheirosUrl) : undefined,
     areaMin: areaMinUrl ? Number(areaMinUrl) : undefined,
-    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : 'data_desc',
+    ordenarPor: ordenar === 'menor_preco' ? 'valor_asc' : ordenar === 'maior_preco' ? 'valor_desc' : 'data_desc', // menor_m2/maior_m2 fallback to data_desc (client-side sort)
     limite: ITEMS_PER_PAGE,
     pagina: paginaAtual,
   };
@@ -230,6 +230,7 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
   }, [bairrosArray, condominiosArray, valorMinFiltro, valorMaxFiltro, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl, busca]);
 
   // Usar endpoint de "recentes" quando ordenar=recentes E sem filtros avançados
+  // Ordenações por R$/m² são client-side, então precisam do endpoint geral
   const useRecentesEndpoint = ordenar === 'recentes' && !hasAdvancedFilters;
 
   // Hook para imóveis recentes (quando apropriado)
@@ -332,12 +333,23 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
   const filteredProperties = useMemo(() => {
     // Só aplica ordenação local se não estiver usando endpoint de recentes
     // (o endpoint de recentes já retorna ordenado por data de alteração)
-    const applyOrdering = <T extends { valor?: number | null }>(arr: T[]) => {
+    const calcPrecoM2 = (p: { valor?: number | null; areaTotal?: number | null; areaConstruida?: number | null }) => {
+      const area = p.areaTotal || p.areaConstruida || 0;
+      return area > 0 && p.valor ? p.valor / area : 0;
+    };
+
+    const applyOrdering = <T extends { valor?: number | null; areaTotal?: number | null; areaConstruida?: number | null }>(arr: T[]) => {
       if (ordenar === 'menor_preco') {
         return [...arr].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));
       }
       if (ordenar === 'maior_preco') {
         return [...arr].sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
+      }
+      if (ordenar === 'menor_m2') {
+        return [...arr].sort((a, b) => calcPrecoM2(a) - calcPrecoM2(b));
+      }
+      if (ordenar === 'maior_m2') {
+        return [...arr].sort((a, b) => calcPrecoM2(b) - calcPrecoM2(a));
       }
       // Se ordenar=recentes E usando endpoint de recentes, não re-ordena (já vem correto)
       return arr;
@@ -430,11 +442,22 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
       });
     }
 
+    const calcPrecoM2Map = (p: { valor?: number | null; areaTotal?: number | null; areaConstruida?: number | null }) => {
+      const area = p.areaTotal || p.areaConstruida || 0;
+      return area > 0 && p.valor ? p.valor / area : 0;
+    };
+
     if (ordenar === 'menor_preco') {
       return [...list].sort((a, b) => (a.valor ?? 0) - (b.valor ?? 0));
     }
     if (ordenar === 'maior_preco') {
       return [...list].sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
+    }
+    if (ordenar === 'menor_m2') {
+      return [...list].sort((a, b) => calcPrecoM2Map(a) - calcPrecoM2Map(b));
+    }
+    if (ordenar === 'maior_m2') {
+      return [...list].sort((a, b) => calcPrecoM2Map(b) - calcPrecoM2Map(a));
     }
 
     return list;
@@ -662,6 +685,8 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
                   <SelectItem value="recentes">Mais recentes</SelectItem>
                   <SelectItem value="menor_preco">Menor preço</SelectItem>
                   <SelectItem value="maior_preco">Maior preço</SelectItem>
+                  <SelectItem value="menor_m2">Menor R$/m²</SelectItem>
+                  <SelectItem value="maior_m2">Maior R$/m²</SelectItem>
                 </SelectContent>
               </Select>
 
