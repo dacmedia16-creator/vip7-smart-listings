@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -28,6 +28,7 @@ import {
   TrendingUp,
   AlertTriangle,
   BarChart3,
+  Loader2,
 } from 'lucide-react';
 
 const avaliacaoSchema = z.object({
@@ -101,6 +102,7 @@ async function enviarEmail(data: AvaliacaoFormData) {
 export default function Avaliacao() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [estimativa, setEstimativa] = useState<Estimativa | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -113,6 +115,31 @@ export default function Avaliacao() {
       quartos: '', banheiros: '', vagas: '', descricao: '',
     },
   });
+
+  const handleCepChange = useCallback(async (rawValue: string) => {
+    const digits = rawValue.replace(/\D/g, '').slice(0, 8);
+    const masked = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    form.setValue('cep', masked);
+
+    if (digits.length === 8) {
+      setIsLoadingCep(true);
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+        const data = await res.json();
+        if (data.erro) {
+          toast({ title: 'CEP não encontrado', description: 'Verifique o CEP e tente novamente.', variant: 'destructive' });
+        } else {
+          if (data.logradouro) form.setValue('endereco', data.logradouro);
+          if (data.bairro) form.setValue('bairro', data.bairro);
+          if (data.localidade) form.setValue('cidade', data.localidade);
+        }
+      } catch {
+        toast({ title: 'Erro ao buscar CEP', description: 'Não foi possível consultar o CEP.', variant: 'destructive' });
+      } finally {
+        setIsLoadingCep(false);
+      }
+    }
+  }, [form, toast]);
 
   const onSubmit = async (data: AvaliacaoFormData) => {
     setIsSubmitting(true);
@@ -332,17 +359,32 @@ export default function Avaliacao() {
                           Localização
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <FormField control={form.control} name="endereco" render={({ field }) => (
-                            <FormItem className="md:col-span-3">
-                              <FormLabel>Endereço *</FormLabel>
-                              <FormControl><Input placeholder="Rua, número" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
                           <FormField control={form.control} name="cep" render={({ field }) => (
                             <FormItem>
                               <FormLabel>CEP</FormLabel>
-                              <FormControl><Input placeholder="00000-000" maxLength={9} {...field} /></FormControl>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    placeholder="00000-000"
+                                    maxLength={9}
+                                    value={field.value}
+                                    onChange={(e) => handleCepChange(e.target.value)}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
+                                  {isLoadingCep && (
+                                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                                  )}
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name="endereco" render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                              <FormLabel>Endereço *</FormLabel>
+                              <FormControl><Input placeholder="Rua, número" {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
