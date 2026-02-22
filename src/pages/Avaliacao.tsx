@@ -234,10 +234,14 @@ export default function Avaliacao() {
                 Descubra o Valor Real do{' '}
                 <span className="text-primary">Seu Imóvel</span>
               </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
                 Saiba o valor do seu imóvel na hora com nossa{' '}
                 <span className="text-primary font-semibold">IA especializada no mercado imobiliário da região de Sorocaba</span>. 
                 Análise instantânea baseada em imóveis comparáveis reais — ou solicite uma avaliação profissional gratuita com nossos especialistas.
+              </p>
+              <p className="text-xl md:text-2xl font-display font-semibold text-foreground">
+                Somos os irmãos que mais vendem imóveis na{' '}
+                <span className="text-primary">Região</span>
               </p>
             </div>
           </ScrollReveal>
