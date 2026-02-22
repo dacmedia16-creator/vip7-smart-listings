@@ -36,6 +36,7 @@ const avaliacaoSchema = z.object({
   telefone: z.string().min(10, 'Telefone inválido').max(20),
   tipoImovel: z.string().min(1, 'Selecione o tipo de imóvel'),
   finalidade: z.string().min(1, 'Selecione a finalidade'),
+  cep: z.string().max(9).optional(),
   endereco: z.string().min(5, 'Endereço é obrigatório').max(200),
   bairro: z.string().min(2, 'Bairro é obrigatório').max(100),
   cidade: z.string().min(2, 'Cidade é obrigatória').max(100),
@@ -83,6 +84,7 @@ async function enviarEmail(data: AvaliacaoFormData) {
       telefone: data.telefone,
       tipoImovel: data.tipoImovel,
       finalidade: data.finalidade,
+      cep: data.cep,
       endereco: data.endereco,
       bairro: data.bairro,
       cidade: data.cidade,
@@ -107,7 +109,7 @@ export default function Avaliacao() {
     resolver: zodResolver(avaliacaoSchema),
     defaultValues: {
       nome: '', email: '', telefone: '', tipoImovel: '', finalidade: '',
-      endereco: '', bairro: '', cidade: '', areaTotal: '', areaConstruida: '',
+      cep: '', endereco: '', bairro: '', cidade: '', areaTotal: '', areaConstruida: '',
       quartos: '', banheiros: '', vagas: '', descricao: '',
     },
   });
@@ -154,6 +156,7 @@ export default function Avaliacao() {
           finalidade: values.finalidade,
           cidade: values.cidade,
           bairro: values.bairro,
+          cep: values.cep,
           areaTotal: values.areaTotal,
           areaConstruida: values.areaConstruida,
           quartos: values.quartos,
@@ -333,6 +336,13 @@ export default function Avaliacao() {
                             <FormItem className="md:col-span-3">
                               <FormLabel>Endereço *</FormLabel>
                               <FormControl><Input placeholder="Rua, número" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name="cep" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>CEP</FormLabel>
+                              <FormControl><Input placeholder="00000-000" maxLength={9} {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />

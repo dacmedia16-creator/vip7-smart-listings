@@ -13,6 +13,7 @@ interface RequestBody {
   finalidade: string;
   cidade: string;
   bairro: string;
+  cep?: string;
   areaTotal?: string;
   areaConstruida?: string;
   quartos?: string;
@@ -255,6 +256,7 @@ Tipo: ${body.tipoImovel}
 Finalidade: ${body.finalidade}
 Cidade: ${body.cidade}
 Bairro: ${body.bairro}
+${body.cep ? `CEP: ${body.cep}` : ""}
 ${areaInfo}
 ${body.quartos ? `Quartos: ${body.quartos}` : ""}
 ${body.banheiros ? `Banheiros: ${body.banheiros}` : ""}
