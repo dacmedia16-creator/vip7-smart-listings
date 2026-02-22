@@ -1,24 +1,39 @@
 
-
-## Correcao: Limite de registros da API Imoview na funcao avaliacao-ia
+## Correcao: Filtro de cidade na funcao avaliacao-ia
 
 ### Problema
 
-A edge function `avaliacao-ia` envia `numeroRegistros: 50` para a API Imoview, mas a API so aceita no maximo 20 registros por pagina. Isso causa um erro 404 e a estimativa nunca e gerada.
+A edge function `avaliacao-ia` busca imoveis da API Imoview **sem enviar filtro de cidade**. Depois tenta filtrar pelo nome da cidade no lado do servidor, mas os nomes nao batem (usuario digita "Votorantim", API retorna imoveis com cidade "Sorocaba" etc.). Resultado: **0 comparaveis** e o erro "Nao encontramos imoveis comparaveis suficientes".
 
 ### Solucao
 
-Alterar a edge function para respeitar o limite de 20 registros por pagina e fazer paginacao (3 paginas de 20 = 60 imoveis) para ter dados suficientes para a analise.
+1. **Buscar o codigo da cidade** antes de consultar imoveis - chamar a API Imoview de cidades para encontrar o `codigocidade` correto a partir do nome digitado pelo usuario
+2. **Enviar `codigocidade` no payload** de busca de imoveis para que a API ja retorne apenas imoveis da cidade correta
+3. **Relaxar o filtro de cidade** no pos-processamento - se a API ja filtrou por codigo, nao precisa filtrar por nome novamente
+4. **Aumentar paginas** de 3 para 5 (100 imoveis) para ter mais comparaveis
 
 ### Arquivo: `supabase/functions/avaliacao-ia/index.ts`
 
-1. Substituir a chamada unica com `numeroRegistros: 50` por um loop de paginacao que busca ate 3 paginas de 20 registros cada
-2. Acumular os resultados de todas as paginas antes de filtrar e enviar para a IA
+Alteracoes:
+
+- Adicionar chamada a `RetornarCidades` da API Imoview para resolver o nome da cidade em codigo numerico
+- Incluir `codigocidade` no payload de busca de imoveis (`RetornarImoveisDisponiveis`)
+- Remover o filtro de cidade do `.filter()` pos-busca (ja filtrado pela API)
+- Manter filtro por tipo de imovel e valor positivo
+- Aumentar MAX_PAGES para 5
 
 ### Detalhes Tecnicos
 
-- Trocar `numeroRegistros: 50` por `numeroRegistros: 20`
-- Fazer loop buscando paginas 1, 2 e 3 (ate 60 imoveis)
-- Parar de paginar quando a API retornar menos de 20 resultados (significa que acabaram os dados)
-- Manter todo o restante da logica igual (filtragem por cidade/bairro/tipo e analise por IA)
+Fluxo corrigido:
 
+```text
+1. Recebe cidade="Votorantim" do formulario
+2. Chama RetornarCidades na API Imoview
+3. Encontra codigocidade=XX para "Votorantim"
+4. Busca imoveis com codigocidade=XX + finalidade
+5. API retorna apenas imoveis de Votorantim
+6. Filtra por tipo e bairro (pos-processamento)
+7. Envia para IA analisar
+```
+
+Se nao encontrar a cidade pelo nome, faz fallback para o comportamento atual (busca sem filtro de cidade e filtra por nome).
