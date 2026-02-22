@@ -1,37 +1,28 @@
 
 
-## Usar campos opcionais como filtros de comparaveis
+## Adicionar campo CEP ao formulario de avaliacao
 
-### Problema atual
+### O que muda
 
-Os campos opcionais do formulario (Area Total, Area Construida, Quartos, Banheiros, Vagas) sao enviados para o prompt da IA, mas **nao sao usados para filtrar** os imoveis comparaveis. Isso significa que um apartamento de 2 quartos pode ser comparado com casas de 5 quartos, gerando estimativas imprecisas.
+Adicionar um campo opcional de CEP na secao "Localizacao" do formulario de avaliacao. O CEP sera enviado junto com os outros dados no email e tambem passado para a edge function de estimativa com IA.
 
-### Solucao
+### Alteracoes
 
-Adicionar filtros no pos-processamento (`.filter()`) da edge function `avaliacao-ia` para priorizar imoveis com caracteristicas similares. Os filtros serao **flexiveis** (com margem de tolerancia) para nao eliminar comparaveis demais.
+**1. `src/pages/Avaliacao.tsx`**
+- Adicionar `cep` ao schema zod (opcional, string de 8-9 caracteres)
+- Adicionar campo CEP no grid de localizacao, ao lado de bairro e cidade (ficando 3 campos: CEP, Bairro, Cidade, com Endereco ocupando a linha inteira acima)
+- Enviar `cep` no body da chamada a `avaliacao-ia` e no email
 
-### Arquivo: `supabase/functions/avaliacao-ia/index.ts`
+**2. `supabase/functions/avaliacao-ia/index.ts`**
+- Adicionar `cep` ao interface `RequestBody`
+- Incluir o CEP no prompt enviado para a IA (para contextualizar melhor a localizacao)
 
-Alteracoes no filtro de comparaveis (apos linha 183):
-
-- **Quartos**: se informado, aceitar comparaveis com +/- 1 quarto de diferenca
-- **Banheiros**: se informado, aceitar comparaveis com +/- 1 banheiro
-- **Vagas**: se informado, aceitar comparaveis com +/- 1 vaga
-- **Area (total ou construida)**: se informada, aceitar comparaveis com area entre 50% e 200% do valor informado
-
-A logica sera: se o usuario informou o campo, filtrar com tolerancia. Se nao informou, nao filtrar por esse criterio. Caso os filtros sejam muito restritivos e eliminem todos os comparaveis, fazer fallback sem esses filtros e avisar na analise.
+**3. `supabase/functions/send-avaliacao-email/index.ts`**
+- Incluir o CEP no corpo do email enviado
 
 ### Detalhes Tecnicos
 
-```text
-Filtros adicionais no .filter():
-- quartos informado? -> aceitar p.quartos entre (quartos-1) e (quartos+1)
-- banheiros informado? -> aceitar p.banheiros entre (banheiros-1) e (banheiros+1)  
-- vagas informado? -> aceitar p.vagas entre (vagas-1) e (vagas+1)
-- area informada? -> aceitar p.area entre (area*0.5) e (area*2.0)
-
-Fallback: se filtros resultarem em 0 comparaveis, repetir sem filtros de quartos/banheiros/vagas/area
-```
-
-Os valores de tolerancia foram escolhidos para manter relevancia sem ser restritivo demais. Por exemplo, se o usuario tem 3 quartos, comparar com imoveis de 2 a 4 quartos e razoavel.
-
+- Campo CEP com placeholder "00000-000", tipo texto (para aceitar hifen)
+- Validacao zod: `z.string().max(9).optional()`
+- No prompt da IA, adicionar linha "CEP: xxxxx-xxx" quando informado
+- Layout: endereco ocupa linha inteira, CEP + bairro + cidade na linha abaixo (grid de 3 colunas)
