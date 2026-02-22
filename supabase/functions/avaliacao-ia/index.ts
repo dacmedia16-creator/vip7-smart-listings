@@ -166,6 +166,12 @@ serve(async (req) => {
     const cidadeNorm = body.cidade.toLowerCase().trim();
     const bairroNorm = body.bairro.toLowerCase().trim();
 
+    // Parse user optional fields for filtering
+    const userQuartos = body.quartos ? parseNum(body.quartos) : null;
+    const userBanheiros = body.banheiros ? parseNum(body.banheiros) : null;
+    const userVagas = body.vagas ? parseNum(body.vagas) : null;
+    const userArea = body.areaConstruida ? parseNum(body.areaConstruida) : body.areaTotal ? parseNum(body.areaTotal) : null;
+
     const comparaveis = rawList
       .map((item: Record<string, unknown>) => ({
         tipo: String(item.tipo || ""),
@@ -182,28 +188,47 @@ serve(async (req) => {
       }))
       .filter((p: { valor: number; cidade: string; tipo: string }) => {
         if (p.valor <= 0) return false;
-        // Only filter by city name if we didn't filter by code
         if (!codigoCidade) {
           if (!p.cidade.toLowerCase().includes(cidadeNorm) && !cidadeNorm.includes(p.cidade.toLowerCase())) return false;
         }
-        // Filter by type if specified
         if (tipoSearch && !p.tipo.toLowerCase().includes(tipoSearch.toLowerCase())) return false;
         return true;
       });
 
+    // Apply optional filters with tolerance
+    const applyOptionalFilters = (list: typeof comparaveis) =>
+      list.filter((p) => {
+        if (userQuartos !== null && (p.quartos < userQuartos - 1 || p.quartos > userQuartos + 1)) return false;
+        if (userBanheiros !== null && (p.banheiros < userBanheiros - 1 || p.banheiros > userBanheiros + 1)) return false;
+        if (userVagas !== null && (p.vagas < userVagas - 1 || p.vagas > userVagas + 1)) return false;
+        if (userArea !== null) {
+          const pArea = p.areaConstruida || p.areaTotal;
+          if (pArea > 0 && (pArea < userArea * 0.5 || pArea > userArea * 2.0)) return false;
+        }
+        return true;
+      });
+
+    let filtered = applyOptionalFilters(comparaveis);
+    let usedFallback = false;
+
+    if (filtered.length === 0 && comparaveis.length > 0) {
+      console.log("[avaliacao-ia] Optional filters too restrictive, falling back to base filters");
+      filtered = comparaveis;
+      usedFallback = true;
+    }
+
     // Prioritize same bairro, then nearby
-    const mesmoBairro = comparaveis.filter(
+    const mesmoBairro = filtered.filter(
       (p: { bairro: string }) => p.bairro.toLowerCase().includes(bairroNorm) || bairroNorm.includes(p.bairro.toLowerCase())
     );
-    const outroBairro = comparaveis.filter(
+    const outroBairro = filtered.filter(
       (p: { bairro: string }) => !p.bairro.toLowerCase().includes(bairroNorm) && !bairroNorm.includes(p.bairro.toLowerCase())
     );
 
-    // Use up to 30 comparables, prioritizing same neighborhood
     const selected = [...mesmoBairro.slice(0, 40), ...outroBairro.slice(0, 20)];
 
     console.log(
-      `[avaliacao-ia] Comparáveis: ${mesmoBairro.length} mesmo bairro, ${outroBairro.length} outros. Usando ${selected.length}`
+      `[avaliacao-ia] Comparáveis: ${mesmoBairro.length} mesmo bairro, ${outroBairro.length} outros. Usando ${selected.length}. Fallback: ${usedFallback}`
     );
 
     if (selected.length === 0) {
