@@ -83,13 +83,42 @@ serve(async (req) => {
     const body: RequestBody = await req.json();
     console.log("[avaliacao-ia] Request:", JSON.stringify(body));
 
-    // 1. Fetch comparable properties from Imoview
+    // 1. Resolve city code from Imoview API
     const finalidadeCode = finalidadeToCode(body.finalidade);
     const tipoSearch = tipoToSearch(body.tipoImovel);
 
-    // Build search payload - search by city, type, finalidade
+    let codigoCidade: number | undefined;
+    try {
+      console.log(`[avaliacao-ia] Resolving city code for "${body.cidade}"...`);
+      const cidadesRes = await fetch(`${IMOVIEW_API_URL}/Localizacao/RetornarCidades`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", chave: IMOVIEW_API_KEY },
+        body: JSON.stringify({}),
+      });
+      if (cidadesRes.ok) {
+        const cidades = await cidadesRes.json();
+        const lista = Array.isArray(cidades) ? cidades : cidades?.lista || [];
+        const cidadeNormBusca = body.cidade.toLowerCase().trim();
+        const found = lista.find((c: Record<string, unknown>) =>
+          String(c.nome || "").toLowerCase().trim() === cidadeNormBusca
+        ) || lista.find((c: Record<string, unknown>) =>
+          String(c.nome || "").toLowerCase().trim().includes(cidadeNormBusca) ||
+          cidadeNormBusca.includes(String(c.nome || "").toLowerCase().trim())
+        );
+        if (found) {
+          codigoCidade = Number(found.codigo || found.codigocidade);
+          console.log(`[avaliacao-ia] Found city code: ${codigoCidade} for "${found.nome}"`);
+        } else {
+          console.warn(`[avaliacao-ia] City "${body.cidade}" not found in API, proceeding without filter`);
+        }
+      }
+    } catch (e) {
+      console.warn("[avaliacao-ia] Failed to resolve city code, proceeding without filter:", e);
+    }
+
+    // 2. Fetch comparable properties from Imoview
     const rawList: Record<string, unknown>[] = [];
-    const MAX_PAGES = 3;
+    const MAX_PAGES = 5;
 
     for (let page = 1; page <= MAX_PAGES; page++) {
       const searchPayload: Record<string, unknown> = {
@@ -97,6 +126,7 @@ serve(async (req) => {
         numeroRegistros: 20,
       };
       if (finalidadeCode) searchPayload.finalidade = finalidadeCode;
+      if (codigoCidade) searchPayload.codigocidade = codigoCidade;
 
       console.log(`[avaliacao-ia] Searching Imoview page ${page}:`, JSON.stringify(searchPayload));
 
@@ -132,7 +162,7 @@ serve(async (req) => {
 
     console.log(`[avaliacao-ia] Got ${rawList.length} properties from Imoview`);
 
-    // 2. Filter and map comparable properties
+    // 3. Filter and map comparable properties
     const cidadeNorm = body.cidade.toLowerCase().trim();
     const bairroNorm = body.bairro.toLowerCase().trim();
 
@@ -152,8 +182,10 @@ serve(async (req) => {
       }))
       .filter((p: { valor: number; cidade: string; tipo: string }) => {
         if (p.valor <= 0) return false;
-        // Filter by city
-        if (!p.cidade.toLowerCase().includes(cidadeNorm) && !cidadeNorm.includes(p.cidade.toLowerCase())) return false;
+        // Only filter by city name if we didn't filter by code
+        if (!codigoCidade) {
+          if (!p.cidade.toLowerCase().includes(cidadeNorm) && !cidadeNorm.includes(p.cidade.toLowerCase())) return false;
+        }
         // Filter by type if specified
         if (tipoSearch && !p.tipo.toLowerCase().includes(tipoSearch.toLowerCase())) return false;
         return true;
