@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.sync-condominios]
 verify_jwt = false
+
+[functions.avaliacao-ia]
+verify_jwt = false
