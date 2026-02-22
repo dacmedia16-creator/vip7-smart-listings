@@ -198,7 +198,7 @@ export default function Avaliacao() {
           <ScrollReveal>
             <div className="text-center max-w-3xl mx-auto">
               <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium tracking-wide mb-6">
-                AVALIAÇÃO GRATUITA
+                ✨ ESTIMATIVA INSTANTÂNEA COM IA
               </span>
               <h1 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-6 leading-tight">
                 Descubra o Valor Real do{' '}
