@@ -1,36 +1,22 @@
 
 
-## Auto-preenchimento de endereco pelo CEP (ViaCEP)
+## Adicionar frase "Somos os irmãos que mais vendem imóveis na Região"
 
-### O que muda
+### Alteração
 
-Quando o usuario digitar um CEP valido (8 digitos, com ou sem hifen), o sistema consulta a API publica ViaCEP e preenche automaticamente os campos **Endereco**, **Bairro** e **Cidade**.
+**Arquivo: `src/pages/Avaliacao.tsx` (linha ~237-241)**
 
-### Alteracoes
+Adicionar uma nova linha de texto abaixo do parágrafo de descrição existente no hero section, seguindo o mesmo padrão visual (font-display, font-semibold, com a palavra "Região" destacada em dourado/primary).
 
-**Arquivo: `src/pages/Avaliacao.tsx`**
+O texto ficará assim na hierarquia:
+1. Badge "ESTIMATIVA INSTANTÂNEA COM IA" (já existe)
+2. Título "Descubra o Valor Real do Seu Imóvel" (já existe)
+3. Parágrafo descritivo sobre a IA (já existe)
+4. **NOVO:** "Somos os irmãos que mais vendem imóveis na Região" -- com "Região" em destaque dourado, usando `text-xl md:text-2xl font-display font-semibold`
 
-1. Adicionar funcao `handleCepChange` que:
-   - Remove caracteres nao-numericos do CEP
-   - Aplica mascara automatica (formato 00000-000 conforme digita)
-   - Quando atingir 8 digitos, faz fetch para `https://viacep.com.br/ws/{cep}/json/`
-   - Se o CEP for valido e retornar dados, preenche automaticamente:
-     - `endereco` com `logradouro`
-     - `bairro` com `bairro`
-     - `cidade` com `localidade`
-   - Se o CEP for invalido ou nao encontrado, exibe toast de aviso
+### Detalhes Técnicos
 
-2. Substituir o campo CEP atual por versao controlada com `onChange` customizado (em vez de usar `{...field}` direto)
-
-3. Adicionar estado `isLoadingCep` para mostrar feedback visual (spinner ou texto) enquanto busca
-
-### Detalhes Tecnicos
-
-- API ViaCEP e publica e gratuita, nao precisa de chave
-- URL: `https://viacep.com.br/ws/{cep}/json/`
-- Resposta: `{ logradouro, bairro, localidade, uf, erro? }`
-- Mascara aplicada no onChange: insere hifen apos 5 digitos
-- `form.setValue('endereco', data.logradouro)` para preencher campos
-- Campos preenchidos automaticamente permanecem editaveis pelo usuario
-- Nenhuma alteracao no backend necessaria
+- Adicionar `mb-6` ao parágrafo existente para espaçamento
+- Nova tag `<p>` com classes `text-xl md:text-2xl font-display font-semibold text-foreground`
+- Palavra "Região" envolta em `<span className="text-primary">` para o destaque dourado, igual ao padrão do título
 
