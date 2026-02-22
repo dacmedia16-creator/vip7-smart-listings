@@ -42,14 +42,12 @@ function parseNum(val: unknown): number {
   return 0;
 }
 
-// Map finalidade string to API code
 function finalidadeToCode(f: string): number | undefined {
   if (f === "vender") return 2;
   if (f === "alugar") return 1;
-  return undefined; // ambos
+  return undefined;
 }
 
-// Map tipoImovel to search term
 function tipoToSearch(t: string): string {
   const map: Record<string, string> = {
     apartamento: "Apartamento",
@@ -68,6 +66,133 @@ function removeNullValues(obj: Record<string, unknown>): Record<string, unknown>
   );
 }
 
+// Resolve bairro code from Imoview API
+async function resolveBairroCode(
+  apiKey: string,
+  codigoCidade: number,
+  bairroNome: string
+): Promise<number | undefined> {
+  try {
+    console.log(`[avaliacao-ia] Resolving bairro code for "${bairroNome}" in city ${codigoCidade}...`);
+    const res = await fetch(`${IMOVIEW_API_URL}/Localizacao/RetornarBairrosDisponiveis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", chave: apiKey },
+      body: JSON.stringify({ codigocidade: codigoCidade }),
+    });
+    if (!res.ok) return undefined;
+
+    const data = await res.json();
+    const lista = Array.isArray(data) ? data : data?.lista || [];
+    const bairroNorm = bairroNome.toLowerCase().trim();
+
+    const found =
+      lista.find((b: Record<string, unknown>) =>
+        String(b.nome || "").toLowerCase().trim() === bairroNorm
+      ) ||
+      lista.find((b: Record<string, unknown>) =>
+        String(b.nome || "").toLowerCase().trim().includes(bairroNorm) ||
+        bairroNorm.includes(String(b.nome || "").toLowerCase().trim())
+      );
+
+    if (found) {
+      const code = Number(found.codigo || found.codigobairro);
+      console.log(`[avaliacao-ia] Found bairro code: ${code} for "${found.nome}"`);
+      return code;
+    }
+    console.warn(`[avaliacao-ia] Bairro "${bairroNome}" not found`);
+    return undefined;
+  } catch (e) {
+    console.warn("[avaliacao-ia] Failed to resolve bairro code:", e);
+    return undefined;
+  }
+}
+
+// Resolve tipo code from Imoview API
+async function resolveTipoCode(
+  apiKey: string,
+  tipoImovel: string
+): Promise<number | undefined> {
+  try {
+    const tipoSearch = tipoToSearch(tipoImovel);
+    if (!tipoSearch) return undefined;
+
+    console.log(`[avaliacao-ia] Resolving tipo code for "${tipoSearch}"...`);
+    const res = await fetch(`${IMOVIEW_API_URL}/Imovel/RetornarTiposImoveisDisponiveis`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json", chave: apiKey },
+    });
+    if (!res.ok) return undefined;
+
+    const data = await res.json();
+    const lista = Array.isArray(data) ? data : data?.lista || [];
+    const searchNorm = tipoSearch.toLowerCase().trim();
+
+    const found =
+      lista.find((t: Record<string, unknown>) =>
+        String(t.nome || "").toLowerCase().trim() === searchNorm
+      ) ||
+      lista.find((t: Record<string, unknown>) =>
+        String(t.nome || "").toLowerCase().trim().includes(searchNorm) ||
+        searchNorm.includes(String(t.nome || "").toLowerCase().trim())
+      );
+
+    if (found) {
+      const code = Number(found.codigo || found.codigotipo);
+      console.log(`[avaliacao-ia] Found tipo code: ${code} for "${found.nome}"`);
+      return code;
+    }
+    console.warn(`[avaliacao-ia] Tipo "${tipoSearch}" not found`);
+    return undefined;
+  } catch (e) {
+    console.warn("[avaliacao-ia] Failed to resolve tipo code:", e);
+    return undefined;
+  }
+}
+
+// Fetch properties from Imoview with given filters
+async function fetchProperties(
+  apiKey: string,
+  filters: Record<string, unknown>,
+  maxPages: number
+): Promise<Record<string, unknown>[]> {
+  const rawList: Record<string, unknown>[] = [];
+
+  for (let page = 1; page <= maxPages; page++) {
+    const searchPayload: Record<string, unknown> = {
+      numeroPagina: page,
+      numeroRegistros: 20,
+      ...filters,
+    };
+
+    console.log(`[avaliacao-ia] Searching Imoview page ${page}:`, JSON.stringify(searchPayload));
+
+    const res = await fetch(
+      `${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", chave: apiKey },
+        body: JSON.stringify(removeNullValues(searchPayload)),
+      }
+    );
+
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("[avaliacao-ia] Imoview error:", res.status, txt);
+      if (page === 1) throw new Error("Falha ao buscar imóveis comparáveis");
+      break;
+    }
+
+    const data = await res.json();
+    const pageList = Array.isArray(data) ? data : data?.lista || [];
+    rawList.push(...pageList);
+    console.log(`[avaliacao-ia] Page ${page}: ${pageList.length} properties (total: ${rawList.length})`);
+
+    if (pageList.length < 20) break;
+  }
+
+  return rawList;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -84,10 +209,10 @@ serve(async (req) => {
     const body: RequestBody = await req.json();
     console.log("[avaliacao-ia] Request:", JSON.stringify(body));
 
-    // 1. Resolve city code from Imoview API
     const finalidadeCode = finalidadeToCode(body.finalidade);
     const tipoSearch = tipoToSearch(body.tipoImovel);
 
+    // 1. Resolve city code (existing)
     let codigoCidade: number | undefined;
     try {
       console.log(`[avaliacao-ia] Resolving city code for "${body.cidade}"...`);
@@ -110,67 +235,57 @@ serve(async (req) => {
           codigoCidade = Number(found.codigo || found.codigocidade);
           console.log(`[avaliacao-ia] Found city code: ${codigoCidade} for "${found.nome}"`);
         } else {
-          console.warn(`[avaliacao-ia] City "${body.cidade}" not found in API, proceeding without filter`);
+          console.warn(`[avaliacao-ia] City "${body.cidade}" not found in API`);
         }
       }
     } catch (e) {
-      console.warn("[avaliacao-ia] Failed to resolve city code, proceeding without filter:", e);
+      console.warn("[avaliacao-ia] Failed to resolve city code:", e);
     }
 
-    // 2. Fetch comparable properties from Imoview
-    const rawList: Record<string, unknown>[] = [];
+    // 2. Resolve bairro code (NEW) - only if we have city code
+    let codigoBairro: number | undefined;
+    if (codigoCidade) {
+      codigoBairro = await resolveBairroCode(IMOVIEW_API_KEY, codigoCidade, body.bairro);
+    }
+
+    // 3. Resolve tipo code (NEW)
+    const codigoTipo = await resolveTipoCode(IMOVIEW_API_KEY, body.tipoImovel);
+
+    // 4. Build filters
+    const userQuartos = body.quartos ? parseNum(body.quartos) : null;
+    const userVagas = body.vagas ? parseNum(body.vagas) : null;
+
+    const baseFilters: Record<string, unknown> = {};
+    if (finalidadeCode) baseFilters.finalidade = finalidadeCode;
+    if (codigoCidade) baseFilters.codigocidade = codigoCidade;
+    if (codigoBairro) baseFilters.codigosbairros = String(codigoBairro);
+    if (codigoTipo) baseFilters.codigotipo = codigoTipo;
+
+    const fullFilters: Record<string, unknown> = { ...baseFilters };
+    if (userQuartos && userQuartos > 0) fullFilters.numeroquartos = userQuartos;
+    if (userVagas && userVagas > 0) fullFilters.numerovagas = userVagas;
+
+    const hasExtraFilters = fullFilters.numeroquartos || fullFilters.numerovagas;
+
+    console.log(`[avaliacao-ia] Filters: ${JSON.stringify(fullFilters)}`);
+
+    // 5. Fetch with full filters
     const MAX_PAGES = 15;
+    let rawList = await fetchProperties(IMOVIEW_API_KEY, fullFilters, MAX_PAGES);
 
-    for (let page = 1; page <= MAX_PAGES; page++) {
-      const searchPayload: Record<string, unknown> = {
-        numeroPagina: page,
-        numeroRegistros: 20,
-      };
-      if (finalidadeCode) searchPayload.finalidade = finalidadeCode;
-      if (codigoCidade) searchPayload.codigocidade = codigoCidade;
-
-      console.log(`[avaliacao-ia] Searching Imoview page ${page}:`, JSON.stringify(searchPayload));
-
-      const imoviewRes = await fetch(
-        `${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            chave: IMOVIEW_API_KEY,
-          },
-          body: JSON.stringify(removeNullValues(searchPayload)),
-        }
-      );
-
-      if (!imoviewRes.ok) {
-        const txt = await imoviewRes.text();
-        console.error("[avaliacao-ia] Imoview error:", imoviewRes.status, txt);
-        if (page === 1) throw new Error("Falha ao buscar imóveis comparáveis");
-        break;
-      }
-
-      const imoviewData = await imoviewRes.json();
-      const pageList = Array.isArray(imoviewData)
-        ? imoviewData
-        : imoviewData?.lista || [];
-
-      rawList.push(...pageList);
-      console.log(`[avaliacao-ia] Page ${page}: ${pageList.length} properties (total: ${rawList.length})`);
-
-      if (pageList.length < 20) break;
+    // 6. Fallback: if too few results with quartos/vagas, retry without them
+    if (rawList.length < 5 && hasExtraFilters) {
+      console.log(`[avaliacao-ia] Only ${rawList.length} results with full filters, retrying without quartos/vagas...`);
+      rawList = await fetchProperties(IMOVIEW_API_KEY, baseFilters, MAX_PAGES);
     }
 
     console.log(`[avaliacao-ia] Got ${rawList.length} properties from Imoview`);
 
-    // 3. Filter and map comparable properties
+    // 7. Post-processing filters (existing logic)
     const cidadeNorm = body.cidade.toLowerCase().trim();
     const bairroNorm = body.bairro.toLowerCase().trim();
 
-    // Parse user optional fields for filtering
-    const userQuartos = body.quartos ? parseNum(body.quartos) : null;
     const userBanheiros = body.banheiros ? parseNum(body.banheiros) : null;
-    const userVagas = body.vagas ? parseNum(body.vagas) : null;
     const userArea = body.areaConstruida ? parseNum(body.areaConstruida) : body.areaTotal ? parseNum(body.areaTotal) : null;
 
     const comparaveis = rawList
@@ -192,16 +307,14 @@ serve(async (req) => {
         if (!codigoCidade) {
           if (!p.cidade.toLowerCase().includes(cidadeNorm) && !cidadeNorm.includes(p.cidade.toLowerCase())) return false;
         }
-        if (tipoSearch && !p.tipo.toLowerCase().includes(tipoSearch.toLowerCase())) return false;
+        if (tipoSearch && !codigoTipo && !p.tipo.toLowerCase().includes(tipoSearch.toLowerCase())) return false;
         return true;
       });
 
-    // Apply optional filters with tolerance
+    // Apply optional area/banheiros filters with tolerance
     const applyOptionalFilters = (list: typeof comparaveis) =>
       list.filter((p) => {
-        if (userQuartos !== null && (p.quartos < userQuartos - 1 || p.quartos > userQuartos + 1)) return false;
         if (userBanheiros !== null && (p.banheiros < userBanheiros - 1 || p.banheiros > userBanheiros + 1)) return false;
-        if (userVagas !== null && (p.vagas < userVagas - 1 || p.vagas > userVagas + 1)) return false;
         if (userArea !== null) {
           const pArea = p.areaConstruida || p.areaTotal;
           if (pArea > 0 && (pArea < userArea * 0.5 || pArea > userArea * 2.0)) return false;
@@ -244,7 +357,7 @@ serve(async (req) => {
       );
     }
 
-    // 3. Send to AI for analysis
+    // 8. Send to AI for analysis
     const areaInfo = body.areaConstruida
       ? `Área construída: ${body.areaConstruida}m²`
       : body.areaTotal
@@ -311,51 +424,20 @@ Com base nesses dados, estime o valor do imóvel do cliente usando a ferramenta 
                 parameters: {
                   type: "object",
                   properties: {
-                    valorEstimadoMin: {
-                      type: "number",
-                      description: "Valor mínimo estimado em reais",
-                    },
-                    valorEstimadoMax: {
-                      type: "number",
-                      description: "Valor máximo estimado em reais",
-                    },
-                    valorM2Medio: {
-                      type: "number",
-                      description: "Valor médio do m² na região em reais",
-                    },
-                    imoveisComparados: {
-                      type: "number",
-                      description: "Quantidade de imóveis usados na comparação",
-                    },
-                    analise: {
-                      type: "string",
-                      description:
-                        "Texto explicativo da análise em português brasileiro, com 2-4 parágrafos",
-                    },
-                    confianca: {
-                      type: "string",
-                      enum: ["alta", "media", "baixa"],
-                      description:
-                        "Nível de confiança baseado na quantidade e similaridade dos comparáveis",
-                    },
+                    valorEstimadoMin: { type: "number", description: "Valor mínimo estimado em reais" },
+                    valorEstimadoMax: { type: "number", description: "Valor máximo estimado em reais" },
+                    valorM2Medio: { type: "number", description: "Valor médio do m² na região em reais" },
+                    imoveisComparados: { type: "number", description: "Quantidade de imóveis usados na comparação" },
+                    analise: { type: "string", description: "Texto explicativo da análise em português brasileiro, com 2-4 parágrafos" },
+                    confianca: { type: "string", enum: ["alta", "media", "baixa"], description: "Nível de confiança baseado na quantidade e similaridade dos comparáveis" },
                   },
-                  required: [
-                    "valorEstimadoMin",
-                    "valorEstimadoMax",
-                    "valorM2Medio",
-                    "imoveisComparados",
-                    "analise",
-                    "confianca",
-                  ],
+                  required: ["valorEstimadoMin", "valorEstimadoMax", "valorM2Medio", "imoveisComparados", "analise", "confianca"],
                   additionalProperties: false,
                 },
               },
             },
           ],
-          tool_choice: {
-            type: "function",
-            function: { name: "estimativa_imovel" },
-          },
+          tool_choice: { type: "function", function: { name: "estimativa_imovel" } },
         }),
       }
     );
@@ -381,7 +463,6 @@ Com base nesses dados, estime o valor do imóvel do cliente usando a ferramenta 
     const aiData = await aiRes.json();
     console.log("[avaliacao-ia] AI response:", JSON.stringify(aiData));
 
-    // Extract tool call result
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) {
       throw new Error("Resposta inesperada da IA");
