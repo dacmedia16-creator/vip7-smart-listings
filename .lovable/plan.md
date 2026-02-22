@@ -1,39 +1,24 @@
 
-## Correcao: Filtro de cidade na funcao avaliacao-ia
 
-### Problema
+## Aumentar limite de busca de imoveis comparaveis
 
-A edge function `avaliacao-ia` busca imoveis da API Imoview **sem enviar filtro de cidade**. Depois tenta filtrar pelo nome da cidade no lado do servidor, mas os nomes nao batem (usuario digita "Votorantim", API retorna imoveis com cidade "Sorocaba" etc.). Resultado: **0 comparaveis** e o erro "Nao encontramos imoveis comparaveis suficientes".
+### O que muda
 
-### Solucao
+Aumentar o `MAX_PAGES` de 5 para 15 na edge function `avaliacao-ia`, permitindo buscar ate 300 imoveis comparaveis em vez de apenas 100.
 
-1. **Buscar o codigo da cidade** antes de consultar imoveis - chamar a API Imoview de cidades para encontrar o `codigocidade` correto a partir do nome digitado pelo usuario
-2. **Enviar `codigocidade` no payload** de busca de imoveis para que a API ja retorne apenas imoveis da cidade correta
-3. **Relaxar o filtro de cidade** no pos-processamento - se a API ja filtrou por codigo, nao precisa filtrar por nome novamente
-4. **Aumentar paginas** de 3 para 5 (100 imoveis) para ter mais comparaveis
+### Consideracoes
+
+- Cada pagina adicional e uma chamada extra a API Imoview, o que aumenta o tempo de resposta
+- Na pratica, para cidades menores, a API vai retornar menos de 20 resultados antes de chegar na pagina 15, e o loop para automaticamente
+- Para cidades grandes com muitos imoveis, ter mais comparaveis melhora a precisao da estimativa da IA
 
 ### Arquivo: `supabase/functions/avaliacao-ia/index.ts`
 
-Alteracoes:
-
-- Adicionar chamada a `RetornarCidades` da API Imoview para resolver o nome da cidade em codigo numerico
-- Incluir `codigocidade` no payload de busca de imoveis (`RetornarImoveisDisponiveis`)
-- Remover o filtro de cidade do `.filter()` pos-busca (ja filtrado pela API)
-- Manter filtro por tipo de imovel e valor positivo
-- Aumentar MAX_PAGES para 5
+- Alterar `MAX_PAGES` de 5 para 15 (linha 121)
+- Ajustar o slice dos comparaveis selecionados para usar mais dados: de 20+10 para 40+20 (ate 60 comparaveis enviados para a IA)
 
 ### Detalhes Tecnicos
 
-Fluxo corrigido:
-
-```text
-1. Recebe cidade="Votorantim" do formulario
-2. Chama RetornarCidades na API Imoview
-3. Encontra codigocidade=XX para "Votorantim"
-4. Busca imoveis com codigocidade=XX + finalidade
-5. API retorna apenas imoveis de Votorantim
-6. Filtra por tipo e bairro (pos-processamento)
-7. Envia para IA analisar
-```
-
-Se nao encontrar a cidade pelo nome, faz fallback para o comportamento atual (busca sem filtro de cidade e filtra por nome).
+- `MAX_PAGES = 15` -> ate 300 imoveis brutos da API
+- Apos filtragem por tipo/bairro, selecionar ate 40 do mesmo bairro + 20 de outros bairros (60 total para a IA)
+- O loop continua parando automaticamente quando uma pagina retorna menos de 20 resultados
