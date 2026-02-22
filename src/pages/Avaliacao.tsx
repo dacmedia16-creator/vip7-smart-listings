@@ -205,9 +205,9 @@ export default function Avaliacao() {
                 <span className="text-primary">Seu Imóvel</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Receba uma avaliação profissional e gratuita do seu imóvel. 
-                Nossa equipe de especialistas irá analisar as características 
-                e o mercado para definir o melhor valor.
+                Saiba o valor do seu imóvel na hora com nossa{' '}
+                <span className="text-primary font-semibold">IA especializada no mercado imobiliário da região de Sorocaba</span>. 
+                Análise instantânea baseada em imóveis comparáveis reais — ou solicite uma avaliação profissional gratuita com nossos especialistas.
               </p>
             </div>
           </ScrollReveal>
