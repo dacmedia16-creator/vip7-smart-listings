@@ -88,36 +88,47 @@ serve(async (req) => {
     const tipoSearch = tipoToSearch(body.tipoImovel);
 
     // Build search payload - search by city, type, finalidade
-    const searchPayload: Record<string, unknown> = {
-      numeroPagina: 1,
-      numeroRegistros: 50,
-    };
-    if (finalidadeCode) searchPayload.finalidade = finalidadeCode;
+    const rawList: Record<string, unknown>[] = [];
+    const MAX_PAGES = 3;
 
-    console.log("[avaliacao-ia] Searching Imoview with:", JSON.stringify(searchPayload));
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const searchPayload: Record<string, unknown> = {
+        numeroPagina: page,
+        numeroRegistros: 20,
+      };
+      if (finalidadeCode) searchPayload.finalidade = finalidadeCode;
 
-    const imoviewRes = await fetch(
-      `${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          chave: IMOVIEW_API_KEY,
-        },
-        body: JSON.stringify(removeNullValues(searchPayload)),
+      console.log(`[avaliacao-ia] Searching Imoview page ${page}:`, JSON.stringify(searchPayload));
+
+      const imoviewRes = await fetch(
+        `${IMOVIEW_API_URL}/Imovel/RetornarImoveisDisponiveis`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            chave: IMOVIEW_API_KEY,
+          },
+          body: JSON.stringify(removeNullValues(searchPayload)),
+        }
+      );
+
+      if (!imoviewRes.ok) {
+        const txt = await imoviewRes.text();
+        console.error("[avaliacao-ia] Imoview error:", imoviewRes.status, txt);
+        if (page === 1) throw new Error("Falha ao buscar imóveis comparáveis");
+        break;
       }
-    );
 
-    if (!imoviewRes.ok) {
-      const txt = await imoviewRes.text();
-      console.error("[avaliacao-ia] Imoview error:", imoviewRes.status, txt);
-      throw new Error("Falha ao buscar imóveis comparáveis");
+      const imoviewData = await imoviewRes.json();
+      const pageList = Array.isArray(imoviewData)
+        ? imoviewData
+        : imoviewData?.lista || [];
+
+      rawList.push(...pageList);
+      console.log(`[avaliacao-ia] Page ${page}: ${pageList.length} properties (total: ${rawList.length})`);
+
+      if (pageList.length < 20) break;
     }
-
-    const imoviewData = await imoviewRes.json();
-    const rawList = Array.isArray(imoviewData)
-      ? imoviewData
-      : imoviewData?.lista || [];
 
     console.log(`[avaliacao-ia] Got ${rawList.length} properties from Imoview`);
 
