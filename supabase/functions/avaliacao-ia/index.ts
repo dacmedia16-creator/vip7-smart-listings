@@ -118,7 +118,7 @@ serve(async (req) => {
 
     // 2. Fetch comparable properties from Imoview
     const rawList: Record<string, unknown>[] = [];
-    const MAX_PAGES = 5;
+    const MAX_PAGES = 15;
 
     for (let page = 1; page <= MAX_PAGES; page++) {
       const searchPayload: Record<string, unknown> = {
@@ -200,7 +200,7 @@ serve(async (req) => {
     );
 
     // Use up to 30 comparables, prioritizing same neighborhood
-    const selected = [...mesmoBairro.slice(0, 20), ...outroBairro.slice(0, 10)];
+    const selected = [...mesmoBairro.slice(0, 40), ...outroBairro.slice(0, 20)];
 
     console.log(
       `[avaliacao-ia] Comparáveis: ${mesmoBairro.length} mesmo bairro, ${outroBairro.length} outros. Usando ${selected.length}`
