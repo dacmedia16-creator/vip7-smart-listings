@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.avaliacao-ia]
 verify_jwt = false
+
+[functions.cep-lookup]
+verify_jwt = false
