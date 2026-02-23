@@ -1,22 +1,36 @@
 
 
-## Adicionar frase "Somos os irmãos que mais vendem imóveis na Região"
+## Corrigir erro de CORS no CEP da pagina Avaliacao
 
-### Alteração
+### Problema
 
-**Arquivo: `src/pages/Avaliacao.tsx` (linha ~237-241)**
+A chamada direta ao `https://viacep.com.br/ws/{cep}/json/` no navegador esta sendo bloqueada por politica de CORS. O ViaCEP nao retorna o header `Access-Control-Allow-Origin`, impedindo a consulta.
 
-Adicionar uma nova linha de texto abaixo do parágrafo de descrição existente no hero section, seguindo o mesmo padrão visual (font-display, font-semibold, com a palavra "Região" destacada em dourado/primary).
+### Solucao
 
-O texto ficará assim na hierarquia:
-1. Badge "ESTIMATIVA INSTANTÂNEA COM IA" (já existe)
-2. Título "Descubra o Valor Real do Seu Imóvel" (já existe)
-3. Parágrafo descritivo sobre a IA (já existe)
-4. **NOVO:** "Somos os irmãos que mais vendem imóveis na Região" -- com "Região" em destaque dourado, usando `text-xl md:text-2xl font-display font-semibold`
+Criar uma funcao backend (edge function) como proxy para o ViaCEP, e atualizar o formulario para usar essa funcao em vez de chamar o ViaCEP diretamente.
 
-### Detalhes Técnicos
+### Alteracoes
 
-- Adicionar `mb-6` ao parágrafo existente para espaçamento
-- Nova tag `<p>` com classes `text-xl md:text-2xl font-display font-semibold text-foreground`
-- Palavra "Região" envolta em `<span className="text-primary">` para o destaque dourado, igual ao padrão do título
+**1. Nova edge function: `supabase/functions/cep-lookup/index.ts`**
+
+- Recebe o CEP via query param ou corpo da requisicao
+- Faz a chamada ao ViaCEP no servidor (sem CORS)
+- Retorna os dados (logradouro, bairro, localidade) para o frontend
+- Inclui headers CORS adequados na resposta
+
+**2. Atualizar `src/pages/Avaliacao.tsx`**
+
+- Na funcao `handleCepChange`, trocar a chamada direta ao ViaCEP:
+  - De: `fetch('https://viacep.com.br/ws/${digits}/json/')`
+  - Para: chamada via `supabase.functions.invoke('cep-lookup', { body: { cep: digits } })`
+- Manter todo o resto da logica (mascara, preenchimento automatico de endereco/bairro/cidade, loading indicator)
+
+### Detalhes Tecnicos
+
+A edge function sera simples:
+- Recebe `{ cep: "18040265" }` no body
+- Faz `fetch('https://viacep.com.br/ws/18040265/json/')` no servidor
+- Retorna o JSON do ViaCEP diretamente
+- Trata erros (CEP invalido, timeout, etc.)
 
