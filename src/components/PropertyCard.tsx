@@ -65,6 +65,8 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
       <Link
         ref={ref}
         to={`/imovel/${property.codigo}`}
+        target="_blank"
+        rel="noopener noreferrer"
         className="group block h-full"
       >
         <article className={cn(
