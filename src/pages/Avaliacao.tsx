@@ -124,8 +124,17 @@ export default function Avaliacao() {
     if (digits.length === 8) {
       setIsLoadingCep(true);
       try {
-        const { data, error } = await supabase.functions.invoke('cep-lookup', { body: { cep: digits } });
-        if (error) throw error;
+        let data;
+        try {
+          // Try direct ViaCEP first (works from Brazilian browsers)
+          const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+          data = await res.json();
+        } catch {
+          // Fallback to edge function proxy
+          const { data: proxyData, error } = await supabase.functions.invoke('cep-lookup', { body: { cep: digits } });
+          if (error) throw error;
+          data = proxyData;
+        }
         if (data.erro) {
           toast({ title: 'CEP não encontrado', description: 'Verifique o CEP e tente novamente.', variant: 'destructive' });
         } else {
