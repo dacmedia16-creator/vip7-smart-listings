@@ -1,36 +1,36 @@
 
-
-## Corrigir erro de CORS no CEP da pagina Avaliacao
+## Corrigir erro de CEP na pagina de Avaliacao
 
 ### Problema
 
-A chamada direta ao `https://viacep.com.br/ws/{cep}/json/` no navegador esta sendo bloqueada por politica de CORS. O ViaCEP nao retorna o header `Access-Control-Allow-Origin`, impedindo a consulta.
+A edge function `cep-lookup` esta retornando erro 500 ao consultar o ViaCEP. O erro esta sendo capturado no `catch` mas nao esta sendo logado, o que dificulta o diagnostico. Provavelmente o `fetch` ao ViaCEP esta falhando por conta de timeout, bloqueio de IP, ou necessidade de headers adicionais (como User-Agent).
 
 ### Solucao
 
-Criar uma funcao backend (edge function) como proxy para o ViaCEP, e atualizar o formulario para usar essa funcao em vez de chamar o ViaCEP diretamente.
+Atualizar a edge function com:
+
+1. **Adicionar logs de erro** para facilitar diagnostico futuro
+2. **Adicionar header User-Agent** na requisicao ao ViaCEP (alguns servicos bloqueiam requests sem User-Agent)
+3. **Adicionar fallback** usando API alternativa (BrasilAPI) caso o ViaCEP falhe
+4. **Adicionar timeout** para evitar que a funcao fique travada
 
 ### Alteracoes
 
-**1. Nova edge function: `supabase/functions/cep-lookup/index.ts`**
+**Arquivo: `supabase/functions/cep-lookup/index.ts`**
 
-- Recebe o CEP via query param ou corpo da requisicao
-- Faz a chamada ao ViaCEP no servidor (sem CORS)
-- Retorna os dados (logradouro, bairro, localidade) para o frontend
-- Inclui headers CORS adequados na resposta
-
-**2. Atualizar `src/pages/Avaliacao.tsx`**
-
-- Na funcao `handleCepChange`, trocar a chamada direta ao ViaCEP:
-  - De: `fetch('https://viacep.com.br/ws/${digits}/json/')`
-  - Para: chamada via `supabase.functions.invoke('cep-lookup', { body: { cep: digits } })`
-- Manter todo o resto da logica (mascara, preenchimento automatico de endereco/bairro/cidade, loading indicator)
+- Adicionar `console.error(error)` no bloco catch para logar erros
+- Adicionar header `User-Agent` no fetch ao ViaCEP
+- Implementar fallback: se ViaCEP falhar, tentar `https://brasilapi.com.br/api/cep/v1/{cep}`
+- Mapear campos da BrasilAPI (street, neighborhood, city) para o mesmo formato do ViaCEP (logradouro, bairro, localidade)
 
 ### Detalhes Tecnicos
 
-A edge function sera simples:
-- Recebe `{ cep: "18040265" }` no body
-- Faz `fetch('https://viacep.com.br/ws/18040265/json/')` no servidor
-- Retorna o JSON do ViaCEP diretamente
-- Trata erros (CEP invalido, timeout, etc.)
+A funcao tentara primeiro o ViaCEP. Se falhar, tentara a BrasilAPI como backup. Os campos da BrasilAPI serao mapeados para manter compatibilidade com o frontend existente:
 
+```
+BrasilAPI         -> ViaCEP (formato usado no frontend)
+street            -> logradouro
+neighborhood      -> bairro  
+city              -> localidade
+state             -> uf
+```
