@@ -353,10 +353,24 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
         return [...arr].sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
       }
       if (ordenar === 'menor_m2') {
-        return [...arr].sort((a, b) => calcPrecoM2(a) - calcPrecoM2(b));
+        return [...arr].sort((a, b) => {
+          const am2 = calcPrecoM2(a);
+          const bm2 = calcPrecoM2(b);
+          if (am2 <= 0 && bm2 <= 0) return 0;
+          if (am2 <= 0) return 1;
+          if (bm2 <= 0) return -1;
+          return am2 - bm2;
+        });
       }
       if (ordenar === 'maior_m2') {
-        return [...arr].sort((a, b) => calcPrecoM2(b) - calcPrecoM2(a));
+        return [...arr].sort((a, b) => {
+          const am2 = calcPrecoM2(a);
+          const bm2 = calcPrecoM2(b);
+          if (am2 <= 0 && bm2 <= 0) return 0;
+          if (am2 <= 0) return 1;
+          if (bm2 <= 0) return -1;
+          return bm2 - am2;
+        });
       }
       // Se ordenar=recentes E usando endpoint de recentes, não re-ordena (já vem correto)
       return arr;
@@ -493,10 +507,24 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
       return [...list].sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0));
     }
     if (ordenar === 'menor_m2') {
-      return [...list].sort((a, b) => calcPrecoM2Map(a) - calcPrecoM2Map(b));
+      return [...list].sort((a, b) => {
+        const am2 = calcPrecoM2Map(a);
+        const bm2 = calcPrecoM2Map(b);
+        if (am2 <= 0 && bm2 <= 0) return 0;
+        if (am2 <= 0) return 1;
+        if (bm2 <= 0) return -1;
+        return am2 - bm2;
+      });
     }
     if (ordenar === 'maior_m2') {
-      return [...list].sort((a, b) => calcPrecoM2Map(b) - calcPrecoM2Map(a));
+      return [...list].sort((a, b) => {
+        const am2 = calcPrecoM2Map(a);
+        const bm2 = calcPrecoM2Map(b);
+        if (am2 <= 0 && bm2 <= 0) return 0;
+        if (am2 <= 0) return 1;
+        if (bm2 <= 0) return -1;
+        return bm2 - am2;
+      });
     }
 
     return list;
