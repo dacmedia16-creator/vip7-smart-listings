@@ -1,34 +1,41 @@
 
 
-## Corrigir ordenação por R$/m² para considerar todos os imóveis
+## Corrigir ordenação por Menor R$/m² colocando imóveis sem dados no final
 
 ### Problema
 
-Quando o usuário ordena por "Menor R$/m²" ou "Maior R$/m²", a ordenação só é aplicada nos 20 imóveis da página atual. Isso acontece porque a API não suporta ordenação por R$/m², então o sistema busca apenas uma página (20 itens) e ordena localmente — resultando em uma ordenação incorreta e incompleta.
+Ao ordenar por "Menor R$/m²", imóveis sem área (onde o cálculo de R$/m² retorna 0) aparecem primeiro, empurrando os imóveis com valores reais para páginas posteriores. Isso faz parecer que a página 2 tem valores menores que a página 1.
+
+### Causa
+
+A função `calcPrecoM2` retorna `0` quando o imóvel não tem dados de área. Na ordenação crescente, `0` vem antes de qualquer valor positivo, então imóveis sem informação de R$/m² ocupam as primeiras posições.
 
 ### Solução
 
-Quando a ordenação por R$/m² estiver ativa, buscar TODOS os imóveis (usando o mesmo mecanismo do mapa) e aplicar ordenação + paginação no cliente.
+**Arquivo: `src/pages/Imoveis.tsx` (linhas 355-360)**
 
-### Alterações
+Alterar a ordenação por R$/m² para:
+1. Filtrar imóveis com R$/m² = 0 para o final da lista (não têm dados suficientes)
+2. Ordenar normalmente apenas os imóveis com valor válido de R$/m²
 
-**Arquivo: `src/pages/Imoveis.tsx`**
+A lógica do sort será ajustada para que, quando `calcPrecoM2` retornar 0, o imóvel seja posicionado no final (tanto para `menor_m2` quanto para `maior_m2`):
 
-1. **Detectar quando ordenação por R$/m² está ativa**: criar flag `isM2Sort = ordenar === 'menor_m2' || ordenar === 'maior_m2'`
+```typescript
+if (ordenar === 'menor_m2') {
+  return [...arr].sort((a, b) => {
+    const am2 = calcPrecoM2(a);
+    const bm2 = calcPrecoM2(b);
+    if (am2 <= 0 && bm2 <= 0) return 0;
+    if (am2 <= 0) return 1;  // a vai pro final
+    if (bm2 <= 0) return -1; // b vai pro final
+    return am2 - bm2;
+  });
+}
+```
 
-2. **Ativar o hook `useImoveisMap`** quando `isM2Sort` é true (mesmo na visualização de lista). Atualmente ele só é ativado quando `viewMode === 'map'`. Mudar para: `enabled: viewMode === 'map' || isM2Sort`
-
-3. **Quando `isM2Sort` está ativo**, usar os dados do `useImoveisMap` (todos os imóveis) em vez dos dados paginados:
-   - Aplicar os mesmos filtros locais (tipo, quartos, banheiros, área, busca, preço m²)
-   - Ordenar todos por R$/m²
-   - Paginar no cliente (slice do array)
-   - Atualizar `totalImoveis` e `totalPages` baseado no total filtrado
-
-4. **Atualizar `filteredProperties`** e `totalImoveis` para usar a fonte de dados correta conforme o modo de ordenação
+A mesma lógica será aplicada para `maior_m2`.
 
 ### Detalhes Técnicos
 
-O hook `useImoveisMap` já busca todos os imóveis em paralelo com batches de 15 páginas. Quando ativado para ordenação por R$/m², ele carrega todos os imóveis em cache (30min staleTime), aplica os filtros e ordenação no cliente, e faz paginação manual via `slice()`. Isso garante que o "Menor R$/m²" compare todos os imóveis disponíveis, não apenas os 20 da página atual.
-
-O `isLoading` também será ajustado para refletir o carregamento correto quando usar este modo.
+A alteração é apenas na função `applyOrdering` dentro do `useMemo` de `filteredProperties`. Imóveis com R$/m² = 0 (sem área cadastrada) serão sempre posicionados no final da lista, independente da direção da ordenação. Isso garante que a página 1 mostre os imóveis com os menores (ou maiores) valores reais de R$/m².
 
