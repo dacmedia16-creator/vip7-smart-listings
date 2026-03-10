@@ -38,7 +38,7 @@ const caixaForteItems = [
 
 const Leilao = () => {
   return (
-    <Layout>
+    <Layout whatsappPhone="5515996544379">
       <SEOHead
         title="Assessoria para Investidores e Leilão"
         description="Assessoria especializada em investimentos imobiliários e oportunidades em leilão. Acompanhamos desde a busca até a entrega do imóvel regularizado."

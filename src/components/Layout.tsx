@@ -6,9 +6,10 @@ import { CompareDrawer } from '@/components/CompareDrawer';
 
 interface LayoutProps {
   children: ReactNode;
+  whatsappPhone?: string;
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, whatsappPhone }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -16,7 +17,7 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       <Footer />
-      <WhatsAppButton />
+      <WhatsAppButton phone={whatsappPhone} />
       <CompareDrawer />
     </div>
   );
