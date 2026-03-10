@@ -61,7 +61,7 @@ const Leilao = () => {
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
                 Assessoria para{' '}
                 <span className="bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent">
-                  Investidores e Leilão
+                  Investidores em Leilão
                 </span>
               </h1>
 
