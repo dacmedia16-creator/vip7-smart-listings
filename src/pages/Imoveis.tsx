@@ -433,7 +433,7 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
     }
 
     return applyOrdering(list);
-  }, [imoveisData?.lista, mapProperties, isM2Sort, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
+  }, [imoveisData?.lista, mapProperties, isM2Sort, hasClientSideFilters, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
 
   // Calcular média de R$/m² por bairro (para badge "abaixo da média")
   const mediasPrecoM2PorBairro = useMemo(() => {
