@@ -278,11 +278,15 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
   // Flag: ordenação por R$/m² requer todos os imóveis (client-side sort)
   const isM2Sort = ordenar === 'menor_m2' || ordenar === 'maior_m2';
 
-  // Fetch all properties for map view OR when sorting by R$/m²
-  const { data: mapProperties = [], isLoading: isLoadingMap } = useImoveisMap(mapFilters, viewMode === 'map' || isM2Sort);
+  // Flag: filtros client-side (API não suporta nativamente)
+  const hasClientSideFilters = !!(quartosUrl || banheirosUrl || areaMinUrl || precoM2MinUrl || precoM2MaxUrl);
+
+  // Buscar TODOS os imóveis quando: mapa, ordenação R$/m², ou filtros client-side
+  const needsFullDataset = viewMode === 'map' || isM2Sort || hasClientSideFilters;
+  const { data: mapProperties = [], isLoading: isLoadingMap } = useImoveisMap(mapFilters, needsFullDataset);
   
-  // Loading: quando ordenação por R$/m², depende do carregamento de todos os imóveis
-  const isLoading = isM2Sort ? isLoadingMap : isLoadingBase;
+  // Loading: quando usando dataset completo, depende do carregamento de todos os imóveis
+  const isLoading = (isM2Sort || hasClientSideFilters) ? isLoadingMap : isLoadingBase;
   
   // Normalizar filtro de tipo para garantir que sempre seja aplicado (mesmo se a API ignorar)
   const tipoFiltro = tipo.trim();
