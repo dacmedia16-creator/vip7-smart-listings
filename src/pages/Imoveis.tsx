@@ -534,11 +534,12 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
     return list;
   }, [mapProperties, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
 
-  // Quando isM2Sort, paginar no cliente (filteredProperties tem TODOS os imóveis filtrados/ordenados)
-  const properties = isM2Sort 
+  // Quando isM2Sort ou hasClientSideFilters, paginar no cliente (filteredProperties tem TODOS os imóveis filtrados/ordenados)
+  const useClientPagination = isM2Sort || hasClientSideFilters;
+  const properties = useClientPagination
     ? filteredProperties.slice((paginaAtual - 1) * ITEMS_PER_PAGE, paginaAtual * ITEMS_PER_PAGE)
     : filteredProperties;
-  const totalImoveis = (isM2Sort || busca.trim()) ? filteredProperties.length : (imoveisData?.quantidade || 0);
+  const totalImoveis = (useClientPagination || busca.trim()) ? filteredProperties.length : (imoveisData?.quantidade || 0);
   const totalPages = Math.ceil(totalImoveis / ITEMS_PER_PAGE);
 
   // Determina se há mais páginas baseado no total real
