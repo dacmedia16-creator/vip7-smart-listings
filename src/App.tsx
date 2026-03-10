@@ -15,6 +15,7 @@ import TermosUso from "./pages/TermosUso";
 import NossaHistoria from "./pages/NossaHistoria";
 import Avaliacao from "./pages/Avaliacao";
 import Comparar from "./pages/Comparar";
+import Leilao from "./pages/Leilao";
 import AdminOgTester from "./pages/AdminOgTester";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => (
                 <Route path="/nossa-historia" element={<NossaHistoria />} />
                 <Route path="/avaliacao" element={<Avaliacao />} />
                 <Route path="/comparar" element={<Comparar />} />
+                <Route path="/leilao" element={<Leilao />} />
               <Route path="/condominios" element={<Imoveis />} />
                 <Route path="/admin/og-tester" element={<AdminOgTester />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
