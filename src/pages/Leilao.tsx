@@ -1,8 +1,8 @@
 import {
   Gavel, Search, FileCheck, Shield, Home, TrendingUp,
   Phone, ArrowRight, CheckCircle, DollarSign, Hammer,
-  Scale, KeyRound, PaintBucket, Eye
-} from 'lucide-react';
+  Scale, KeyRound, PaintBucket, Eye } from
+'lucide-react';
 import { Layout } from '@/components/Layout';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { SEOHead } from '@/components/SEOHead';
@@ -10,31 +10,31 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
 const etapas = [
-  { icon: Search, title: 'Busca da Oportunidade', description: 'Garimpo de imóveis alinhados ao perfil do investidor' },
-  { icon: FileCheck, title: 'Análise Completa', description: 'Análise documental, jurídica e financeira detalhada' },
-  { icon: Hammer, title: 'Arrematação', description: 'Orientação e acompanhamento na participação do leilão ou compra' },
-  { icon: Scale, title: 'Burocracia', description: 'Toda a parte burocrática e documental do pós-arrematação' },
-  { icon: KeyRound, title: 'Desocupação', description: 'Auxílio na desocupação do imóvel quando necessário' },
-  { icon: Shield, title: 'Regularização', description: 'Matrícula regularizada e limpa, sem pendências' },
-];
+{ icon: Search, title: 'Busca da Oportunidade', description: 'Garimpo de imóveis alinhados ao perfil do investidor' },
+{ icon: FileCheck, title: 'Análise Completa', description: 'Análise documental, jurídica e financeira detalhada' },
+{ icon: Hammer, title: 'Arrematação', description: 'Orientação e acompanhamento na participação do leilão ou compra' },
+{ icon: Scale, title: 'Burocracia', description: 'Toda a parte burocrática e documental do pós-arrematação' },
+{ icon: KeyRound, title: 'Desocupação', description: 'Auxílio na desocupação do imóvel quando necessário' },
+{ icon: Shield, title: 'Regularização', description: 'Matrícula regularizada e limpa, sem pendências' }];
+
 
 const tradicionalItems = [
-  'Busca da oportunidade ideal',
-  'Análise documental, jurídica e financeira',
-  'Orientação para participar do leilão ou compra',
-  'Acompanhamento da arrematação',
-  'Etapa burocrática do pós-arrematação',
-  'Auxílio na desocupação do imóvel',
-  'Entrega com matrícula regularizada',
-];
+'Busca da oportunidade ideal',
+'Análise documental, jurídica e financeira',
+'Orientação para participar do leilão ou compra',
+'Acompanhamento da arrematação',
+'Etapa burocrática do pós-arrematação',
+'Auxílio na desocupação do imóvel',
+'Entrega com matrícula regularizada'];
+
 
 const caixaForteItems = [
-  'Tudo da assessoria tradicional',
-  'Acompanhamento de reforma e preparação para revenda',
-  'Parceiros: arquitetos e prestadores locais',
-  'Transparência total nos custos',
-  'Auxílio na venda do imóvel',
-];
+'Tudo da assessoria tradicional',
+'Acompanhamento de reforma e preparação para revenda',
+'Parceiros: arquitetos e prestadores locais',
+'Transparência total nos custos',
+'Auxílio na venda do imóvel'];
+
 
 const Leilao = () => {
   return (
@@ -42,8 +42,8 @@ const Leilao = () => {
       <SEOHead
         title="Assessoria para Investidores e Leilão"
         description="Assessoria especializada em investimentos imobiliários e oportunidades em leilão. Acompanhamos desde a busca até a entrega do imóvel regularizado."
-        keywords="leilão de imóveis, investimento imobiliário, assessoria leilão, arrematação, imóveis Sorocaba"
-      />
+        keywords="leilão de imóveis, investimento imobiliário, assessoria leilão, arrematação, imóveis Sorocaba" />
+      
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">
@@ -117,8 +117,8 @@ const Leilao = () => {
           </ScrollReveal>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {etapas.map((etapa, index) => (
-              <ScrollReveal key={etapa.title} variant="fade-up" delay={index * 0.08}>
+            {etapas.map((etapa, index) =>
+            <ScrollReveal key={etapa.title} variant="fade-up" delay={index * 0.08}>
                 <div className="glass-luxury rounded-2xl p-6 h-full border border-primary/10 hover:border-primary/30 transition-all duration-300 text-center group">
                   <div className="relative mb-4">
                     <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
@@ -132,7 +132,7 @@ const Leilao = () => {
                   <p className="text-sm text-muted-foreground leading-relaxed">{etapa.description}</p>
                 </div>
               </ScrollReveal>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -165,30 +165,30 @@ const Leilao = () => {
                 </div>
 
                 <ul className="space-y-3 mb-8 flex-1">
-                  {tradicionalItems.map((item) => (
-                    <li key={item} className="flex items-start gap-3">
+                  {tradicionalItems.map((item) =>
+                  <li key={item} className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                       <span className="text-muted-foreground">{item}</span>
                     </li>
-                  ))}
+                  )}
                 </ul>
 
-                <div className="rounded-2xl bg-primary/5 border border-primary/10 p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Custo (extrajudiciais)</span>
-                  </div>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    Aproximadamente <span className="text-foreground font-bold">13%</span> sobre o valor da arrematação:
-                  </p>
-                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                    <li>• <span className="text-foreground font-medium">10%</span> comissão da assessoria</li>
-                    <li>• <span className="text-foreground font-medium">3%</span> para o advogado</li>
-                  </ul>
-                  <p className="mt-3 text-xs text-muted-foreground italic">
-                    Em oportunidades judiciais, honorários advocatícios são tratados à parte.
-                  </p>
-                </div>
+                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
               </div>
             </ScrollReveal>
 
@@ -210,12 +210,12 @@ const Leilao = () => {
                 </div>
 
                 <ul className="space-y-3 mb-8 flex-1">
-                  {caixaForteItems.map((item) => (
-                    <li key={item} className="flex items-start gap-3">
+                  {caixaForteItems.map((item) =>
+                  <li key={item} className="flex items-start gap-3">
                       <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                       <span className="text-muted-foreground">{item}</span>
                     </li>
-                  ))}
+                  )}
                 </ul>
 
                 <div className="rounded-2xl bg-primary/5 border border-primary/10 p-5">
@@ -313,8 +313,8 @@ const Leilao = () => {
                       href="https://wa.me/551535008641?text=Olá! Gostaria de saber mais sobre a assessoria para investidores e leilão."
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2"
-                    >
+                      className="inline-flex items-center gap-2">
+                      
                       <Phone className="h-5 w-5" />
                       Falar com Especialista
                     </a>
@@ -332,8 +332,8 @@ const Leilao = () => {
           </ScrollReveal>
         </div>
       </section>
-    </Layout>
-  );
+    </Layout>);
+
 };
 
 export default Leilao;
