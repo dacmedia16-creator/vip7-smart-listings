@@ -380,8 +380,8 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
       return arr;
     };
 
-    // Quando ordenação por R$/m² está ativa, usar todos os imóveis (mapProperties)
-    const sourceList = isM2Sort ? (mapProperties || []) : (imoveisData?.lista || []);
+    // Quando ordenação por R$/m² ou filtros client-side estão ativos, usar todos os imóveis (mapProperties)
+    const sourceList = (isM2Sort || hasClientSideFilters) ? (mapProperties || []) : (imoveisData?.lista || []);
     let list = sourceList.filter((property) => matchesTipoFiltro(property.tipo));
 
     // Filtro local de quartos (caso API não suporte)
