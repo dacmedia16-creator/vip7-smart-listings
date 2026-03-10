@@ -218,28 +218,28 @@ const Leilao = () => {
                   )}
                 </ul>
 
-                <div className="rounded-2xl bg-primary/5 border border-primary/10 p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Remuneração por Resultado</span>
-                  </div>
-                  <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-                    <span className="text-foreground font-bold">50% do lucro</span> da operação
-                  </p>
-                  <div className="rounded-xl bg-background/50 border border-border/50 p-4 text-sm">
-                    <p className="font-medium mb-2">Exemplo prático:</p>
-                    <p className="text-muted-foreground">
-                      Lucro de <span className="text-primary font-bold">R$ 300 mil</span>
-                    </p>
-                    <ul className="mt-2 space-y-1 text-muted-foreground">
-                      <li>→ <span className="text-foreground font-medium">R$ 150 mil</span> para o investidor</li>
-                      <li>→ <span className="text-foreground font-medium">R$ 150 mil</span> para a assessoria</li>
-                    </ul>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground italic">
-                    O investidor entra com capital e sai com lucro. Nós entramos com estratégia, operação e execução.
-                  </p>
-                </div>
+                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
               </div>
             </ScrollReveal>
           </div>
