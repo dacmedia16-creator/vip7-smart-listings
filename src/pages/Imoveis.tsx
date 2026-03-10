@@ -278,11 +278,15 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
   // Flag: ordenação por R$/m² requer todos os imóveis (client-side sort)
   const isM2Sort = ordenar === 'menor_m2' || ordenar === 'maior_m2';
 
-  // Fetch all properties for map view OR when sorting by R$/m²
-  const { data: mapProperties = [], isLoading: isLoadingMap } = useImoveisMap(mapFilters, viewMode === 'map' || isM2Sort);
+  // Flag: filtros client-side (API não suporta nativamente)
+  const hasClientSideFilters = !!(quartosUrl || banheirosUrl || areaMinUrl || precoM2MinUrl || precoM2MaxUrl);
+
+  // Buscar TODOS os imóveis quando: mapa, ordenação R$/m², ou filtros client-side
+  const needsFullDataset = viewMode === 'map' || isM2Sort || hasClientSideFilters;
+  const { data: mapProperties = [], isLoading: isLoadingMap } = useImoveisMap(mapFilters, needsFullDataset);
   
-  // Loading: quando ordenação por R$/m², depende do carregamento de todos os imóveis
-  const isLoading = isM2Sort ? isLoadingMap : isLoadingBase;
+  // Loading: quando usando dataset completo, depende do carregamento de todos os imóveis
+  const isLoading = (isM2Sort || hasClientSideFilters) ? isLoadingMap : isLoadingBase;
   
   // Normalizar filtro de tipo para garantir que sempre seja aplicado (mesmo se a API ignorar)
   const tipoFiltro = tipo.trim();
@@ -376,8 +380,8 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
       return arr;
     };
 
-    // Quando ordenação por R$/m² está ativa, usar todos os imóveis (mapProperties)
-    const sourceList = isM2Sort ? (mapProperties || []) : (imoveisData?.lista || []);
+    // Quando ordenação por R$/m² ou filtros client-side estão ativos, usar todos os imóveis (mapProperties)
+    const sourceList = (isM2Sort || hasClientSideFilters) ? (mapProperties || []) : (imoveisData?.lista || []);
     let list = sourceList.filter((property) => matchesTipoFiltro(property.tipo));
 
     // Filtro local de quartos (caso API não suporte)
@@ -429,7 +433,7 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
     }
 
     return applyOrdering(list);
-  }, [imoveisData?.lista, mapProperties, isM2Sort, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
+  }, [imoveisData?.lista, mapProperties, isM2Sort, hasClientSideFilters, busca, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
 
   // Calcular média de R$/m² por bairro (para badge "abaixo da média")
   const mediasPrecoM2PorBairro = useMemo(() => {
@@ -530,11 +534,12 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
     return list;
   }, [mapProperties, matchesTipoFiltro, ordenar, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl]);
 
-  // Quando isM2Sort, paginar no cliente (filteredProperties tem TODOS os imóveis filtrados/ordenados)
-  const properties = isM2Sort 
+  // Quando isM2Sort ou hasClientSideFilters, paginar no cliente (filteredProperties tem TODOS os imóveis filtrados/ordenados)
+  const useClientPagination = isM2Sort || hasClientSideFilters;
+  const properties = useClientPagination
     ? filteredProperties.slice((paginaAtual - 1) * ITEMS_PER_PAGE, paginaAtual * ITEMS_PER_PAGE)
     : filteredProperties;
-  const totalImoveis = (isM2Sort || busca.trim()) ? filteredProperties.length : (imoveisData?.quantidade || 0);
+  const totalImoveis = (useClientPagination || busca.trim()) ? filteredProperties.length : (imoveisData?.quantidade || 0);
   const totalPages = Math.ceil(totalImoveis / ITEMS_PER_PAGE);
 
   // Determina se há mais páginas baseado no total real
