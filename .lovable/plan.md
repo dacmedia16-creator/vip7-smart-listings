@@ -1,41 +1,34 @@
 
 
-## Corrigir ordenação por Menor R$/m² colocando imóveis sem dados no final
+## Corrigir contagem e paginação com filtros client-side (quartos, banheiros, área)
 
 ### Problema
 
-Ao ordenar por "Menor R$/m²", imóveis sem área (onde o cálculo de R$/m² retorna 0) aparecem primeiro, empurrando os imóveis com valores reais para páginas posteriores. Isso faz parecer que a página 2 tem valores menores que a página 1.
+Quando o usuário filtra por quartos, banheiros ou área mínima, a API Imoview **não suporta** esses filtros nativamente. O sistema aplica esses filtros apenas nos 20 resultados da página atual, mas mostra o total da API (244 imóveis). Resultado: "244 encontrados", mas só 1 imóvel aparece por página — a paginação fica quebrada.
 
-### Causa
-
-A função `calcPrecoM2` retorna `0` quando o imóvel não tem dados de área. Na ordenação crescente, `0` vem antes de qualquer valor positivo, então imóveis sem informação de R$/m² ocupam as primeiras posições.
+A API suporta `numeroquartos` via `dormitorios`, mas **não suporta** filtro por banheiros nem por área mínima. E o frontend envia `quartos`/`banheiros`/`areaMin` nos params, mas a edge function não mapeia esses campos para a API.
 
 ### Solução
 
-**Arquivo: `src/pages/Imoveis.tsx` (linhas 355-360)**
+Quando qualquer filtro client-side está ativo (quartos, banheiros, areaMin, precoM2), buscar TODOS os imóveis (reutilizando `useImoveisMap`) e paginar no cliente — mesma abordagem já usada para ordenação por R$/m².
 
-Alterar a ordenação por R$/m² para:
-1. Filtrar imóveis com R$/m² = 0 para o final da lista (não têm dados suficientes)
-2. Ordenar normalmente apenas os imóveis com valor válido de R$/m²
+### Alterações
 
-A lógica do sort será ajustada para que, quando `calcPrecoM2` retornar 0, o imóvel seja posicionado no final (tanto para `menor_m2` quanto para `maior_m2`):
+**Arquivo: `src/pages/Imoveis.tsx`**
 
-```typescript
-if (ordenar === 'menor_m2') {
-  return [...arr].sort((a, b) => {
-    const am2 = calcPrecoM2(a);
-    const bm2 = calcPrecoM2(b);
-    if (am2 <= 0 && bm2 <= 0) return 0;
-    if (am2 <= 0) return 1;  // a vai pro final
-    if (bm2 <= 0) return -1; // b vai pro final
-    return am2 - bm2;
-  });
-}
-```
+1. Criar flag `hasClientSideFilters` que detecta quando quartos, banheiros, areaMin ou precoM2 estão ativos
+2. Alterar a condição do `useImoveisMap` de `viewMode === 'map' || isM2Sort` para `viewMode === 'map' || isM2Sort || hasClientSideFilters`
+3. Alterar o `sourceList` no `filteredProperties` para usar `mapProperties` quando `hasClientSideFilters` está ativo
+4. Alterar o cálculo de `properties` e `totalImoveis` para paginar no cliente quando `hasClientSideFilters`
+5. Ajustar `isLoading` para usar `isLoadingMap` quando `hasClientSideFilters`
 
-A mesma lógica será aplicada para `maior_m2`.
+Essencialmente, expandir a mesma lógica de `isM2Sort` para incluir `hasClientSideFilters`.
 
-### Detalhes Técnicos
+**Alternativa complementar (edge function)**: mapear `quartos` → `dormitorios` na edge function para que a API filtre nativamente quando possível. Mas banheiros e área não são suportados pela API, então o client-side é necessário de qualquer forma.
 
-A alteração é apenas na função `applyOrdering` dentro do `useMemo` de `filteredProperties`. Imóveis com R$/m² = 0 (sem área cadastrada) serão sempre posicionados no final da lista, independente da direção da ordenação. Isso garante que a página 1 mostre os imóveis com os menores (ou maiores) valores reais de R$/m².
+### Impacto
+
+- Quando filtros client-side estão ativos, o sistema carrega todos os imóveis (já em cache de 30min)
+- A contagem e paginação refletirão os dados reais filtrados
+- Performance: reutiliza o cache existente do `useImoveisMap`
 
