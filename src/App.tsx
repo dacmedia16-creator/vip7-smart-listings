@@ -15,6 +15,7 @@ import TermosUso from "./pages/TermosUso";
 import NossaHistoria from "./pages/NossaHistoria";
 import Avaliacao from "./pages/Avaliacao";
 import Comparar from "./pages/Comparar";
+import Leilao from "./pages/Leilao";
 import AdminOgTester from "./pages/AdminOgTester";
 import NotFound from "./pages/NotFound";
 
