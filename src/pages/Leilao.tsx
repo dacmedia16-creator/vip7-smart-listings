@@ -310,7 +310,7 @@ const Leilao = () => {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button variant="gold" size="xl" asChild>
                     <a
-                      href="https://wa.me/551535008641?text=Olá! Gostaria de saber mais sobre a assessoria para investidores e leilão."
+                      href="https://wa.me/5515996544379?text=Olá! Gostaria de saber mais sobre a assessoria para investidores e leilão."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2">
