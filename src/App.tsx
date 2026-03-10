@@ -40,6 +40,7 @@ const App = () => (
                 <Route path="/nossa-historia" element={<NossaHistoria />} />
                 <Route path="/avaliacao" element={<Avaliacao />} />
                 <Route path="/comparar" element={<Comparar />} />
+                <Route path="/leilao" element={<Leilao />} />
               <Route path="/condominios" element={<Imoveis />} />
                 <Route path="/admin/og-tester" element={<AdminOgTester />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

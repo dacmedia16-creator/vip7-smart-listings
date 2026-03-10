@@ -9,6 +9,7 @@ const navigation = [
   { name: 'COMPRAR', href: '/imoveis?finalidade=venda' },
   { name: 'ALUGAR', href: '/imoveis?finalidade=aluguel' },
   { name: 'AVALIE SEU IMÓVEL', href: '/avaliacao' },
+  { name: 'LEILÃO', href: '/leilao' },
   { name: 'NOSSA HISTÓRIA', href: '/nossa-historia' },
   { name: 'CONTATO', href: '/contato' },
 ];
