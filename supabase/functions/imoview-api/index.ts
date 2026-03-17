@@ -433,7 +433,7 @@ serve(async (req) => {
         // ========= PAGINAÇÃO PARALELA OTIMIZADA =========
         // Buscar páginas em paralelo para performance
         const PAGE_SIZE = 50; // Máximo permitido pela API
-        const MAX_PAGES = 20; // Reduzido para 1000 imóveis max (performance)
+        const MAX_PAGES = 30; // Suporta até 1500 imóveis
         const BATCH_SIZE = 5; // Páginas paralelas por lote
         const allImoveis: Record<string, unknown>[] = [];
         
