@@ -673,11 +673,10 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
               {debugEnabled && (
                 <details className="mt-2 text-xs text-muted-foreground/70 font-mono">
                   <summary className="cursor-pointer hover:text-muted-foreground">
-                    Debug: {useRecentesEndpoint ? '🚀 Endpoint RECENTES' : '📋 Endpoint GERAL'}
+                    Debug: 📋 Endpoint RetornarImoveisDisponiveis
                   </summary>
                   <pre className="mt-1 p-2 bg-secondary/50 rounded text-[10px] overflow-auto max-h-32">
-                    Endpoint: {useRecentesEndpoint ? 'RetornarImoveisAlterados (ordenado por data)' : 'RetornarImoveisDisponiveis (geral)'}
-                    {'\n'}Filtros avançados: {hasAdvancedFilters ? 'SIM' : 'NÃO'}
+                    Endpoint: RetornarImoveisDisponiveis (todos os imóveis disponíveis)
                     {'\n\n'}{apiFiltersDebug}
                   </pre>
                 </details>
