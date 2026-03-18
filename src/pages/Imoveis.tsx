@@ -211,52 +211,12 @@ const precoM2MaxUrl = searchParams.get('precoM2Max') || '';
     return mapa[tipoLower];
   };
 
-  // Determinar se podemos usar o endpoint de "recentes" (menos filtros complexos)
-  // O endpoint RetornarImoveisAlterados suporta: finalidade, codigoCidade, codigoTipo
-  // Não suporta: bairros, condominios, faixa de preço, busca de texto, quartos, banheiros, área
-  const hasAdvancedFilters = useMemo(() => {
-    return (
-      bairrosArray.length > 0 ||
-      condominiosArray.length > 0 ||
-      valorMinFiltro !== undefined ||
-      valorMaxFiltro !== undefined ||
-      quartosUrl !== '' ||
-      banheirosUrl !== '' ||
-      areaMinUrl !== '' ||
-      precoM2MinUrl !== '' ||
-      precoM2MaxUrl !== '' ||
-      busca.trim() !== ''
-    );
-  }, [bairrosArray, condominiosArray, valorMinFiltro, valorMaxFiltro, quartosUrl, banheirosUrl, areaMinUrl, precoM2MinUrl, precoM2MaxUrl, busca]);
-
-  // Usar endpoint de "recentes" quando ordenar=recentes E sem filtros avançados
-  // Ordenações por R$/m² são client-side, então precisam do endpoint geral
-  const useRecentesEndpoint = ordenar === 'recentes' && !hasAdvancedFilters;
-
-  // Hook para imóveis recentes (quando apropriado)
-  const recentesFilters = useMemo(() => ({
-    finalidade: finalidadeCode,
-    codigoCidade: codigoCidadePrincipal,
-    codigoTipo: tipoParaCodigo(tipo),
-    pagina: paginaAtual,
-    limite: ITEMS_PER_PAGE,
-    diasAtras: 365, // Buscar últimos 365 dias para cobrir bem o histórico
-  }), [finalidadeCode, codigoCidadePrincipal, tipo, paginaAtual]);
-
+  // Sempre usar endpoint RetornarImoveisDisponiveis (retorna TODOS os imóveis disponíveis)
+  // O endpoint RetornarImoveisAlterados excluía imóveis não modificados há mais de 1 ano
   const { 
-    data: imoveisRecentesData, 
-    isLoading: isLoadingRecentes 
-  } = useImoveisRecentes(useRecentesEndpoint ? recentesFilters : { limite: 0 });
-
-  // Hook para imóveis gerais (quando há filtros avançados ou ordenação por preço)
-  const { 
-    data: imoveisGeralData, 
-    isLoading: isLoadingGeral 
-  } = useImoveis(!useRecentesEndpoint ? apiFilters : { limite: 0 });
-
-  // Unificar dados baseado no endpoint usado
-  const imoveisData = useRecentesEndpoint ? imoveisRecentesData : imoveisGeralData;
-  const isLoadingBase = useRecentesEndpoint ? isLoadingRecentes : isLoadingGeral;
+    data: imoveisData, 
+    isLoading: isLoadingBase 
+  } = useImoveis(apiFilters);
 
   // Build filters for map (without pagination)
   const mapFilters = {
