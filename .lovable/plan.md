@@ -1,41 +1,27 @@
 
 
-## Corrigir ordenação por Menor R$/m² colocando imóveis sem dados no final
+## Corrigir contagem de imóveis à venda (922 vs 1036)
 
 ### Problema
 
-Ao ordenar por "Menor R$/m²", imóveis sem área (onde o cálculo de R$/m² retorna 0) aparecem primeiro, empurrando os imóveis com valores reais para páginas posteriores. Isso faz parecer que a página 2 tem valores menores que a página 1.
-
-### Causa
-
-A função `calcPrecoM2` retorna `0` quando o imóvel não tem dados de área. Na ordenação crescente, `0` vem antes de qualquer valor positivo, então imóveis sem informação de R$/m² ocupam as primeiras posições.
+A página `/imoveis` mostra **922 imóveis** em vez de **1036**. O motivo: por padrão, ela usa o endpoint `RetornarImoveisAlterados` (imóveis alterados nos últimos 365 dias), que **exclui imóveis que não foram modificados há mais de 1 ano**. O total correto vem do endpoint `RetornarImoveisDisponiveis`, que retorna **todos** os imóveis disponíveis.
 
 ### Solução
 
-**Arquivo: `src/pages/Imoveis.tsx` (linhas 355-360)**
+Usar o endpoint `RetornarImoveisDisponiveis` (via `listarImoveis`) como fonte principal de dados na página de listagem, mesmo na ordenação "mais recentes". A ordenação por data de atualização já é feita no lado do servidor.
 
-Alterar a ordenação por R$/m² para:
-1. Filtrar imóveis com R$/m² = 0 para o final da lista (não têm dados suficientes)
-2. Ordenar normalmente apenas os imóveis com valor válido de R$/m²
+### Alterações
 
-A lógica do sort será ajustada para que, quando `calcPrecoM2` retornar 0, o imóvel seja posicionado no final (tanto para `menor_m2` quanto para `maior_m2`):
-
-```typescript
-if (ordenar === 'menor_m2') {
-  return [...arr].sort((a, b) => {
-    const am2 = calcPrecoM2(a);
-    const bm2 = calcPrecoM2(b);
-    if (am2 <= 0 && bm2 <= 0) return 0;
-    if (am2 <= 0) return 1;  // a vai pro final
-    if (bm2 <= 0) return -1; // b vai pro final
-    return am2 - bm2;
-  });
-}
-```
-
-A mesma lógica será aplicada para `maior_m2`.
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/Imoveis.tsx` | Remover a lógica `useRecentesEndpoint` — sempre usar `useImoveis` (que chama `listarImoveis` / `RetornarImoveisDisponiveis`). A ordenação por "mais recentes" será tratada pelo parâmetro `ordenarPor: 'data_desc'` já suportado |
+| `src/services/imoviewApi.ts` | Garantir que o `ordenarPor: 'data_desc'` é enviado corretamente ao backend para ordenação por data |
+| `supabase/functions/imoview-api/index.ts` | Verificar/adicionar suporte ao parâmetro de ordenação por data no endpoint `listarImoveis` (se necessário via `ordenacao` na API Imoview) |
 
 ### Detalhes Técnicos
 
-A alteração é apenas na função `applyOrdering` dentro do `useMemo` de `filteredProperties`. Imóveis com R$/m² = 0 (sem área cadastrada) serão sempre posicionados no final da lista, independente da direção da ordenação. Isso garante que a página 1 mostre os imóveis com os menores (ou maiores) valores reais de R$/m².
+- `RetornarImoveisAlterados` (endpoint atual padrão): retorna apenas imóveis modificados dentro de um período — causa contagem incorreta
+- `RetornarImoveisDisponiveis` (endpoint correto): retorna todos os imóveis disponíveis com paginação nativa e contagem precisa
+- A página já usa `useImoveis` como fallback quando há filtros avançados — basta torná-lo o padrão sempre
+- O hook `useImoveisRecentes` continuará existindo para a seção de destaques na homepage (onde faz sentido mostrar apenas recentes)
 
