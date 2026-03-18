@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
 import { BairroMultiSelect } from '@/components/BairroMultiSelect';
 import { CidadeMultiSelect } from '@/components/CidadeMultiSelect';
-import { useImoveis, useImoveisRecentes, useBairrosMultiCidade, useCondominiosSlimMultiCidade, useCondominiosPorBairro } from '@/hooks/useImoveis';
+import { useImoveis, useBairrosMultiCidade, useCondominiosSlimMultiCidade, useCondominiosPorBairro } from '@/hooks/useImoveis';
 import { useFiltrosIniciais } from '@/hooks/useFiltrosIniciais';
 import { useImoveisMap } from '@/hooks/useImoveisMap';
 import { getFinalidadeCode } from '@/services/imoviewApi';
