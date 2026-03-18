@@ -10,7 +10,7 @@ export function useImoveisMap(filters: ImoviewFilters = {}, enabled: boolean = t
     queryKey: ['imoveis-map', filters],
     queryFn: async () => {
       const PAGE_SIZE = 20; // Limite da API Imoview
-      const MAX_PAGES = 50; // Reduzido de 100 para melhor performance
+      const MAX_PAGES = 75; // Suporta até 1500 imóveis
       const BATCH_SIZE = 15; // Aumentado de 10 para mais paralelismo
       const allProperties: ImoviewProperty[] = [];
       const seenCodigos = new Set<number>();
