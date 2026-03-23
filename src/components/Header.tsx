@@ -44,12 +44,13 @@ export function Header() {
       <nav className="container mx-auto px-4 lg:px-8" aria-label="Global">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
-          <img 
+          <Link to="/" className="flex items-center gap-2">
+            <img 
               src={logoVip7} 
               alt="VIP7 Imóveis" 
               className="w-24 md:w-32 lg:w-36 h-auto object-contain"
             />
+            <span className="text-[10px] text-muted-foreground font-medium tracking-wider hidden sm:inline">CRECI 34502J</span>
           </Link>
 
           {/* Desktop Navigation */}
