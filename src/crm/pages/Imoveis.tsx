@@ -57,9 +57,11 @@ export default function Imoveis() {
           <h1 className="text-2xl font-bold">Imóveis Próprios</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} imóveis</p>
         </div>
-        <Button asChild>
-          <Link to="/crm/imoveis/novo"><Plus className="h-4 w-4 mr-2" />Novo Imóvel</Link>
-        </Button>
+        {canCreate && (
+          <Button asChild>
+            <Link to="/crm/imoveis/novo"><Plus className="h-4 w-4 mr-2" />Novo Imóvel</Link>
+          </Button>
+        )}
       </div>
 
       <Card className="p-4 mb-6 flex flex-wrap gap-3">
