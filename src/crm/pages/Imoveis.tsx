@@ -10,8 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { IMOVEL_STATUS, imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
+import { useAuth } from '../hooks/useAuth';
+import { useRoles } from '../hooks/useRole';
 
 export default function Imoveis() {
+  const { user } = useAuth();
+  const { isManager, isCorretor } = useRoles();
+  const canCreate = isManager || isCorretor;
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
