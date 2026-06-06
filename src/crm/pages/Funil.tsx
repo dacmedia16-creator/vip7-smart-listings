@@ -158,19 +158,28 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: () => void }) {
 }
 
 function CardInner({ lead }: { lead: Lead }) {
-  const daysIdle = differenceInDays(new Date(), new Date(lead.updated_at));
+  const refContato = lead.last_contact_at ? new Date(lead.last_contact_at) : new Date(lead.created_at);
+  const diasSemContato = differenceInDays(new Date(), refContato);
   const isNew = differenceInDays(new Date(), new Date(lead.created_at)) < 1;
-  const isStale = daysIdle > 5;
+  const semContato = !lead.last_contact_at && !isNew;
+  const atrasado = diasSemContato > 3;
   return (
     <Card className="border-slate-200 p-3 bg-white hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium text-slate-900 truncate">{lead.nome}</p>
         {isNew && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">NOVO</span>}
-        {!isNew && isStale && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">{daysIdle}d</span>}
+        {!isNew && atrasado && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-medium whitespace-nowrap">
+            {semContato ? 'sem contato' : `${diasSemContato}d`}
+          </span>
+        )}
       </div>
       <p className="text-xs text-slate-600 mt-1">{fmtPhone(lead.telefone)}</p>
       {lead.bairro_interesse && <p className="text-xs text-slate-500 mt-0.5 truncate">{lead.bairro_interesse}</p>}
       {lead.orcamento_max && <p className="text-xs text-slate-700 mt-1 font-medium">{fmtMoney(lead.orcamento_max)}</p>}
+      {!isNew && !atrasado && lead.last_contact_at && (
+        <p className="text-[10px] text-slate-400 mt-1">Último contato há {diasSemContato}d</p>
+      )}
     </Card>
   );
 }
