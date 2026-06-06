@@ -19,6 +19,7 @@ export default function CrmDashboard() {
   const [semContato, setSemContato] = useState<any[]>([]);
   const [atrasadosEtapa, setAtrasadosEtapa] = useState<any[]>([]);
   const [ranking, setRanking] = useState<any[]>([]);
+  const [proximasTarefas, setProximasTarefas] = useState<any[]>([]);
   const [profilesMap, setProfilesMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
