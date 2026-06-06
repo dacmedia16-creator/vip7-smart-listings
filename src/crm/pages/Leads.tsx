@@ -30,6 +30,7 @@ type Lead = {
   orcamento_max: number | null;
   corretor_id: string | null;
   created_at: string;
+  last_contact_at: string | null;
 };
 
 export default function LeadsList() {
