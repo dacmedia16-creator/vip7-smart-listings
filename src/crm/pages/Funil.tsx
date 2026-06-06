@@ -29,6 +29,7 @@ type Lead = {
   bairro_interesse: string | null;
   created_at: string;
   updated_at: string;
+  last_contact_at: string | null;
 };
 
 export default function Funil() {
@@ -44,7 +45,7 @@ export default function Funil() {
     setLoading(true);
     const { data } = await supabase
       .from('leads')
-      .select('id, nome, telefone, status_funil, orcamento_max, bairro_interesse, created_at, updated_at')
+      .select('id, nome, telefone, status_funil, orcamento_max, bairro_interesse, created_at, updated_at, last_contact_at')
       .in('status_funil', FUNIL_STATUS as any)
       .order('updated_at', { ascending: false })
       .limit(500);
