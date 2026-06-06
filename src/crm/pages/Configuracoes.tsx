@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Settings as SettingsIcon, Shuffle } from 'lucide-react';
-import { useRole } from '../hooks/useRole';
+import { useRoles } from '../hooks/useRole';
 
 const ROLES = ['admin', 'gestor', 'corretor', 'atendente'] as const;
 
