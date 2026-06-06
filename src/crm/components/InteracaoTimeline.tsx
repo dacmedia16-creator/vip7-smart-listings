@@ -7,10 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, MessageSquare, Mail, MapPin, FileText, Filter } from 'lucide-react';
+import { Loader2, Phone, MessageSquare, Mail, MapPin, FileText, Filter, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useRoles } from '../hooks/useRole';
 
 export const TIPO_INTERACAO = [
   { value: 'ligacao', label: 'Ligação', icon: Phone, color: 'bg-blue-50 text-blue-600' },
@@ -150,11 +154,60 @@ export function InteracaoForm({ leadId, authorId, leadTelefone, onAdded }: Props
 interface TimelineProps {
   interacoes: any[];
   profilesMap: Record<string, { nome?: string; email?: string }>;
+  onChanged?: () => void;
 }
 
-export function InteracaoTimeline({ interacoes, profilesMap }: TimelineProps) {
+export function InteracaoTimeline({ interacoes, profilesMap, onChanged }: TimelineProps) {
+  const { isManager } = useRoles();
+  const { toast } = useToast();
   const [filterTipo, setFilterTipo] = useState<string>('todos');
   const [filterAutor, setFilterAutor] = useState<string>('todos');
+  const [editing, setEditing] = useState<any | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editDescricao, setEditDescricao] = useState('');
+  const [editTipo, setEditTipo] = useState('');
+  const [editResultado, setEditResultado] = useState('');
+  const [editDuracao, setEditDuracao] = useState('');
+  const [editNotas, setEditNotas] = useState('');
+
+  const openEdit = (i: any) => {
+    setEditing(i);
+    setEditDescricao(i.descricao ?? '');
+    setEditTipo(i.tipo ?? 'nota');
+    setEditResultado(i.resultado ?? '');
+    setEditDuracao(i.duracao_minutos != null ? String(i.duracao_minutos) : '');
+    setEditNotas(i.notas_internas ?? '');
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSavingEdit(true);
+    const { error } = await supabase.from('lead_interacoes').update({
+      descricao: editDescricao.trim(),
+      tipo: editTipo as any,
+      resultado: editResultado || null,
+      duracao_minutos: editDuracao ? parseInt(editDuracao, 10) : null,
+      notas_internas: editNotas.trim() || null,
+    } as any).eq('id', editing.id);
+    setSavingEdit(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Interação atualizada' });
+    setEditing(null);
+    onChanged?.();
+  };
+
+  const deleteInteracao = async (id: string) => {
+    const { error } = await supabase.from('lead_interacoes').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Interação excluída' });
+    onChanged?.();
+  };
 
   const autores = Array.from(new Set(interacoes.map((i) => i.autor_id).filter(Boolean))) as string[];
 
@@ -225,9 +278,42 @@ export function InteracaoTimeline({ interacoes, profilesMap }: TimelineProps) {
                           <Badge variant="outline" className="text-xs">{i.duracao_minutos} min</Badge>
                         )}
                       </div>
-                      <span className="text-xs text-slate-500">
-                        {format(new Date(i.created_at), "HH:mm", { locale: ptBR })} · {autor}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-500">
+                          {format(new Date(i.created_at), "HH:mm", { locale: ptBR })} · {autor}
+                        </span>
+                        {isManager && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEdit(i)}>
+                                <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                              </DropdownMenuItem>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-rose-600">
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir interação?</AlertDialogTitle>
+                                    <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteInteracao(i.id)} className="bg-rose-600 hover:bg-rose-700">Excluir</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-slate-700 mt-1.5 whitespace-pre-wrap">{i.descricao}</p>
                     {i.notas_internas && (
@@ -247,6 +333,53 @@ export function InteracaoTimeline({ interacoes, profilesMap }: TimelineProps) {
           </div>
         </div>
       ))}
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar interação</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">Tipo</Label>
+                <Select value={editTipo} onValueChange={setEditTipo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TIPO_INTERACAO.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Resultado</Label>
+                <Select value={editResultado} onValueChange={setEditResultado}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    {RESULTADO_INTERACAO.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Duração (min)</Label>
+                <Input type="number" min="0" value={editDuracao} onChange={(e) => setEditDuracao(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Descrição</Label>
+              <Textarea rows={3} value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Notas internas</Label>
+              <Textarea rows={2} value={editNotas} onChange={(e) => setEditNotas(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={saveEdit} disabled={savingEdit || !editDescricao.trim()} className="bg-blue-600 hover:bg-blue-700">
+              {savingEdit && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

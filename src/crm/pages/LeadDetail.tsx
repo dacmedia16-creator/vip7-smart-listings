@@ -209,7 +209,7 @@ export default function LeadDetail() {
               leadTelefone={lead.telefone}
               onAdded={load}
             />
-            <InteracaoTimeline interacoes={interacoes} profilesMap={profilesMap} />
+            <InteracaoTimeline interacoes={interacoes} profilesMap={profilesMap} onChanged={load} />
           </TabsContent>
 
           <TabsContent value="tarefas">

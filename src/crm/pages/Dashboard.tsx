@@ -4,11 +4,11 @@ import { CrmLayout } from '../components/CrmLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Building2, CheckSquare, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
+import { Users, Building2, CheckSquare, TrendingUp, AlertTriangle, Clock, CalendarClock } from 'lucide-react';
 import { useRoles } from '../hooks/useRole';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { LEAD_STATUS, fmtMoney, fmtPhone, statusMeta } from '../lib/leads';
-import { format, subDays, startOfDay, differenceInDays } from 'date-fns';
+import { format, subDays, addDays, startOfDay, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function CrmDashboard() {
@@ -19,6 +19,7 @@ export default function CrmDashboard() {
   const [semContato, setSemContato] = useState<any[]>([]);
   const [atrasadosEtapa, setAtrasadosEtapa] = useState<any[]>([]);
   const [ranking, setRanking] = useState<any[]>([]);
+  const [proximasTarefas, setProximasTarefas] = useState<any[]>([]);
   const [profilesMap, setProfilesMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -28,11 +29,20 @@ export default function CrmDashboard() {
       const tresDias = subDays(now, 3);
       const seteDiasEtapa = subDays(now, 7);
 
-      const [imoveisCount, leadsAll, tarefasAtrasadasCount, profiles] = await Promise.all([
+      const proximos3 = addDays(now, 3).toISOString();
+
+      const [imoveisCount, leadsAll, tarefasAtrasadasCount, profiles, proximas] = await Promise.all([
         supabase.from('imoveis_proprios').select('id', { count: 'exact', head: true }),
         supabase.from('leads').select('id, nome, telefone, status_funil, origem, orcamento_max, created_at, updated_at, last_contact_at, corretor_id'),
         supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('status', 'pendente').lt('data_hora', now.toISOString()),
         supabase.from('profiles').select('id, nome'),
+        supabase.from('tarefas')
+          .select('id, titulo, tipo, prioridade, data_hora, responsavel_id, lead_id')
+          .eq('status', 'pendente')
+          .gte('data_hora', now.toISOString())
+          .lte('data_hora', proximos3)
+          .order('data_hora', { ascending: true })
+          .limit(8),
       ]);
 
       const all = leadsAll.data ?? [];
@@ -106,6 +116,8 @@ export default function CrmDashboard() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 8);
       setRanking(rank);
+
+      setProximasTarefas(proximas.data ?? []);
     })();
   }, []);
 
@@ -212,6 +224,47 @@ export default function CrmDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-blue-600" />
+              Próximos acompanhamentos (3 dias)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {proximasTarefas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem tarefas agendadas para os próximos 3 dias.</p>
+            ) : (
+              <ul className="space-y-2">
+                {proximasTarefas.map((t) => {
+                  const data = new Date(t.data_hora);
+                  const responsavel = profilesMap[t.responsavel_id] ?? 'Sem responsável';
+                  const dest = t.lead_id ? `/crm/leads/${t.lead_id}` : '/crm/tarefas';
+                  const prioCor = t.prioridade === 'alta' ? 'text-rose-700 border-rose-200 bg-rose-50'
+                    : t.prioridade === 'baixa' ? 'text-slate-600 border-slate-200 bg-slate-50'
+                    : 'text-amber-700 border-amber-200 bg-amber-50';
+                  return (
+                    <li key={t.id}>
+                      <Link to={dest} className="flex items-center justify-between gap-3 p-2 rounded hover:bg-slate-50 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{t.titulo}</p>
+                          <p className="text-xs text-muted-foreground">{responsavel} · {t.tipo}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className={prioCor}>{t.prioridade}</Badge>
+                          <span className="text-xs text-slate-600 tabular-nums">
+                            {format(data, "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid lg:grid-cols-2 gap-4">
           <Card>

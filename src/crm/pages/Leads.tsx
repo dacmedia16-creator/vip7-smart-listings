@@ -15,7 +15,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Loader2 } from 'lucide-react';
 import { LEAD_STATUS, statusMeta, origemLabel, fmtPhone, fmtMoney } from '../lib/leads';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type Lead = {
@@ -30,6 +30,7 @@ type Lead = {
   orcamento_max: number | null;
   corretor_id: string | null;
   created_at: string;
+  last_contact_at: string | null;
 };
 
 export default function LeadsList() {
@@ -127,25 +128,29 @@ export default function LeadsList() {
                 <TableHead>Orçamento</TableHead>
                 <TableHead>Origem</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Último contato</TableHead>
                 <TableHead>Criado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
+                  <TableCell colSpan={8} className="text-center py-12">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto text-slate-400" />
                   </TableCell>
                 </TableRow>
               ) : leads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={8} className="text-center py-12 text-slate-500">
                     Nenhum lead encontrado
                   </TableCell>
                 </TableRow>
               ) : (
                 leads.map((l) => {
                   const meta = statusMeta(l.status_funil);
+                  const ref = l.last_contact_at ? new Date(l.last_contact_at) : new Date(l.created_at);
+                  const dias = differenceInDays(new Date(), ref);
+                  const atrasado = dias > 3 && !['fechamento', 'perdido'].includes(l.status_funil);
                   return (
                     <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/crm/leads/${l.id}`)}>
                       <TableCell className="font-medium text-slate-900">{l.nome}</TableCell>
@@ -157,6 +162,17 @@ export default function LeadsList() {
                       <TableCell className="text-slate-600 text-sm">{origemLabel(l.origem)}</TableCell>
                       <TableCell>
                         <span className={`text-xs px-2 py-0.5 rounded border ${meta.color}`}>{meta.label}</span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {l.last_contact_at ? (
+                          <span className={atrasado ? 'text-rose-600 font-semibold' : 'text-slate-600'}>
+                            {atrasado ? `Atrasado ${dias}d` : formatDistanceToNow(ref, { addSuffix: true, locale: ptBR })}
+                          </span>
+                        ) : (
+                          <span className={atrasado ? 'text-rose-600 font-semibold' : 'text-slate-400'}>
+                            {atrasado ? `Sem contato (${dias}d)` : 'Sem contato'}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-slate-500 text-xs">
                         {formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: ptBR })}
