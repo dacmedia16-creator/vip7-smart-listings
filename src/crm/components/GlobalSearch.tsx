@@ -10,10 +10,17 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useGlobalSearch } from '../hooks/useGlobalSearch';
-import { statusMeta, fmtPhone, fmtMoney } from '../lib/leads';
+import { statusMeta, fmtPhone, fmtMoney, LEAD_STATUS } from '../lib/leads';
 import { imovelStatusMeta } from '../lib/imoveis';
 import {
   Users,
@@ -27,6 +34,8 @@ import {
   ArrowRight,
   Loader2,
   History,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
 
 type Filter = 'all' | 'leads' | 'imoveis' | 'acoes';
@@ -49,7 +58,10 @@ type ImovelHit = {
   bairro: string | null;
   preco: number | null;
   status: string;
+  finalidade: string;
 };
+
+type Corretor = { id: string; nome: string };
 
 const RECENT_KEY = 'crm:recent-searches';
 const MAX_PER_GROUP = 8;
@@ -84,6 +96,8 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
+const ALL = '__all__';
+
 export function GlobalSearch() {
   const { open, setOpen } = useGlobalSearch();
   const navigate = useNavigate();
@@ -96,6 +110,15 @@ export function GlobalSearch() {
   const [recent, setRecent] = useState<string[]>(loadRecent());
   const reqRef = useRef(0);
 
+  // Advanced filters
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [fStatus, setFStatus] = useState<string>(ALL);
+  const [fCorretor, setFCorretor] = useState<string>(ALL);
+  const [fFinalidade, setFFinalidade] = useState<string>(ALL);
+  const [fPrecoMin, setFPrecoMin] = useState<string>('');
+  const [fPrecoMax, setFPrecoMax] = useState<string>('');
+  const [corretores, setCorretores] = useState<Corretor[]>([]);
+
   // Reset state when reopened
   useEffect(() => {
     if (open) {
@@ -104,8 +127,25 @@ export function GlobalSearch() {
       setQuery('');
       setDebounced('');
       setFilter('all');
+      setShowAdvanced(false);
+      setFStatus(ALL);
+      setFCorretor(ALL);
+      setFFinalidade(ALL);
+      setFPrecoMin('');
+      setFPrecoMax('');
     }
   }, [open]);
+
+  // Load corretores once when opened
+  useEffect(() => {
+    if (!open || corretores.length > 0) return;
+    supabase
+      .from('profiles')
+      .select('id, nome')
+      .eq('ativo', true)
+      .order('nome')
+      .then(({ data }) => setCorretores((data ?? []) as Corretor[]));
+  }, [open, corretores.length]);
 
   // Debounce 200ms
   useEffect(() => {
@@ -113,10 +153,24 @@ export function GlobalSearch() {
     return () => clearTimeout(t);
   }, [query]);
 
+  const advActive =
+    fStatus !== ALL ||
+    fCorretor !== ALL ||
+    fFinalidade !== ALL ||
+    fPrecoMin !== '' ||
+    fPrecoMax !== '';
+  const advCount =
+    (fStatus !== ALL ? 1 : 0) +
+    (fCorretor !== ALL ? 1 : 0) +
+    (fFinalidade !== ALL ? 1 : 0) +
+    (fPrecoMin !== '' || fPrecoMax !== '' ? 1 : 0);
+
   // Fetch
   useEffect(() => {
     if (!open) return;
-    if (debounced.length < 2) {
+    const noText = debounced.length < 2;
+    // Allow searching with only advanced filters active
+    if (noText && !advActive) {
       setLeads([]);
       setImoveis([]);
       setLoading(false);
@@ -124,37 +178,67 @@ export function GlobalSearch() {
     }
     const myReq = ++reqRef.current;
     setLoading(true);
-    const s = `%${debounced.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+    const s = noText ? null : `%${debounced.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+    const precoMin = fPrecoMin ? Number(fPrecoMin) : null;
+    const precoMax = fPrecoMax ? Number(fPrecoMax) : null;
 
-    const searchLeads = filter === 'imoveis' || filter === 'acoes'
-      ? Promise.resolve({ data: [] as LeadHit[] })
-      : supabase
-          .from('leads')
-          .select('id, nome, telefone, email, cidade_interesse, bairro_interesse, status_funil')
-          .or(
-            `nome.ilike.${s},email.ilike.${s},telefone.ilike.${s},cidade_interesse.ilike.${s},bairro_interesse.ilike.${s},imovel_interesse_codigo.ilike.${s},observacoes.ilike.${s}`
-          )
-          .order('created_at', { ascending: false })
-          .limit(MAX_PER_GROUP);
+    let leadsQuery: any = null;
+    if (filter !== 'imoveis' && filter !== 'acoes') {
+      let q = supabase
+        .from('leads')
+        .select('id, nome, telefone, email, cidade_interesse, bairro_interesse, status_funil')
+        .order('created_at', { ascending: false })
+        .limit(MAX_PER_GROUP);
+      if (s) {
+        q = q.or(
+          `nome.ilike.${s},email.ilike.${s},telefone.ilike.${s},cidade_interesse.ilike.${s},bairro_interesse.ilike.${s},imovel_interesse_codigo.ilike.${s},observacoes.ilike.${s}`
+        );
+      }
+      if (fStatus !== ALL) q = q.eq('status_funil', fStatus);
+      if (fCorretor !== ALL) q = q.eq('corretor_id', fCorretor);
+      if (fFinalidade !== ALL) q = q.eq('finalidade', fFinalidade);
+      if (precoMin != null) q = q.gte('orcamento_max', precoMin);
+      if (precoMax != null) q = q.lte('orcamento_min', precoMax);
+      leadsQuery = q;
+    }
 
-    const searchImoveis = filter === 'leads' || filter === 'acoes'
-      ? Promise.resolve({ data: [] as ImovelHit[] })
-      : supabase
-          .from('imoveis_proprios')
-          .select('id, titulo, codigo_interno, cidade, bairro, preco, status')
-          .or(
-            `titulo.ilike.${s},codigo_interno.ilike.${s},cidade.ilike.${s},bairro.ilike.${s},endereco.ilike.${s},descricao.ilike.${s}`
-          )
-          .order('created_at', { ascending: false })
-          .limit(MAX_PER_GROUP);
+    let imoveisQuery: any = null;
+    if (filter !== 'leads' && filter !== 'acoes') {
+      let q = supabase
+        .from('imoveis_proprios')
+        .select('id, titulo, codigo_interno, cidade, bairro, preco, status, finalidade')
+        .order('created_at', { ascending: false })
+        .limit(MAX_PER_GROUP);
+      if (s) {
+        q = q.or(
+          `titulo.ilike.${s},codigo_interno.ilike.${s},cidade.ilike.${s},bairro.ilike.${s},endereco.ilike.${s},descricao.ilike.${s}`
+        );
+      }
+      if (fCorretor !== ALL) q = q.eq('corretor_id', fCorretor);
+      if (fFinalidade !== ALL) q = q.eq('finalidade', fFinalidade);
+      if (precoMin != null) q = q.gte('preco', precoMin);
+      if (precoMax != null) q = q.lte('preco', precoMax);
+      imoveisQuery = q;
+    }
 
-    Promise.all([searchLeads, searchImoveis]).then(([lRes, iRes]) => {
+    Promise.all([
+      leadsQuery ?? Promise.resolve({ data: [] }),
+      imoveisQuery ?? Promise.resolve({ data: [] }),
+    ]).then(([lRes, iRes]) => {
       if (myReq !== reqRef.current) return;
       setLeads(((lRes as any).data ?? []) as LeadHit[]);
       setImoveis(((iRes as any).data ?? []) as ImovelHit[]);
       setLoading(false);
     });
-  }, [debounced, filter, open]);
+  }, [debounced, filter, open, fStatus, fCorretor, fFinalidade, fPrecoMin, fPrecoMax, advActive]);
+
+  const clearAdvanced = () => {
+    setFStatus(ALL);
+    setFCorretor(ALL);
+    setFFinalidade(ALL);
+    setFPrecoMin('');
+    setFPrecoMax('');
+  };
 
   const go = (path: string) => {
     pushRecent(debounced);
@@ -166,6 +250,7 @@ export function GlobalSearch() {
   const showLeads = filter === 'all' || filter === 'leads';
   const showImoveis = filter === 'all' || filter === 'imoveis';
   const hasQuery = debounced.length >= 2;
+  const hasAnySearch = hasQuery || advActive;
 
   const actions = useMemo(
     () => [
@@ -198,7 +283,7 @@ export function GlobalSearch() {
       />
 
       {/* Filter chips */}
-      <div className="flex gap-1.5 px-3 py-2 border-b">
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b">
         {([
           ['all', 'Tudo'],
           ['leads', 'Leads'],
@@ -218,11 +303,119 @@ export function GlobalSearch() {
             {label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors inline-flex items-center gap-1 ml-1 ${
+            showAdvanced || advActive
+              ? 'bg-accent text-accent-foreground border-accent'
+              : 'bg-transparent border-border text-muted-foreground hover:bg-muted'
+          }`}
+        >
+          <SlidersHorizontal className="h-3 w-3" />
+          Filtros
+          {advCount > 0 && (
+            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] px-1">
+              {advCount}
+            </span>
+          )}
+        </button>
         {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-auto self-center" />}
       </div>
 
+      {/* Advanced filters panel */}
+      {showAdvanced && (
+        <div className="border-b bg-muted/30 px-3 py-2.5 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                Status do lead
+              </label>
+              <Select value={fStatus} onValueChange={setFStatus}>
+                <SelectTrigger className="h-8 text-xs mt-0.5">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Todos</SelectItem>
+                  {LEAD_STATUS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                Corretor
+              </label>
+              <Select value={fCorretor} onValueChange={setFCorretor}>
+                <SelectTrigger className="h-8 text-xs mt-0.5">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Todos</SelectItem>
+                  {corretores.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                Finalidade
+              </label>
+              <Select value={fFinalidade} onValueChange={setFFinalidade}>
+                <SelectTrigger className="h-8 text-xs mt-0.5">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Todas</SelectItem>
+                  <SelectItem value="venda">Venda</SelectItem>
+                  <SelectItem value="aluguel">Aluguel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                Faixa de valor (R$)
+              </label>
+              <div className="flex gap-1 mt-0.5">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Mín"
+                  className="h-8 text-xs"
+                  value={fPrecoMin}
+                  onChange={(e) => setFPrecoMin(e.target.value)}
+                />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Máx"
+                  className="h-8 text-xs"
+                  value={fPrecoMax}
+                  onChange={(e) => setFPrecoMax(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          {advActive && (
+            <button
+              type="button"
+              onClick={clearAdvanced}
+              className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+            >
+              <X className="h-3 w-3" /> Limpar filtros
+            </button>
+          )}
+        </div>
+      )}
+
       <CommandList className="max-h-[420px]">
-        {!hasQuery && recent.length > 0 && (
+        {!hasAnySearch && recent.length > 0 && (
           <CommandGroup heading="Buscas recentes">
             {recent.map((r) => (
               <CommandItem key={r} value={`recent-${r}`} onSelect={() => setQuery(r)}>
@@ -233,13 +426,17 @@ export function GlobalSearch() {
           </CommandGroup>
         )}
 
-        {hasQuery && !loading && leads.length === 0 && imoveis.length === 0 && filteredActions.length === 0 && (
-          <CommandEmpty>Nenhum resultado para "{debounced}".</CommandEmpty>
+        {hasAnySearch && !loading && leads.length === 0 && imoveis.length === 0 && filteredActions.length === 0 && (
+          <CommandEmpty>
+            {hasQuery
+              ? `Nenhum resultado para "${debounced}".`
+              : 'Nenhum resultado para os filtros aplicados.'}
+          </CommandEmpty>
         )}
 
-        {!hasQuery && recent.length === 0 && showActions && (
+        {!hasAnySearch && recent.length === 0 && showActions && (
           <CommandEmpty className="text-muted-foreground">
-            Digite ao menos 2 caracteres para buscar.
+            Digite ao menos 2 caracteres ou aplique filtros para buscar.
           </CommandEmpty>
         )}
 
@@ -277,7 +474,7 @@ export function GlobalSearch() {
                   className="text-xs text-primary"
                 >
                   <ArrowRight className="h-3.5 w-3.5 mr-2" />
-                  Ver todos os leads para "{debounced}"
+                  Ver todos os leads{hasQuery ? ` para "${debounced}"` : ''}
                 </CommandItem>
               )}
             </CommandGroup>
@@ -308,6 +505,7 @@ export function GlobalSearch() {
                       <div className="text-xs text-muted-foreground truncate">
                         {im.codigo_interno ? `${im.codigo_interno} · ` : ''}
                         {local || '—'} · <span className="font-medium">{fmtMoney(im.preco)}</span>
+                        {im.finalidade && <span className="ml-1 capitalize">· {im.finalidade}</span>}
                       </div>
                     </div>
                   </CommandItem>
@@ -320,7 +518,7 @@ export function GlobalSearch() {
                   className="text-xs text-primary"
                 >
                   <ArrowRight className="h-3.5 w-3.5 mr-2" />
-                  Ver todos os imóveis para "{debounced}"
+                  Ver todos os imóveis{hasQuery ? ` para "${debounced}"` : ''}
                 </CommandItem>
               )}
             </CommandGroup>
