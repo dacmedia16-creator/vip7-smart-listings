@@ -225,6 +225,47 @@ export default function CrmDashboard() {
           </Card>
         </div>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-blue-600" />
+              Próximos acompanhamentos (3 dias)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {proximasTarefas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem tarefas agendadas para os próximos 3 dias.</p>
+            ) : (
+              <ul className="space-y-2">
+                {proximasTarefas.map((t) => {
+                  const data = new Date(t.data_hora);
+                  const responsavel = profilesMap[t.responsavel_id] ?? 'Sem responsável';
+                  const dest = t.lead_id ? `/crm/leads/${t.lead_id}` : '/crm/tarefas';
+                  const prioCor = t.prioridade === 'alta' ? 'text-rose-700 border-rose-200 bg-rose-50'
+                    : t.prioridade === 'baixa' ? 'text-slate-600 border-slate-200 bg-slate-50'
+                    : 'text-amber-700 border-amber-200 bg-amber-50';
+                  return (
+                    <li key={t.id}>
+                      <Link to={dest} className="flex items-center justify-between gap-3 p-2 rounded hover:bg-slate-50 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{t.titulo}</p>
+                          <p className="text-xs text-muted-foreground">{responsavel} · {t.tipo}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className={prioCor}>{t.prioridade}</Badge>
+                          <span className="text-xs text-slate-600 tabular-nums">
+                            {format(data, "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="grid lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Leads por etapa</CardTitle></CardHeader>
