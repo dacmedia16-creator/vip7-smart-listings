@@ -7,10 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Phone, MessageSquare, Mail, MapPin, FileText, Filter } from 'lucide-react';
+import { Loader2, Phone, MessageSquare, Mail, MapPin, FileText, Filter, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useRoles } from '../hooks/useRole';
 
 export const TIPO_INTERACAO = [
   { value: 'ligacao', label: 'Ligação', icon: Phone, color: 'bg-blue-50 text-blue-600' },
