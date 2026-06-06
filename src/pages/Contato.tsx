@@ -16,14 +16,25 @@ export default function Contato() {
     mensagem: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const { capturarLead } = await import('@/lib/leadCapture');
+      await capturarLead({
+        nome: formData.nome,
+        telefone: formData.telefone,
+        email: formData.email,
+        origem: 'site_contato',
+        observacoes: formData.mensagem,
+      });
+    } catch (err) { console.warn('CRM capture failed', err); }
     toast({
       title: 'Mensagem enviada!',
       description: 'Em breve entraremos em contato.',
     });
     setFormData({ nome: '', email: '', telefone: '', mensagem: '' });
   };
+
 
   return (
     <Layout>
