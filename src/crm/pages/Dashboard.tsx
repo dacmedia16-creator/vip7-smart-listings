@@ -116,6 +116,8 @@ export default function CrmDashboard() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 8);
       setRanking(rank);
+
+      setProximasTarefas(proximas.data ?? []);
     })();
   }, []);
 
