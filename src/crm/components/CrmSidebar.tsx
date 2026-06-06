@@ -1,0 +1,105 @@
+import { NavLink, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Users,
+  KanbanSquare,
+  Building2,
+  CheckSquare,
+  Calendar,
+  BarChart3,
+  Settings,
+  LogOut,
+} from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { useRoles } from '../hooks/useRole';
+import { signOut } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+
+const items = [
+  { title: 'Dashboard', url: '/crm', icon: LayoutDashboard, roles: ['admin', 'gestor', 'corretor', 'atendente'] },
+  { title: 'Leads', url: '/crm/leads', icon: Users, roles: ['admin', 'gestor', 'corretor', 'atendente'] },
+  { title: 'Funil', url: '/crm/funil', icon: KanbanSquare, roles: ['admin', 'gestor', 'corretor'] },
+  { title: 'Imóveis', url: '/crm/imoveis', icon: Building2, roles: ['admin', 'gestor', 'corretor'] },
+  { title: 'Tarefas', url: '/crm/tarefas', icon: CheckSquare, roles: ['admin', 'gestor', 'corretor', 'atendente'] },
+  { title: 'Agenda', url: '/crm/agenda', icon: Calendar, roles: ['admin', 'gestor', 'corretor'] },
+  { title: 'Relatórios', url: '/crm/relatorios', icon: BarChart3, roles: ['admin', 'gestor'] },
+  { title: 'Configurações', url: '/crm/configuracoes', icon: Settings, roles: ['admin', 'gestor'] },
+];
+
+export function CrmSidebar() {
+  const { pathname } = useLocation();
+  const { state } = useSidebar();
+  const collapsed = state === 'collapsed';
+  const { roles } = useRoles();
+  const navigate = useNavigate();
+
+  const visible = items.filter((it) => it.roles.some((r) => roles.includes(r as any)));
+  const isActive = (url: string) => (url === '/crm' ? pathname === '/crm' : pathname.startsWith(url));
+
+  return (
+    <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
+      <SidebarHeader className="border-b border-slate-200 bg-white">
+        <div className="flex items-center gap-2 px-2 py-3">
+          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">V7</div>
+          {!collapsed && (
+            <div>
+              <div className="text-sm font-semibold text-slate-900">VIP7 CRM</div>
+              <div className="text-xs text-slate-500">Gestão imobiliária</div>
+            </div>
+          )}
+        </div>
+      </SidebarHeader>
+      <SidebarContent className="bg-white">
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-slate-500">Menu</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {visible.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    className="data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 hover:bg-slate-50"
+                  >
+                    <NavLink to={item.url} end={item.url === '/crm'}>
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="border-t border-slate-200 bg-white">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={async () => {
+                await signOut();
+                navigate('/crm/login');
+              }}
+              className="text-slate-600 hover:bg-slate-50"
+            >
+              <LogOut className="h-4 w-4" />
+              {!collapsed && <span>Sair</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
