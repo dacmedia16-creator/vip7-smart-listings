@@ -1,69 +1,78 @@
-## Objetivo
-Validar o CRUD de **Imóveis Próprios** ponta a ponta e garantir que as permissões por role (admin, gestor, corretor, atendente) funcionem tanto na UI quanto no banco.
+# Plano: Validação do CRUD de Imóveis Próprios por Role
 
-## Lacunas detectadas na implementação atual
-1. **UI não respeita roles.** Todo usuário logado vê "Novo Imóvel", botão "Excluir" e consegue clicar em editar — quem não tem permissão só recebe erro do RLS ao salvar.
-2. **Corretor não consegue criar imóvel.** O form não preenche `corretor_id = auth.uid()` no insert; a policy `imoveis_corretor_write_own` exige isso → insert do corretor falha silenciosamente.
-3. **Atendente não tem policy de leitura.** Hoje só admin/gestor/corretor leem (corretor só os próprios). Definir se atendente deve ver imóveis ou não.
-4. **Não existe página de Detalhes** — só listagem e form de edição. Falta uma visão read-only com fotos, mapa, dados completos.
-5. **Sem testes manuais documentados.** Precisa de um checklist por role para validar.
+Objetivo: confirmar que `atendente`, `corretor`, `gestor` e `admin` enxergam e executam apenas as ações permitidas em `/crm/imoveis`, incluindo a atribuição de corretor responsável.
 
-## Plano de validação e ajustes
+## 1. Preparação do ambiente de teste
 
-### 1. Matriz de permissões (a confirmar com você)
+1. Garantir que existe pelo menos 1 usuário em cada role no `user_roles`. Caso falte algum, criar via `/crm/configuracoes` (admin) ou via insert direto no banco.
+2. Criar (como admin) 2 imóveis-semente:
+   - **IMV-A**: `corretor_id = <corretor de teste>`
+   - **IMV-B**: `corretor_id = NULL` (ou outro corretor)
+3. Anotar e-mails/senhas de teste de cada role para alternar logins rapidamente.
 
-| Ação                          | Admin | Gestor | Corretor             | Atendente |
-| ----------------------------- | ----- | ------ | -------------------- | --------- |
-| Listar todos                  | ✅    | ✅     | ✅ (todos do CRM)    | ❓        |
-| Ver detalhes                  | ✅    | ✅     | ✅                   | ❓        |
-| Criar                         | ✅    | ✅     | ✅ (vira dono)       | ❌        |
-| Editar qualquer imóvel        | ✅    | ✅     | ❌                   | ❌        |
-| Editar os próprios            | —     | —      | ✅                   | ❌        |
-| Excluir                       | ✅    | ✅     | ✅ (só os próprios?) | ❌        |
+## 2. Matriz esperada de permissões
 
-### 2. Ajustes de código
+| Ação | atendente | corretor (dono) | corretor (não dono) | gestor | admin |
+|---|---|---|---|---|---|
+| Listar imóveis | sim (read-only) | sim | sim | sim | sim |
+| Ver detalhe `/crm/imoveis/:id` | sim | sim | sim | sim | sim |
+| Botão "Novo Imóvel" visível | não | sim | sim | sim | sim |
+| Criar imóvel | não (rota bloqueada) | sim (corretor_id = self) | sim (corretor_id = self) | sim | sim |
+| Editar IMV-A | não | sim | não | sim | sim |
+| Excluir IMV-A | não | sim | não | sim | sim |
+| Alterar "Corretor responsável" | não | não (campo oculto) | não | sim | sim |
 
-**`src/crm/pages/Imoveis.tsx`**
-- Esconder botão "Novo Imóvel" se o usuário não puder criar (atendente).
-- Mostrar badge "Meu" nos cards do corretor logado.
-- Card clica em `/crm/imoveis/:id` (detalhes), não direto no editar.
+## 3. Checklist manual por role
 
-**`src/crm/pages/ImovelDetail.tsx` (novo)**
-- Página read-only: galeria de fotos, dados, preço, localização, status, corretor responsável.
-- Botão "Editar" só aparece para quem pode editar aquele registro.
-- Botão "Excluir" só para admin/gestor (e corretor dono, se aprovado).
+Para cada role, login → `/crm/imoveis` e validar:
 
-**`src/crm/pages/ImovelForm.tsx`**
-- Ao criar como corretor, setar `corretor_id = user.id` automaticamente.
-- Admin/gestor: dropdown "Corretor responsável" (opcional) listando profiles com role corretor.
-- Bloquear acesso ao form para atendente (redirect).
-- Esconder "Excluir" quando o usuário não tem permissão.
+### atendente
+- [ ] Lista carrega sem erro.
+- [ ] Botão "Novo Imóvel" **não** aparece.
+- [ ] Acesso direto a `/crm/imoveis/novo` redireciona/bloqueia.
+- [ ] Detalhe abre, mas sem botões "Editar"/"Excluir".
 
-**`src/App.tsx`**
-- Adicionar rota `/crm/imoveis/:id` → `ImovelDetail`.
-- Usar `<RequireAuth roles={['admin','gestor','corretor']}>` para `/novo` e `/editar`.
+### corretor
+- [ ] Lista mostra badge "Meu" apenas em IMV-A.
+- [ ] Cria novo imóvel; após salvar, `corretor_id` = próprio uid (validar no detalhe e via `supabase--read_query`).
+- [ ] Edita IMV-A com sucesso; campo "Corretor responsável" oculto.
+- [ ] Tenta editar IMV-B → bloqueado (UI sem botão e/ou erro RLS se forçar URL).
+- [ ] Exclui imóvel próprio recém-criado.
 
-### 3. RLS (se a matriz mudar)
-Migração só se você quiser permitir atendente ler imóveis, ou restringir delete do corretor aos próprios. Caso contrário, as policies atuais já cobrem.
+### gestor
+- [ ] Edita IMV-A e IMV-B.
+- [ ] Reatribui "Corretor responsável" de IMV-B para outro corretor; persiste após reload.
+- [ ] Exclui qualquer imóvel.
 
-### 4. Checklist de teste manual (a executar após os ajustes)
-Para cada role (admin, gestor, corretor, atendente), logar e validar:
-- [ ] `/crm/imoveis` carrega lista esperada (sem erro de RLS no console)
-- [ ] Botão "Novo Imóvel" aparece/some conforme matriz
-- [ ] Criar imóvel: salva, aparece na lista, fotos exibem
-- [ ] Abrir detalhes: dados corretos, botões certos
-- [ ] Editar imóvel próprio: salva
-- [ ] Editar imóvel de outro corretor: bloqueado/sem botão
-- [ ] Excluir: confirmação + remove + redireciona
-- [ ] Atendente em `/crm/imoveis/novo` é redirecionado
+### admin
+- [ ] Mesmas validações de gestor.
+- [ ] Confirma em `activity_log` que ações de criar/editar/excluir foram registradas.
 
-### 5. Entregáveis
-1. Página `ImovelDetail.tsx` (nova)
-2. Ajustes em `Imoveis.tsx`, `ImovelForm.tsx`, `App.tsx`
-3. Migração RLS opcional (só se a matriz acima mudar)
-4. Resultado do checklist documentado nesta conversa
+## 4. Verificações no banco (via supabase--read_query)
 
-## Perguntas antes de implementar
-1. **Atendente** pode visualizar imóveis (read-only) ou não tem acesso à seção?
-2. **Corretor** pode excluir só os próprios imóveis, ou excluir é restrito a admin/gestor?
-3. **Admin/gestor** ao criar um imóvel: querem escolher o corretor responsável no form, ou deixa em branco e atribui depois?
+- `SELECT id, titulo, corretor_id FROM imoveis_proprios ORDER BY updated_at DESC LIMIT 10;` após cada bloco.
+- `SELECT entidade, acao, user_id, created_at FROM activity_log WHERE entidade='imoveis_proprios' ORDER BY created_at DESC LIMIT 20;` para auditoria.
+
+## 5. Como executarei os testes
+
+Existem duas formas — escolha qual prefere antes de aprovar o plano:
+
+- **A. Eu testo pelo browser tool**: preciso que você me passe credenciais de teste (ou crie usuários descartáveis) para cada role. Faço o roteiro acima e devolvo um relatório com prints/observações.
+- **B. Você testa manualmente**: eu entrego este checklist como `docs/qa/imoveis-rbac.md` no projeto e fico de plantão para corrigir qualquer divergência que aparecer.
+
+## 6. Critérios de aceite
+
+- Todos os itens da seção 3 marcados conforme a matriz da seção 2.
+- Nenhum erro de RLS no console durante fluxos permitidos.
+- `activity_log` registra criar/editar/excluir do role correto.
+- Caso algum item falhe, abro correção pontual (UI ou política RLS) antes de fechar a entrega.
+
+## Detalhes técnicos relevantes
+
+- Políticas atuais em `imoveis_proprios`:
+  - `imoveis_admin_write` (ALL para admin/gestor)
+  - `imoveis_corretor_write_own` (ALL para corretor quando `corretor_id = auth.uid()`)
+  - `imoveis_crm_read_all` (SELECT para qualquer usuário do CRM, cobre atendente)
+  - `imoveis_public_read` (SELECT público para ativos)
+- UI já implementada em `Imoveis.tsx`, `ImovelForm.tsx`, `ImovelDetail.tsx`, com `RequireAuth roles={['admin','gestor','corretor']}` nas rotas `/novo` e `/editar` (App.tsx).
+- Nenhuma mudança de schema é prevista; só serão criadas migrações se algum teste revelar gap real (ex.: permitir corretor excluir somente próprios via política DELETE separada).
