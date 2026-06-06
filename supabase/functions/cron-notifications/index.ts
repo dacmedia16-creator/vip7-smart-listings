@@ -221,7 +221,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const authHeader = req.headers.get("Authorization") ?? "";
-  if (authHeader !== `Bearer ${SERVICE_ROLE}`) {
+  const cronSecretHeader = req.headers.get("x-cron-secret") ?? "";
+  const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
+  const authorized =
+    authHeader === `Bearer ${SERVICE_ROLE}` ||
+    (CRON_SECRET && cronSecretHeader === CRON_SECRET);
+  if (!authorized) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
