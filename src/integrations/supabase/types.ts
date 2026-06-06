@@ -580,6 +580,9 @@ export type Database = {
           id: string
           imovel_id: string | null
           lead_id: string | null
+          lembrete_1d_em: string | null
+          lembrete_2h_em: string | null
+          lembrete_30min_em: string | null
           lembrete_enviado: boolean
           prioridade: Database["public"]["Enums"]["tarefa_prioridade"]
           responsavel_id: string
@@ -596,6 +599,9 @@ export type Database = {
           id?: string
           imovel_id?: string | null
           lead_id?: string | null
+          lembrete_1d_em?: string | null
+          lembrete_2h_em?: string | null
+          lembrete_30min_em?: string | null
           lembrete_enviado?: boolean
           prioridade?: Database["public"]["Enums"]["tarefa_prioridade"]
           responsavel_id: string
@@ -612,6 +618,9 @@ export type Database = {
           id?: string
           imovel_id?: string | null
           lead_id?: string | null
+          lembrete_1d_em?: string | null
+          lembrete_2h_em?: string | null
+          lembrete_30min_em?: string | null
           lembrete_enviado?: boolean
           prioridade?: Database["public"]["Enums"]["tarefa_prioridade"]
           responsavel_id?: string
