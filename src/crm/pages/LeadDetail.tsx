@@ -117,6 +117,16 @@ export default function LeadDetail() {
               <Edit className="h-4 w-4 mr-1" /> Editar
             </Button>
             {isManager && (
+              <Button variant="outline" onClick={async () => {
+                const { data, error } = await supabase.rpc('distribuir_lead', { _lead_id: id! });
+                if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+                toast({ title: 'Lead distribuído', description: 'Corretor atribuído automaticamente.' });
+                load();
+              }}>
+                <Shuffle className="h-4 w-4 mr-1" /> Distribuir
+              </Button>
+            )}
+            {isManager && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="text-red-600 hover:bg-red-50 border-red-200">
