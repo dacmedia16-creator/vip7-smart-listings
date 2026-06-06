@@ -49,21 +49,21 @@ export function CrmSidebar() {
   const isActive = (url: string) => (url === '/crm' ? pathname === '/crm' : pathname.startsWith(url));
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
-      <SidebarHeader className="border-b border-slate-200 bg-white">
+    <Sidebar collapsible="icon" className="border-r border-[#E8E4D9] bg-white">
+      <SidebarHeader className="border-b border-[#E8E4D9] bg-white">
         <div className="flex items-center gap-2 px-2 py-3">
           <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">V7</div>
           {!collapsed && (
             <div>
-              <div className="text-sm font-semibold text-slate-900">VIP7 CRM</div>
-              <div className="text-xs text-slate-500">Gestão imobiliária</div>
+              <div className="text-sm font-semibold text-[#0F0F12]">VIP7 CRM</div>
+              <div className="text-xs text-[#4A4A52]">Gestão imobiliária</div>
             </div>
           )}
         </div>
       </SidebarHeader>
       <SidebarContent className="bg-white">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-slate-500">Menu</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[#4A4A52]">Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {visible.map((item) => (
@@ -71,7 +71,7 @@ export function CrmSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.url)}
-                    className="data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 hover:bg-slate-50"
+                    className="data-[active=true]:bg-[#FBF3DC] data-[active=true]:text-[#7A5A14] hover:bg-[#FAF8F3]"
                   >
                     <NavLink to={item.url} end={item.url === '/crm'}>
                       <item.icon className="h-4 w-4" />
@@ -84,7 +84,7 @@ export function CrmSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-slate-200 bg-white">
+      <SidebarFooter className="border-t border-[#E8E4D9] bg-white">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -92,7 +92,7 @@ export function CrmSidebar() {
                 await signOut();
                 navigate('/crm/login');
               }}
-              className="text-slate-600 hover:bg-slate-50"
+              className="text-[#2A2A30] hover:bg-[#FAF8F3]"
             >
               <LogOut className="h-4 w-4" />
               {!collapsed && <span>Sair</span>}

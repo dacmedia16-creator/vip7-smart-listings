@@ -6,8 +6,8 @@ export default function SemAcesso() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
       <div className="max-w-md text-center space-y-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Acesso pendente</h1>
-        <p className="text-slate-600">
+        <h1 className="text-2xl font-semibold text-[#0F0F12]">Acesso pendente</h1>
+        <p className="text-[#2A2A30]">
           Sua conta foi criada, mas ainda não possui um perfil ativo no CRM. Solicite a um administrador
           para liberar seu acesso.
         </p>
@@ -22,7 +22,7 @@ export default function SemAcesso() {
             Sair
           </Button>
           <Link to="/">
-            <Button variant="default" className="bg-blue-600 hover:bg-blue-700">Voltar ao site</Button>
+            <Button variant="default" className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">Voltar ao site</Button>
           </Link>
         </div>
       </div>

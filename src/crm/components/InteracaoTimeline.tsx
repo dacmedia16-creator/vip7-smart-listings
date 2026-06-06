@@ -17,17 +17,17 @@ import { ptBR } from 'date-fns/locale';
 import { useRoles } from '../hooks/useRole';
 
 export const TIPO_INTERACAO = [
-  { value: 'ligacao', label: 'Ligação', icon: Phone, color: 'bg-blue-50 text-blue-600' },
+  { value: 'ligacao', label: 'Ligação', icon: Phone, color: 'bg-[#FBF3DC] text-[#7A5A14]' },
   { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'bg-emerald-50 text-emerald-600' },
   { value: 'email', label: 'Email', icon: Mail, color: 'bg-amber-50 text-amber-600' },
   { value: 'visita', label: 'Visita', icon: MapPin, color: 'bg-purple-50 text-purple-600' },
-  { value: 'nota', label: 'Nota', icon: FileText, color: 'bg-slate-100 text-slate-600' },
+  { value: 'nota', label: 'Nota', icon: FileText, color: 'bg-slate-100 text-[#2A2A30]' },
 ] as const;
 
 export const RESULTADO_INTERACAO = [
-  { value: 'sem_resposta', label: 'Sem resposta', color: 'bg-slate-100 text-slate-600' },
+  { value: 'sem_resposta', label: 'Sem resposta', color: 'bg-slate-100 text-[#2A2A30]' },
   { value: 'interessado', label: 'Interessado', color: 'bg-emerald-100 text-emerald-700' },
-  { value: 'agendado', label: 'Agendado', color: 'bg-blue-100 text-blue-700' },
+  { value: 'agendado', label: 'Agendado', color: 'bg-[#FBF3DC] text-[#7A5A14]' },
   { value: 'descartado', label: 'Descartado', color: 'bg-rose-100 text-rose-700' },
   { value: 'outro', label: 'Outro', color: 'bg-amber-100 text-amber-700' },
 ] as const;
@@ -81,10 +81,10 @@ export function InteracaoForm({ leadId, authorId, leadTelefone, onAdded }: Props
   const telLink = leadTelefone ? `tel:${leadTelefone.replace(/\D/g, '')}` : undefined;
 
   return (
-    <Card className="border-slate-200">
+    <Card className="border-[#E8E4D9]">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h3 className="font-medium text-slate-900">Registrar contato</h3>
+          <h3 className="font-medium text-[#0F0F12]">Registrar contato</h3>
           {leadTelefone && (
             <div className="flex gap-2">
               {telLink && (
@@ -142,7 +142,7 @@ export function InteracaoForm({ leadId, authorId, leadTelefone, onAdded }: Props
           </div>
         </div>
 
-        <Button onClick={save} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={save} disabled={saving} className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">
           {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           Adicionar interação
         </Button>
@@ -229,7 +229,7 @@ export function InteracaoTimeline({ interacoes, profilesMap, onChanged }: Timeli
   return (
     <div className="space-y-3">
       <div className="flex gap-2 items-center flex-wrap">
-        <Filter className="h-4 w-4 text-slate-400" />
+        <Filter className="h-4 w-4 text-[#7A7A80]" />
         <Select value={filterTipo} onValueChange={setFilterTipo}>
           <SelectTrigger className="w-[150px] h-8 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -246,16 +246,16 @@ export function InteracaoTimeline({ interacoes, profilesMap, onChanged }: Timeli
             ))}
           </SelectContent>
         </Select>
-        <span className="text-xs text-slate-500 ml-auto">{filtered.length} {filtered.length === 1 ? 'interação' : 'interações'}</span>
+        <span className="text-xs text-[#4A4A52] ml-auto">{filtered.length} {filtered.length === 1 ? 'interação' : 'interações'}</span>
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-sm text-slate-500 text-center py-8">Nenhuma interação encontrada</p>
+        <p className="text-sm text-[#4A4A52] text-center py-8">Nenhuma interação encontrada</p>
       )}
 
       {grouped.map((g) => (
         <div key={g.day.toISOString()}>
-          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+          <div className="text-xs font-medium text-[#4A4A52] uppercase tracking-wide mb-2">
             {format(g.day, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </div>
           <div className="space-y-2 border-l-2 border-slate-100 pl-4 ml-2">
@@ -265,21 +265,21 @@ export function InteracaoTimeline({ interacoes, profilesMap, onChanged }: Timeli
               const Icon = T.icon;
               const autor = profilesMap[i.autor_id]?.nome ?? 'Usuário';
               return (
-                <Card key={i.id} className="border-slate-200 relative">
+                <Card key={i.id} className="border-[#E8E4D9] relative">
                   <div className={`absolute -left-[26px] top-4 h-6 w-6 rounded-full ${T.color} flex items-center justify-center border-2 border-white`}>
                     <Icon className="h-3 w-3" />
                   </div>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-900">{T.label}</span>
+                        <span className="text-sm font-medium text-[#0F0F12]">{T.label}</span>
                         {R && <Badge variant="secondary" className={R.color}>{R.label}</Badge>}
                         {i.duracao_minutos != null && (
                           <Badge variant="outline" className="text-xs">{i.duracao_minutos} min</Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-[#4A4A52]">
                           {format(new Date(i.created_at), "HH:mm", { locale: ptBR })} · {autor}
                         </span>
                         {isManager && (
@@ -315,14 +315,14 @@ export function InteracaoTimeline({ interacoes, profilesMap, onChanged }: Timeli
                         )}
                       </div>
                     </div>
-                    <p className="text-sm text-slate-700 mt-1.5 whitespace-pre-wrap">{i.descricao}</p>
+                    <p className="text-sm text-[#1A1A1F] mt-1.5 whitespace-pre-wrap">{i.descricao}</p>
                     {i.notas_internas && (
                       <div className="mt-2 p-2 bg-amber-50 border border-amber-100 rounded text-xs text-amber-900">
                         <span className="font-semibold">Nota interna:</span> {i.notas_internas}
                       </div>
                     )}
                     {i.proxima_acao_em && (
-                      <p className="text-xs text-blue-600 mt-1">
+                      <p className="text-xs text-[#7A5A14] mt-1">
                         Próxima ação: {format(new Date(i.proxima_acao_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
                     )}
@@ -373,7 +373,7 @@ export function InteracaoTimeline({ interacoes, profilesMap, onChanged }: Timeli
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={saveEdit} disabled={savingEdit || !editDescricao.trim()} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={saveEdit} disabled={savingEdit || !editDescricao.trim()} className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">
               {savingEdit && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Salvar
             </Button>

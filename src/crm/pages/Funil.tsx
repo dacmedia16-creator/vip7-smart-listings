@@ -80,16 +80,16 @@ export default function Funil() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Funil de Vendas</h2>
-            <p className="text-sm text-slate-600">Arraste cards entre as colunas para alterar status</p>
+            <h2 className="text-2xl font-semibold text-[#0F0F12]">Funil de Vendas</h2>
+            <p className="text-sm text-[#2A2A30]">Arraste cards entre as colunas para alterar status</p>
           </div>
-          <Button onClick={() => navigate('/crm/leads/novo')} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={() => navigate('/crm/leads/novo')} className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">
             <Plus className="h-4 w-4 mr-1" /> Novo lead
           </Button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+          <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-[#7A7A80]" /></div>
         ) : (
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -129,10 +129,10 @@ function Column({ status, count, total, children }: { status: string; count: num
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 p-2 bg-slate-100/60 border border-t-0 border-slate-200 rounded-b-lg space-y-2 min-h-[100px] transition-colors ${isOver ? 'bg-blue-50' : ''}`}
+        className={`flex-1 p-2 bg-[#F5F0E4]/70 border border-t-0 border-[#E8E4D9] rounded-b-lg space-y-2 min-h-[100px] transition-colors ${isOver ? 'bg-[#FBF3DC]' : ''}`}
       >
         {children}
-        {count === 0 && <p className="text-xs text-slate-400 text-center py-8">Vazio</p>}
+        {count === 0 && <p className="text-xs text-[#7A7A80] text-center py-8">Vazio</p>}
       </div>
     </div>
   );
@@ -164,21 +164,21 @@ function CardInner({ lead }: { lead: Lead }) {
   const semContato = !lead.last_contact_at && !isNew;
   const atrasado = diasSemContato > 3;
   return (
-    <Card className="border-slate-200 p-3 bg-white hover:shadow-md transition-shadow">
+    <Card className="border-[#E8E4D9] p-3 bg-white hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium text-slate-900 truncate">{lead.nome}</p>
-        {isNew && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">NOVO</span>}
+        <p className="text-sm font-medium text-[#0F0F12] truncate">{lead.nome}</p>
+        {isNew && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FBF3DC] text-[#7A5A14] font-medium">NOVO</span>}
         {!isNew && atrasado && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-medium whitespace-nowrap">
             {semContato ? 'sem contato' : `${diasSemContato}d`}
           </span>
         )}
       </div>
-      <p className="text-xs text-slate-600 mt-1">{fmtPhone(lead.telefone)}</p>
-      {lead.bairro_interesse && <p className="text-xs text-slate-500 mt-0.5 truncate">{lead.bairro_interesse}</p>}
-      {lead.orcamento_max && <p className="text-xs text-slate-700 mt-1 font-medium">{fmtMoney(lead.orcamento_max)}</p>}
+      <p className="text-xs text-[#2A2A30] mt-1">{fmtPhone(lead.telefone)}</p>
+      {lead.bairro_interesse && <p className="text-xs text-[#4A4A52] mt-0.5 truncate">{lead.bairro_interesse}</p>}
+      {lead.orcamento_max && <p className="text-xs text-[#1A1A1F] mt-1 font-medium">{fmtMoney(lead.orcamento_max)}</p>}
       {!isNew && !atrasado && lead.last_contact_at && (
-        <p className="text-[10px] text-slate-400 mt-1">Último contato há {diasSemContato}d</p>
+        <p className="text-[10px] text-[#7A7A80] mt-1">Último contato há {diasSemContato}d</p>
       )}
     </Card>
   );

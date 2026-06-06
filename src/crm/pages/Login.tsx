@@ -37,12 +37,12 @@ export default function CrmLogin() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md border-slate-200">
+      <Card className="w-full max-w-md border-[#E8E4D9]">
         <CardHeader className="text-center">
           <div className="mx-auto h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold mb-2">
             V7
           </div>
-          <CardTitle className="text-slate-900">VIP7 CRM</CardTitle>
+          <CardTitle className="text-[#0F0F12]">VIP7 CRM</CardTitle>
           <CardDescription>Acesso ao painel de gestão</CardDescription>
         </CardHeader>
         <CardContent>
@@ -55,15 +55,15 @@ export default function CrmLogin() {
               <Label htmlFor="senha">Senha</Label>
               <Input id="senha" type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            <Button type="submit" className="w-full bg-[#C9A24C] hover:bg-[#B08F3D] text-white" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Entrar
             </Button>
           </form>
           {hasAdmin === false && (
-            <p className="text-center text-sm text-slate-600 mt-4">
+            <p className="text-center text-sm text-[#2A2A30] mt-4">
               Nenhum admin cadastrado.{' '}
-              <Link to="/crm/setup" className="text-blue-600 hover:underline font-medium">
+              <Link to="/crm/setup" className="text-[#7A5A14] hover:underline font-medium">
                 Criar primeiro admin
               </Link>
             </p>

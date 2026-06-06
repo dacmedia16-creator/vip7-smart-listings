@@ -65,19 +65,19 @@ export default function CrmSetup() {
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#7A7A80]" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md border-slate-200">
+      <Card className="w-full max-w-md border-[#E8E4D9]">
         <CardHeader className="text-center">
           <div className="mx-auto h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold mb-2">
             V7
           </div>
-          <CardTitle className="text-slate-900">Setup inicial</CardTitle>
+          <CardTitle className="text-[#0F0F12]">Setup inicial</CardTitle>
           <CardDescription>Crie o primeiro administrador do CRM</CardDescription>
         </CardHeader>
         <CardContent>
@@ -94,7 +94,7 @@ export default function CrmSetup() {
               <Label htmlFor="senha">Senha</Label>
               <Input id="senha" type="password" required minLength={6} value={senha} onChange={(e) => setSenha(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            <Button type="submit" className="w-full bg-[#C9A24C] hover:bg-[#B08F3D] text-white" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Criar admin
             </Button>

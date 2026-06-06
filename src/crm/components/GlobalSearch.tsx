@@ -452,7 +452,7 @@ export function GlobalSearch() {
                     value={`lead-${l.id}-${l.nome}`}
                     onSelect={() => go(`/crm/leads/${l.id}`)}
                   >
-                    <Users className="h-4 w-4 mr-2 shrink-0 text-blue-600" />
+                    <Users className="h-4 w-4 mr-2 shrink-0 text-[#7A5A14]" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium truncate">

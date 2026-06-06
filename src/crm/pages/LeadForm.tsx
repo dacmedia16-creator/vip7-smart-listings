@@ -185,7 +185,7 @@ export default function LeadForm() {
     return (
       <CrmLayout title={isEdit ? 'Editar Lead' : 'Novo Lead'}>
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#7A7A80]" />
         </div>
       </CrmLayout>
     );
@@ -194,7 +194,7 @@ export default function LeadForm() {
   return (
     <CrmLayout title={isEdit ? 'Editar Lead' : 'Novo Lead'}>
       <div className="max-w-3xl mx-auto space-y-4">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="text-slate-600">
+        <Button variant="ghost" onClick={() => navigate(-1)} className="text-[#2A2A30]">
           <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
 
@@ -215,9 +215,9 @@ export default function LeadForm() {
         )}
 
         <form onSubmit={onSubmit}>
-          <Card className="border-slate-200">
+          <Card className="border-[#E8E4D9]">
             <CardHeader>
-              <CardTitle className="text-slate-900 text-lg">Dados do lead</CardTitle>
+              <CardTitle className="text-[#0F0F12] text-lg">Dados do lead</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -313,7 +313,7 @@ export default function LeadForm() {
 
           <div className="flex justify-end gap-2 mt-4">
             <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>
-            <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" disabled={saving} className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">
               {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {isEdit ? 'Salvar alterações' : 'Criar lead'}
             </Button>
