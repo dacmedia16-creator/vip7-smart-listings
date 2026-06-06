@@ -63,11 +63,36 @@ export default function Configuracoes() {
     <CrmLayout>
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><SettingsIcon className="h-6 w-6" />Configurações</h1>
 
-      <Tabs defaultValue="usuarios">
+      <Tabs defaultValue="notificacoes">
         <TabsList>
+          <TabsTrigger value="notificacoes"><Bell className="h-4 w-4 mr-2" />Notificações</TabsTrigger>
           <TabsTrigger value="usuarios"><Users className="h-4 w-4 mr-2" />Usuários</TabsTrigger>
           <TabsTrigger value="distribuicao"><Shuffle className="h-4 w-4 mr-2" />Distribuição</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="notificacoes" className="mt-4">
+          <Card className="p-6 space-y-4 max-w-xl">
+            <div>
+              <h3 className="font-semibold">Minhas notificações</h3>
+              <p className="text-sm text-muted-foreground">Escolha como quer receber alertas de leads e tarefas.</p>
+            </div>
+            <div className="flex items-center justify-between gap-4 p-3 border rounded-md">
+              <div>
+                <Label className="text-sm font-medium">Email</Label>
+                <p className="text-xs text-muted-foreground">{me?.email ?? '—'}</p>
+              </div>
+              <Switch checked={me?.notif_email ?? true} onCheckedChange={(v) => saveNotif('notif_email', v)} disabled={!me} />
+            </div>
+            <div className="flex items-center justify-between gap-4 p-3 border rounded-md">
+              <div>
+                <Label className="text-sm font-medium">WhatsApp</Label>
+                <p className="text-xs text-muted-foreground">{me?.telefone || 'Cadastre um telefone no seu perfil'}</p>
+              </div>
+              <Switch checked={me?.notif_whatsapp ?? true} onCheckedChange={(v) => saveNotif('notif_whatsapp', v)} disabled={!me || !me?.telefone} />
+            </div>
+          </Card>
+        </TabsContent>
+
 
         <TabsContent value="usuarios" className="mt-4">
           <Card className="p-4">
