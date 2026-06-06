@@ -22,7 +22,7 @@ import CrmLogin from "./crm/pages/Login";
 import CrmSetup from "./crm/pages/Setup";
 import CrmDashboard from "./crm/pages/Dashboard";
 import CrmSemAcesso from "./crm/pages/SemAcesso";
-import CrmPlaceholder from "./crm/pages/Placeholder";
+
 import CrmLeads from "./crm/pages/Leads";
 import CrmLeadForm from "./crm/pages/LeadForm";
 import CrmLeadDetail from "./crm/pages/LeadDetail";
