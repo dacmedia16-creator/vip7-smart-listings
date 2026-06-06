@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CrmLayout } from '../components/CrmLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -15,20 +14,14 @@ import {
 } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit, Loader2, Phone, Mail, MessageSquare, Trash2, Shuffle } from 'lucide-react';
+import { ArrowLeft, Edit, Loader2, Trash2, Shuffle } from 'lucide-react';
 import { statusMeta, origemLabel, fmtPhone, fmtMoney, LEAD_STATUS } from '../lib/leads';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '../hooks/useAuth';
 import { useRoles } from '../hooks/useRole';
-
-const TIPO_INTERACAO = [
-  { value: 'ligacao', label: 'Ligação', icon: Phone },
-  { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
-  { value: 'email', label: 'Email', icon: Mail },
-  { value: 'visita', label: 'Visita', icon: Edit },
-  { value: 'nota', label: 'Nota', icon: Edit },
-];
+import { InteracaoForm, InteracaoTimeline } from '../components/InteracaoTimeline';
+import { notifyUser, crmUrl } from '../lib/notify';
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
@@ -38,49 +31,47 @@ export default function LeadDetail() {
   const { isManager } = useRoles();
   const [lead, setLead] = useState<any>(null);
   const [interacoes, setInteracoes] = useState<any[]>([]);
+  const [profilesMap, setProfilesMap] = useState<Record<string, { nome?: string; email?: string }>>({});
   const [loading, setLoading] = useState(true);
-  const [newTipo, setNewTipo] = useState('nota');
-  const [newDesc, setNewDesc] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: l }, { data: ints }] = await Promise.all([
+    const [{ data: l }, { data: ints }, { data: profs }] = await Promise.all([
       supabase.from('leads').select('*').eq('id', id!).maybeSingle(),
       supabase.from('lead_interacoes').select('*').eq('lead_id', id!).order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, nome, email'),
     ]);
     setLead(l);
     setInteracoes(ints ?? []);
+    const map: Record<string, any> = {};
+    (profs ?? []).forEach((p: any) => { map[p.id] = { nome: p.nome, email: p.email }; });
+    setProfilesMap(map);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, [id]);
 
-  const addInteracao = async () => {
-    if (!newDesc.trim()) return;
-    setSaving(true);
-    const { error } = await supabase.from('lead_interacoes').insert({
-      lead_id: id!,
-      tipo: newTipo as any,
-      descricao: newDesc.trim(),
-      autor_id: user?.id,
-    });
-    if (!error) {
-      await supabase.from('leads').update({ last_contact_at: new Date().toISOString() }).eq('id', id!);
-      setNewDesc('');
-      load();
-    } else {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    }
-    setSaving(false);
-  };
-
   const changeStatus = async (newStatus: string) => {
+    const prev = lead?.status_funil;
     const { error } = await supabase.from('leads').update({ status_funil: newStatus as any }).eq('id', id!);
-    if (!error) {
-      toast({ title: 'Status atualizado' });
-      load();
-    } else toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Status atualizado' });
+    if (lead?.corretor_id && prev !== newStatus) {
+      notifyUser({
+        recipientUserId: lead.corretor_id,
+        tipo: 'mudanca_etapa',
+        data: {
+          lead_nome: lead.nome,
+          from: statusMeta(prev).label,
+          to: statusMeta(newStatus).label,
+          url: crmUrl(`/crm/leads/${id}`),
+        },
+      });
+    }
+    load();
   };
 
   const onDelete = async () => {
@@ -120,6 +111,18 @@ export default function LeadDetail() {
               <Button variant="outline" onClick={async () => {
                 const { data, error } = await supabase.rpc('distribuir_lead', { _lead_id: id! });
                 if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+                if (data) {
+                  notifyUser({
+                    recipientUserId: data as string,
+                    tipo: 'lead_atribuido',
+                    data: {
+                      lead_nome: lead.nome,
+                      lead_telefone: fmtPhone(lead.telefone),
+                      origem: origemLabel(lead.origem),
+                      url: crmUrl(`/crm/leads/${id}`),
+                    },
+                  });
+                }
                 toast({ title: 'Lead distribuído', description: 'Corretor atribuído automaticamente.' });
                 load();
               }}>
@@ -154,6 +157,9 @@ export default function LeadDetail() {
               <div>
                 <h2 className="text-2xl font-semibold text-slate-900">{lead.nome}</h2>
                 <p className="text-sm text-slate-600 mt-1">Cadastrado {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true, locale: ptBR })}</p>
+                {lead.corretor_id && profilesMap[lead.corretor_id] && (
+                  <p className="text-xs text-slate-500 mt-1">Corretor: <span className="font-medium text-slate-700">{profilesMap[lead.corretor_id].nome}</span></p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs px-2.5 py-1 rounded border ${meta.color}`}>{meta.label}</span>
@@ -196,61 +202,14 @@ export default function LeadDetail() {
             <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="historico" className="space-y-3">
-            <Card className="border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-base text-slate-900">Registrar contato</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex gap-2">
-                  <Select value={newTipo} onValueChange={setNewTipo}>
-                    <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {TIPO_INTERACAO.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Textarea
-                  rows={3}
-                  placeholder="Descreva o contato..."
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                />
-                <Button onClick={addInteracao} disabled={saving || !newDesc.trim()} className="bg-blue-600 hover:bg-blue-700">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Adicionar
-                </Button>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-2">
-              {interacoes.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-8">Nenhuma interação ainda</p>
-              ) : (
-                interacoes.map((i) => {
-                  const T = TIPO_INTERACAO.find((x) => x.value === i.tipo);
-                  const Icon = T?.icon ?? Edit;
-                  return (
-                    <Card key={i.id} className="border-slate-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-medium text-slate-900">{T?.label}</span>
-                              <span className="text-xs text-slate-500">{format(new Date(i.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                            </div>
-                            <p className="text-sm text-slate-700 mt-1 whitespace-pre-wrap">{i.descricao}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
-              )}
-            </div>
+          <TabsContent value="historico" className="space-y-4">
+            <InteracaoForm
+              leadId={id!}
+              authorId={user?.id}
+              leadTelefone={lead.telefone}
+              onAdded={load}
+            />
+            <InteracaoTimeline interacoes={interacoes} profilesMap={profilesMap} />
           </TabsContent>
 
           <TabsContent value="tarefas">

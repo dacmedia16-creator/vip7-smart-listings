@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../hooks/useAuth';
+import { notifyUser } from '../lib/notify';
+import { format as fmtDate } from 'date-fns';
 
 const TIPOS = [
   { v: 'ligacao', l: 'Ligação' },
@@ -68,14 +70,26 @@ export default function Tarefas() {
 
   const handleCreate = async () => {
     if (!form.titulo || !form.data_hora) return toast({ title: 'Preencha título e data', variant: 'destructive' });
+    const responsavelId = user!.id;
     const { error } = await supabase.from('tarefas').insert({
       titulo: form.titulo, descricao: form.descricao || null,
       tipo: form.tipo as any, prioridade: form.prioridade as any,
       data_hora: new Date(form.data_hora).toISOString(),
       lead_id: form.lead_id || null,
-      responsavel_id: user!.id, created_by: user!.id,
+      responsavel_id: responsavelId, created_by: user!.id,
     });
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    if (responsavelId !== user!.id) {
+      notifyUser({
+        recipientUserId: responsavelId,
+        tipo: 'nova_tarefa',
+        data: {
+          titulo: form.titulo,
+          data_hora: fmtDate(new Date(form.data_hora), "dd/MM/yyyy 'às' HH:mm"),
+          prioridade: form.prioridade,
+        },
+      });
+    }
     toast({ title: 'Tarefa criada' });
     setOpen(false);
     setForm({ titulo: '', descricao: '', tipo: 'outro', prioridade: 'media', data_hora: '', lead_id: '' });
