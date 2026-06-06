@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.cep-lookup]
 verify_jwt = false
+
+[functions.cron-notifications]
+verify_jwt = false
