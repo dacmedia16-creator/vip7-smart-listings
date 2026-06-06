@@ -88,7 +88,7 @@ export default function LeadDetail() {
     return (
       <CrmLayout title="Lead">
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#7A7A80]" />
         </div>
       </CrmLayout>
     );
@@ -100,7 +100,7 @@ export default function LeadDetail() {
     <CrmLayout title={lead.nome}>
       <div className="max-w-5xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate('/crm/leads')} className="text-slate-600">
+          <Button variant="ghost" onClick={() => navigate('/crm/leads')} className="text-[#2A2A30]">
             <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
           </Button>
           <div className="flex gap-2">
@@ -151,14 +151,14 @@ export default function LeadDetail() {
           </div>
         </div>
 
-        <Card className="border-slate-200">
+        <Card className="border-[#E8E4D9]">
           <CardContent className="p-6">
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-900">{lead.nome}</h2>
-                <p className="text-sm text-slate-600 mt-1">Cadastrado {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true, locale: ptBR })}</p>
+                <h2 className="text-2xl font-semibold text-[#0F0F12]">{lead.nome}</h2>
+                <p className="text-sm text-[#2A2A30] mt-1">Cadastrado {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true, locale: ptBR })}</p>
                 {lead.corretor_id && profilesMap[lead.corretor_id] && (
-                  <p className="text-xs text-slate-500 mt-1">Corretor: <span className="font-medium text-slate-700">{profilesMap[lead.corretor_id].nome}</span></p>
+                  <p className="text-xs text-[#4A4A52] mt-1">Corretor: <span className="font-medium text-[#1A1A1F]">{profilesMap[lead.corretor_id].nome}</span></p>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -182,15 +182,15 @@ export default function LeadDetail() {
               <Info label="Bairro" value={lead.bairro_interesse || '—'} />
             </div>
             {lead.perfil_busca && (
-              <div className="mt-4 pt-4 border-t border-slate-200">
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Perfil de busca</p>
-                <p className="text-sm text-slate-700">{lead.perfil_busca}</p>
+              <div className="mt-4 pt-4 border-t border-[#E8E4D9]">
+                <p className="text-xs text-[#4A4A52] uppercase tracking-wide mb-1">Perfil de busca</p>
+                <p className="text-sm text-[#1A1A1F]">{lead.perfil_busca}</p>
               </div>
             )}
             {lead.observacoes && (
-              <div className="mt-4 pt-4 border-t border-slate-200">
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Observações</p>
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">{lead.observacoes}</p>
+              <div className="mt-4 pt-4 border-t border-[#E8E4D9]">
+                <p className="text-xs text-[#4A4A52] uppercase tracking-wide mb-1">Observações</p>
+                <p className="text-sm text-[#1A1A1F] whitespace-pre-wrap">{lead.observacoes}</p>
               </div>
             )}
           </CardContent>
@@ -213,8 +213,8 @@ export default function LeadDetail() {
           </TabsContent>
 
           <TabsContent value="tarefas">
-            <Card className="border-slate-200">
-              <CardContent className="py-10 text-center text-sm text-slate-500">
+            <Card className="border-[#E8E4D9]">
+              <CardContent className="py-10 text-center text-sm text-[#4A4A52]">
                 Gestão de tarefas será habilitada na Entrega 3.
               </CardContent>
             </Card>
@@ -228,8 +228,8 @@ export default function LeadDetail() {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-sm text-slate-900 mt-0.5">{value}</p>
+      <p className="text-xs text-[#4A4A52] uppercase tracking-wide">{label}</p>
+      <p className="text-sm text-[#0F0F12] mt-0.5">{value}</p>
     </div>
   );
 }

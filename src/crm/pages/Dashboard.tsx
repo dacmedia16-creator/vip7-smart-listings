@@ -122,7 +122,7 @@ export default function CrmDashboard() {
   }, []);
 
   const cards = [
-    { label: 'Novos leads (7d)', value: stats.novos7d, icon: Users, color: 'bg-blue-50 text-blue-600' },
+    { label: 'Novos leads (7d)', value: stats.novos7d, icon: Users, color: 'bg-[#FBF3DC] text-[#7A5A14]' },
     { label: 'Em negociação', value: stats.leads - stats.fechamentos, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
     { label: 'Taxa de conversão', value: `${stats.conversao}%`, icon: CheckSquare, color: 'bg-emerald-50 text-emerald-600' },
     { label: 'Tarefas atrasadas', value: stats.tarefasAtrasadas, icon: AlertTriangle, color: 'bg-rose-50 text-rose-600' },
@@ -178,7 +178,7 @@ export default function CrmDashboard() {
                     const days = differenceInDays(new Date(), ref);
                     return (
                       <li key={l.id}>
-                        <Link to={`/crm/leads/${l.id}`} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-slate-50 transition-colors">
+                        <Link to={`/crm/leads/${l.id}`} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-[#FAF8F3] transition-colors">
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{l.nome}</p>
                             <p className="text-xs text-muted-foreground">{fmtPhone(l.telefone)} · {statusMeta(l.status_funil).label}</p>
@@ -209,7 +209,7 @@ export default function CrmDashboard() {
                     const days = differenceInDays(new Date(), new Date(l.updated_at));
                     return (
                       <li key={l.id}>
-                        <Link to={`/crm/leads/${l.id}`} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-slate-50 transition-colors">
+                        <Link to={`/crm/leads/${l.id}`} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-[#FAF8F3] transition-colors">
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{l.nome}</p>
                             <p className="text-xs text-muted-foreground">{statusMeta(l.status_funil).label}</p>
@@ -228,7 +228,7 @@ export default function CrmDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-blue-600" />
+              <CalendarClock className="h-4 w-4 text-[#7A5A14]" />
               Próximos acompanhamentos (3 dias)
             </CardTitle>
           </CardHeader>
@@ -242,18 +242,18 @@ export default function CrmDashboard() {
                   const responsavel = profilesMap[t.responsavel_id] ?? 'Sem responsável';
                   const dest = t.lead_id ? `/crm/leads/${t.lead_id}` : '/crm/tarefas';
                   const prioCor = t.prioridade === 'alta' ? 'text-rose-700 border-rose-200 bg-rose-50'
-                    : t.prioridade === 'baixa' ? 'text-slate-600 border-slate-200 bg-slate-50'
+                    : t.prioridade === 'baixa' ? 'text-[#2A2A30] border-[#E8E4D9] bg-[#FAF8F3]'
                     : 'text-amber-700 border-amber-200 bg-amber-50';
                   return (
                     <li key={t.id}>
-                      <Link to={dest} className="flex items-center justify-between gap-3 p-2 rounded hover:bg-slate-50 transition-colors">
+                      <Link to={dest} className="flex items-center justify-between gap-3 p-2 rounded hover:bg-[#FAF8F3] transition-colors">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{t.titulo}</p>
                           <p className="text-xs text-muted-foreground">{responsavel} · {t.tipo}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <Badge variant="outline" className={prioCor}>{t.prioridade}</Badge>
-                          <span className="text-xs text-slate-600 tabular-nums">
+                          <span className="text-xs text-[#2A2A30] tabular-nums">
                             {format(data, "dd/MM 'às' HH:mm", { locale: ptBR })}
                           </span>
                         </div>
@@ -290,9 +290,9 @@ export default function CrmDashboard() {
               ) : (
                 <ul className="space-y-2">
                   {ranking.map((r, idx) => (
-                    <li key={r.id} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-slate-50">
+                    <li key={r.id} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-[#FAF8F3]">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500 w-5">#{idx + 1}</span>
+                        <span className="text-xs font-bold text-[#4A4A52] w-5">#{idx + 1}</span>
                         <span className="text-sm font-medium">{r.nome}</span>
                       </div>
                       <Badge variant="secondary">{r.count} leads</Badge>

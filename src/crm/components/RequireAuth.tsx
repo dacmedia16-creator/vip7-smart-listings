@@ -16,8 +16,8 @@ export function RequireAuth({ children, roles }: Props) {
 
   if (loading || rolesLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF8F3]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#7A7A80]" />
       </div>
     );
   }

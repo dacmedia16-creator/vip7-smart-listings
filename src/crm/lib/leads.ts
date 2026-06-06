@@ -1,10 +1,10 @@
 export const LEAD_STATUS = [
-  { value: 'novo', label: 'Novo', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'novo', label: 'Novo', color: 'bg-[#FBF3DC] text-[#7A5A14] border-[#E8D9A8]' },
   { value: 'em_atendimento', label: 'Em Atendimento', color: 'bg-amber-100 text-amber-700 border-amber-200' },
   { value: 'visita_agendada', label: 'Visita Agendada', color: 'bg-purple-100 text-purple-700 border-purple-200' },
   { value: 'proposta_enviada', label: 'Proposta Enviada', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
   { value: 'fechamento', label: 'Fechamento', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  { value: 'perdido', label: 'Perdido', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+  { value: 'perdido', label: 'Perdido', color: 'bg-[#F0E9D6] text-[#2A2A30] border-[#E8E4D9]' },
 ] as const;
 
 export type LeadStatus = (typeof LEAD_STATUS)[number]['value'];

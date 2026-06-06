@@ -74,15 +74,15 @@ export default function LeadsList() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Leads</h2>
-            <p className="text-sm text-slate-600">{leads.length} resultado(s)</p>
+            <h2 className="text-2xl font-semibold text-[#0F0F12]">Leads</h2>
+            <p className="text-sm text-[#2A2A30]">{leads.length} resultado(s)</p>
           </div>
-          <Button onClick={() => navigate('/crm/leads/novo')} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={() => navigate('/crm/leads/novo')} className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">
             <Plus className="h-4 w-4 mr-1" /> Novo lead
           </Button>
         </div>
 
-        <Card className="border-slate-200">
+        <Card className="border-[#E8E4D9]">
           <CardContent className="p-4 space-y-3">
             <div className="flex flex-wrap gap-3">
               <form
@@ -92,7 +92,7 @@ export default function LeadsList() {
                 }}
                 className="flex-1 min-w-[240px] relative"
               >
-                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7A80]" />
                 <Input
                   placeholder="Buscar por nome, telefone, email..."
                   value={search}
@@ -127,7 +127,7 @@ export default function LeadsList() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-[#E8E4D9]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -145,12 +145,12 @@ export default function LeadsList() {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-12">
-                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-slate-400" />
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-[#7A7A80]" />
                   </TableCell>
                 </TableRow>
               ) : leads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={8} className="text-center py-12 text-[#4A4A52]">
                     Nenhum lead encontrado
                   </TableCell>
                 </TableRow>
@@ -162,28 +162,28 @@ export default function LeadsList() {
                   const atrasado = dias > 3 && !['fechamento', 'perdido'].includes(l.status_funil);
                   return (
                     <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/crm/leads/${l.id}`)}>
-                      <TableCell className="font-medium text-slate-900">{l.nome}</TableCell>
-                      <TableCell className="text-slate-600">{fmtPhone(l.telefone)}</TableCell>
-                      <TableCell className="text-slate-600 text-sm">
+                      <TableCell className="font-medium text-[#0F0F12]">{l.nome}</TableCell>
+                      <TableCell className="text-[#2A2A30]">{fmtPhone(l.telefone)}</TableCell>
+                      <TableCell className="text-[#2A2A30] text-sm">
                         {[l.bairro_interesse, l.cidade_interesse].filter(Boolean).join(' / ') || '—'}
                       </TableCell>
-                      <TableCell className="text-slate-600 text-sm">{fmtMoney(l.orcamento_max)}</TableCell>
-                      <TableCell className="text-slate-600 text-sm">{origemLabel(l.origem)}</TableCell>
+                      <TableCell className="text-[#2A2A30] text-sm">{fmtMoney(l.orcamento_max)}</TableCell>
+                      <TableCell className="text-[#2A2A30] text-sm">{origemLabel(l.origem)}</TableCell>
                       <TableCell>
                         <span className={`text-xs px-2 py-0.5 rounded border ${meta.color}`}>{meta.label}</span>
                       </TableCell>
                       <TableCell className="text-xs">
                         {l.last_contact_at ? (
-                          <span className={atrasado ? 'text-rose-600 font-semibold' : 'text-slate-600'}>
+                          <span className={atrasado ? 'text-rose-600 font-semibold' : 'text-[#2A2A30]'}>
                             {atrasado ? `Atrasado ${dias}d` : formatDistanceToNow(ref, { addSuffix: true, locale: ptBR })}
                           </span>
                         ) : (
-                          <span className={atrasado ? 'text-rose-600 font-semibold' : 'text-slate-400'}>
+                          <span className={atrasado ? 'text-rose-600 font-semibold' : 'text-[#7A7A80]'}>
                             {atrasado ? `Sem contato (${dias}d)` : 'Sem contato'}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-500 text-xs">
+                      <TableCell className="text-[#4A4A52] text-xs">
                         {formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: ptBR })}
                       </TableCell>
                     </TableRow>

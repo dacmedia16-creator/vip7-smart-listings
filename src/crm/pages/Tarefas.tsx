@@ -27,17 +27,17 @@ const TIPOS = [
 ];
 
 const PRIORIDADES = [
-  { v: 'baixa', l: 'Baixa', color: 'bg-slate-100 text-slate-700' },
-  { v: 'media', l: 'Média', color: 'bg-blue-100 text-blue-700' },
+  { v: 'baixa', l: 'Baixa', color: 'bg-[#F0E9D6] text-[#1A1A1F]' },
+  { v: 'media', l: 'Média', color: 'bg-[#FBF3DC] text-[#7A5A14]' },
   { v: 'alta', l: 'Alta', color: 'bg-amber-100 text-amber-700' },
   { v: 'urgente', l: 'Urgente', color: 'bg-rose-100 text-rose-700' },
 ];
 
 const STATUS_TAREFA = [
   { v: 'pendente', l: 'Pendente', icon: Clock, color: 'text-amber-600' },
-  { v: 'em_andamento', l: 'Em andamento', icon: AlertCircle, color: 'text-blue-600' },
+  { v: 'em_andamento', l: 'Em andamento', icon: AlertCircle, color: 'text-[#7A5A14]' },
   { v: 'concluida', l: 'Concluída', icon: CheckCircle2, color: 'text-emerald-600' },
-  { v: 'cancelada', l: 'Cancelada', icon: AlertCircle, color: 'text-slate-500' },
+  { v: 'cancelada', l: 'Cancelada', icon: AlertCircle, color: 'text-[#4A4A52]' },
 ];
 
 export default function Tarefas() {
