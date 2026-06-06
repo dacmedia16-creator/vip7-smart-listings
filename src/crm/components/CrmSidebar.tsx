@@ -71,7 +71,7 @@ export function CrmSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.url)}
-                    className="data-[active=true]:bg-[#FBF3DC] data-[active=true]:text-[#7A5A14] hover:bg-[#FAF8F3]"
+                    className="relative text-[#1A1A1F] font-medium data-[active=true]:bg-[#FBF3DC] data-[active=true]:text-[#7A5A14] data-[active=true]:font-semibold data-[active=true]:before:absolute data-[active=true]:before:left-0 data-[active=true]:before:top-1.5 data-[active=true]:before:bottom-1.5 data-[active=true]:before:w-[3px] data-[active=true]:before:rounded-r data-[active=true]:before:bg-[#C9A24C] hover:bg-[#F5F0E4] hover:text-[#0F0F12]"
                   >
                     <NavLink to={item.url} end={item.url === '/crm'}>
                       <item.icon className="h-4 w-4" />
