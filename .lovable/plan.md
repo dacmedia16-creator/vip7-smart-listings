@@ -1,60 +1,51 @@
-## Busca global (Cmd+K / Ctrl+K)
+# Melhorar cores do CRM — Claro Premium com Gold
 
-Paleta de comandos disparada por atalho global em qualquer página do `/crm`, com busca em tempo real (debounce 200ms) em **leads**, **imóveis próprios** e **navegação rápida**.
+## Objetivo
+Tornar menus e textos do CRM nítidos e legíveis, mantendo fundo claro/marfim, textos quase pretos e acentos dourados do brand (substituindo o azul atual).
 
-### UX
+## Paleta nova (escopo: apenas `.crm-scope`)
+- Fundo app: `#FAF8F3` (ivory suave)
+- Fundo sidebar/header/cards: `#FFFFFF`
+- Texto principal: `#0F0F12` (quase preto, alta legibilidade)
+- Texto secundário: `#4A4A52` (era slate-500 → escurece)
+- Bordas: `#E8E4D9` (bege claro premium, era slate-200)
+- Hover sutil: `#F5F0E4`
+- Acento gold: `#C9A24C` (do brand)
+- Item ativo: fundo `#FBF3DC` + texto `#7A5A14` + barra lateral gold
+- Badge de role: gold suave em vez de azul
 
-- Atalho: **Cmd+K** (Mac) / **Ctrl+K** (Win), além de ícone de busca na top bar do `CrmLayout`.
-- Dialog usando o componente `Command` já instalado (`src/components/ui/command.tsx` – cmdk).
-- Campo de busca no topo, com placeholder "Buscar leads, imóveis ou ações…".
-- **Filtros rápidos** em chips clicáveis no topo do dialog: `Tudo` · `Leads` · `Imóveis` · `Ações`. Clicar restringe o escopo da busca.
-- Resultados agrupados em seções (`CommandGroup`):
-  - **Leads** — nome em destaque, badge do status do funil, telefone e cidade em segunda linha.
-  - **Imóveis** — título, badge de status, código interno, cidade/bairro e preço formatado.
-  - **Ações rápidas** — atalhos fixos: "Novo lead", "Novo imóvel", "Nova tarefa", "Dashboard", "Funil", "Relatórios", "Configurações".
-- Navegação 100% via teclado (setas + Enter já é nativo do cmdk). `Esc` fecha. Click em resultado também navega.
-- Estado vazio amigável: "Digite para buscar…" / "Nenhum resultado para 'xxx'".
-- Texto que casou com a busca recebe **highlight** sutil (mark com `bg-primary/20`).
+## Mudanças (somente UI)
+1. **`src/crm/components/CrmSidebar.tsx`**
+   - Substituir `bg-white`/`border-slate-200` por tokens novos.
+   - Logo: caixa gold com "V7" em preto, em vez de azul.
+   - Label "Menu": cor mais escura (`#6B6B72`) para sair do cinza fraco.
+   - Itens: texto `#1A1A1F`, ícones na mesma cor (hoje herdam cinza fraco).
+   - Ativo: fundo champagne + texto gold escuro + borda esquerda gold de 3px.
+   - Hover: fundo `#F5F0E4`.
+   - Footer "Sair": texto escuro, hover champagne.
 
-### Comportamento de busca
+2. **`src/crm/components/CrmLayout.tsx`**
+   - Header `bg-white` borda `#E8E4D9`.
+   - SearchButton: borda/fundo champagne, texto `#4A4A52` (mais legível que slate-500), kbd com borda gold sutil.
+   - Email do usuário: `#1A1A1F`.
+   - Badge de role: `bg-[#FBF3DC] text-[#7A5A14]` em vez de azul.
+   - Fundo principal: `bg-[#FAF8F3]`.
 
-- Query mínima de 2 caracteres para disparar fetch (ações rápidas aparecem mesmo com query vazia).
-- Debounce de 200ms para evitar excesso de requests enquanto o usuário digita.
-- Fetch paralelo em leads + imóveis quando filtro = `Tudo`; senão, só a tabela relevante.
-- Limite de **8 resultados por seção** com nota "Ver todos os resultados →" que leva para a página de listagem com query pré-preenchida (`/crm/leads?q=…` e `/crm/imoveis?q=…`).
-- Cancelamento de requisições antigas via `AbortController` para evitar race conditions.
-- Respeita RLS: usa o cliente Supabase autenticado já existente, então corretor vê só seus leads etc.
+3. **`src/crm/components/GlobalSearch.tsx`** (ajuste leve)
+   - Trocar acentos azuis (chips ativos, contadores) por gold, mantendo o layout atual.
 
-### Campos pesquisados
+4. **Páginas do CRM** (`Dashboard`, `Leads`, `Imoveis`, `Funil`, `Tarefas`, `Agenda`, `Relatorios`, `Configuracoes`)
+   - Varredura para trocar `text-slate-500/400` → `text-[#4A4A52]` e `bg-blue-*`/`text-blue-*` de destaque para gold equivalente, sem mexer em lógica.
+   - Botões primários permanecem (shadcn `Button` default), apenas garantir contraste.
 
-- **Leads** (`public.leads`): `nome`, `email`, `telefone`, `cidade_interesse`, `bairro_interesse`, `imovel_interesse_codigo`, `observacoes`. Filtro: `ilike` em OR + `created_at DESC`.
-- **Imóveis** (`public.imoveis_proprios`): `titulo`, `codigo_interno`, `cidade`, `bairro`, `endereco`, `descricao`. Filtro: `ilike` em OR + `created_at DESC`. Não filtrar por `ativo` (corretor pode buscar inativo também).
+## Fora do escopo
+- Não muda layout, componentes ou lógica.
+- Não altera tema do site público (continua dark/gold).
+- Não toca `index.css` global (mudanças ficam dentro de `.crm-scope` via classes Tailwind diretas para não impactar o site).
 
-### Histórico recente
-
-- Últimas 5 buscas salvas em `localStorage` (`crm:recent-searches`) e exibidas como chips quando o input está vazio. Clicar repete a busca.
-
-### Arquivos a criar / editar
-
-**Novos:**
-- `src/crm/components/GlobalSearch.tsx` — Dialog `cmdk`, lógica de busca, filtros, highlight, recents.
-- `src/crm/hooks/useGlobalSearch.tsx` — Context com `open / setOpen / toggle` para que qualquer componente possa abrir o dialog.
-
-**Editar:**
-- `src/crm/components/CrmLayout.tsx` — Envolver children com `GlobalSearchProvider`, renderizar `<GlobalSearch />` uma vez no layout, adicionar botão de busca na top bar ("Buscar… ⌘K") que chama `toggle()`. Listener global `keydown` para `Cmd/Ctrl+K` (com `e.preventDefault()`).
-- `src/crm/pages/Leads.tsx` — Ler `?q=` da URL e pré-popular o filtro de busca existente.
-- `src/crm/pages/Imoveis.tsx` — Mesmo tratamento de `?q=`.
-
-### Detalhes técnicos
-
-- Atalho registrado em `useEffect` no `CrmLayout`, ignorando quando foco está em `input`/`textarea` que NÃO seja o próprio do dialog (`cmdk` cuida do foco interno).
-- Componentes shadcn usados: `Command`, `CommandDialog`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem`, `CommandSeparator`, `Badge`.
-- Formatação de preço reusa helper já existente (se houver) ou `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })`.
-- Sem mudanças de banco — RLS atual já cobre o caso de uso.
-
-### Fora de escopo (Fase 3 restante)
-
-- Relatórios com filtros + export PDF.
-- Calendário visual.
-
-Esses dois entram depois, em entregas separadas.
+## Validação
+Abrir `/crm`, `/crm/leads`, `/crm/imoveis` e confirmar:
+- Texto dos itens do menu nítido.
+- Item ativo claramente destacado em gold.
+- Header e busca legíveis.
+- Nenhum cinza-em-branco quase invisível.
