@@ -52,7 +52,7 @@ export function CrmSidebar() {
     <Sidebar collapsible="icon" className="border-r border-[#E8E4D9] bg-white">
       <SidebarHeader className="border-b border-[#E8E4D9] bg-white">
         <div className="flex items-center gap-2 px-2 py-3">
-          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">V7</div>
+          <div className="h-8 w-8 rounded-lg bg-[#C9A24C] flex items-center justify-center text-[#0F0F12] font-bold">V7</div>
           {!collapsed && (
             <div>
               <div className="text-sm font-semibold text-[#0F0F12]">VIP7 CRM</div>

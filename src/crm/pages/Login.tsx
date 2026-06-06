@@ -39,7 +39,7 @@ export default function CrmLogin() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
       <Card className="w-full max-w-md border-[#E8E4D9]">
         <CardHeader className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl font-bold mb-2">
+          <div className="mx-auto h-12 w-12 rounded-xl bg-[#C9A24C] flex items-center justify-center text-[#0F0F12] text-xl font-bold mb-2">
             V7
           </div>
           <CardTitle className="text-[#0F0F12]">VIP7 CRM</CardTitle>
