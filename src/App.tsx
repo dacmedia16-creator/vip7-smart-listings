@@ -23,6 +23,10 @@ import CrmSetup from "./crm/pages/Setup";
 import CrmDashboard from "./crm/pages/Dashboard";
 import CrmSemAcesso from "./crm/pages/SemAcesso";
 import CrmPlaceholder from "./crm/pages/Placeholder";
+import CrmLeads from "./crm/pages/Leads";
+import CrmLeadForm from "./crm/pages/LeadForm";
+import CrmLeadDetail from "./crm/pages/LeadDetail";
+import CrmFunil from "./crm/pages/Funil";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -54,8 +58,11 @@ const App = () => (
                 <Route path="/crm/setup" element={<CrmSetup />} />
                 <Route path="/crm/sem-acesso" element={<CrmSemAcesso />} />
                 <Route path="/crm" element={<RequireAuth><CrmDashboard /></RequireAuth>} />
-                <Route path="/crm/leads" element={<RequireAuth><CrmPlaceholder title="Leads" /></RequireAuth>} />
-                <Route path="/crm/funil" element={<RequireAuth><CrmPlaceholder title="Funil" /></RequireAuth>} />
+                <Route path="/crm/leads" element={<RequireAuth><CrmLeads /></RequireAuth>} />
+                <Route path="/crm/leads/novo" element={<RequireAuth><CrmLeadForm /></RequireAuth>} />
+                <Route path="/crm/leads/:id" element={<RequireAuth><CrmLeadDetail /></RequireAuth>} />
+                <Route path="/crm/leads/:id/editar" element={<RequireAuth><CrmLeadForm /></RequireAuth>} />
+                <Route path="/crm/funil" element={<RequireAuth><CrmFunil /></RequireAuth>} />
                 <Route path="/crm/imoveis" element={<RequireAuth><CrmPlaceholder title="Imóveis" /></RequireAuth>} />
                 <Route path="/crm/tarefas" element={<RequireAuth><CrmPlaceholder title="Tarefas" /></RequireAuth>} />
                 <Route path="/crm/agenda" element={<RequireAuth><CrmPlaceholder title="Agenda" /></RequireAuth>} />
