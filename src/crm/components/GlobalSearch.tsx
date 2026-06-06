@@ -194,7 +194,7 @@ export function GlobalSearch() {
           `nome.ilike.${s},email.ilike.${s},telefone.ilike.${s},cidade_interesse.ilike.${s},bairro_interesse.ilike.${s},imovel_interesse_codigo.ilike.${s},observacoes.ilike.${s}`
         );
       }
-      if (fStatus !== ALL) q = q.eq('status_funil', fStatus);
+      if (fStatus !== ALL) q = q.eq('status_funil', fStatus as any);
       if (fCorretor !== ALL) q = q.eq('corretor_id', fCorretor);
       if (fFinalidade !== ALL) q = q.eq('finalidade', fFinalidade);
       if (precoMin != null) q = q.gte('orcamento_max', precoMin);
