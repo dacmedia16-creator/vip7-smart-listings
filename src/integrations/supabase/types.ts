@@ -135,6 +135,7 @@ export type Database = {
       }
       imoveis_proprios: {
         Row: {
+          aceita_permuta: boolean
           area: number | null
           area_total: number | null
           ativo: boolean
@@ -143,10 +144,13 @@ export type Database = {
           caracteristicas: string[] | null
           cep: string | null
           cidade: string | null
+          codigo_imoview: number | null
           codigo_interno: string | null
           condominio: number | null
+          condominio_nome: string | null
           corretor_id: string | null
           created_at: string
+          data_atualizacao_origem: string | null
           descricao: string | null
           destaque: boolean
           documentos: Json | null
@@ -155,9 +159,13 @@ export type Database = {
           finalidade: string
           fotos: string[] | null
           id: string
+          imoview_hash: string | null
+          imoview_raw: Json | null
+          imoview_sync_at: string | null
           iptu: number | null
           latitude: number | null
           longitude: number | null
+          origem: string
           preco: number
           quartos: number | null
           status: Database["public"]["Enums"]["imovel_status"]
@@ -167,9 +175,11 @@ export type Database = {
           tour_360_url: string | null
           updated_at: string
           vagas: number | null
+          valor_m2: number | null
           video_url: string | null
         }
         Insert: {
+          aceita_permuta?: boolean
           area?: number | null
           area_total?: number | null
           ativo?: boolean
@@ -178,10 +188,13 @@ export type Database = {
           caracteristicas?: string[] | null
           cep?: string | null
           cidade?: string | null
+          codigo_imoview?: number | null
           codigo_interno?: string | null
           condominio?: number | null
+          condominio_nome?: string | null
           corretor_id?: string | null
           created_at?: string
+          data_atualizacao_origem?: string | null
           descricao?: string | null
           destaque?: boolean
           documentos?: Json | null
@@ -190,9 +203,13 @@ export type Database = {
           finalidade?: string
           fotos?: string[] | null
           id?: string
+          imoview_hash?: string | null
+          imoview_raw?: Json | null
+          imoview_sync_at?: string | null
           iptu?: number | null
           latitude?: number | null
           longitude?: number | null
+          origem?: string
           preco: number
           quartos?: number | null
           status?: Database["public"]["Enums"]["imovel_status"]
@@ -202,9 +219,11 @@ export type Database = {
           tour_360_url?: string | null
           updated_at?: string
           vagas?: number | null
+          valor_m2?: number | null
           video_url?: string | null
         }
         Update: {
+          aceita_permuta?: boolean
           area?: number | null
           area_total?: number | null
           ativo?: boolean
@@ -213,10 +232,13 @@ export type Database = {
           caracteristicas?: string[] | null
           cep?: string | null
           cidade?: string | null
+          codigo_imoview?: number | null
           codigo_interno?: string | null
           condominio?: number | null
+          condominio_nome?: string | null
           corretor_id?: string | null
           created_at?: string
+          data_atualizacao_origem?: string | null
           descricao?: string | null
           destaque?: boolean
           documentos?: Json | null
@@ -225,9 +247,13 @@ export type Database = {
           finalidade?: string
           fotos?: string[] | null
           id?: string
+          imoview_hash?: string | null
+          imoview_raw?: Json | null
+          imoview_sync_at?: string | null
           iptu?: number | null
           latitude?: number | null
           longitude?: number | null
+          origem?: string
           preco?: number
           quartos?: number | null
           status?: Database["public"]["Enums"]["imovel_status"]
@@ -237,6 +263,7 @@ export type Database = {
           tour_360_url?: string | null
           updated_at?: string
           vagas?: number | null
+          valor_m2?: number | null
           video_url?: string | null
         }
         Relationships: [
@@ -248,6 +275,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      imoview_sync_log: {
+        Row: {
+          created_at: string
+          cursor: Json | null
+          error_details: Json | null
+          errors_count: number
+          finished_at: string | null
+          id: string
+          inserted: number
+          mode: string
+          photos_uploaded: number
+          removed: number
+          started_at: string
+          status: string
+          total: number
+          triggered_by: string | null
+          unchanged: number
+          updated: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cursor?: Json | null
+          error_details?: Json | null
+          errors_count?: number
+          finished_at?: string | null
+          id?: string
+          inserted?: number
+          mode?: string
+          photos_uploaded?: number
+          removed?: number
+          started_at?: string
+          status?: string
+          total?: number
+          triggered_by?: string | null
+          unchanged?: number
+          updated?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cursor?: Json | null
+          error_details?: Json | null
+          errors_count?: number
+          finished_at?: string | null
+          id?: string
+          inserted?: number
+          mode?: string
+          photos_uploaded?: number
+          removed?: number
+          started_at?: string
+          status?: string
+          total?: number
+          triggered_by?: string | null
+          unchanged?: number
+          updated?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       lead_distribuicoes: {
         Row: {
