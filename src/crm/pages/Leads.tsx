@@ -15,7 +15,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Loader2 } from 'lucide-react';
 import { LEAD_STATUS, statusMeta, origemLabel, fmtPhone, fmtMoney } from '../lib/leads';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type Lead = {
