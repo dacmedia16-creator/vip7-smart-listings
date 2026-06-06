@@ -330,25 +330,40 @@ export type Database = {
           autor_id: string | null
           created_at: string
           descricao: string
+          duracao_minutos: number | null
           id: string
           lead_id: string
+          notas_internas: string | null
+          proxima_acao_em: string | null
+          resultado: string | null
           tipo: Database["public"]["Enums"]["interacao_tipo"]
+          updated_at: string
         }
         Insert: {
           autor_id?: string | null
           created_at?: string
           descricao: string
+          duracao_minutos?: number | null
           id?: string
           lead_id: string
+          notas_internas?: string | null
+          proxima_acao_em?: string | null
+          resultado?: string | null
           tipo: Database["public"]["Enums"]["interacao_tipo"]
+          updated_at?: string
         }
         Update: {
           autor_id?: string | null
           created_at?: string
           descricao?: string
+          duracao_minutos?: number | null
           id?: string
           lead_id?: string
+          notas_internas?: string | null
+          proxima_acao_em?: string | null
+          resultado?: string | null
           tipo?: Database["public"]["Enums"]["interacao_tipo"]
+          updated_at?: string
         }
         Relationships: [
           {
@@ -466,6 +481,8 @@ export type Database = {
           especialidades: string[] | null
           id: string
           nome: string
+          notif_email: boolean
+          notif_whatsapp: boolean
           telefone: string | null
           updated_at: string
         }
@@ -477,6 +494,8 @@ export type Database = {
           especialidades?: string[] | null
           id: string
           nome: string
+          notif_email?: boolean
+          notif_whatsapp?: boolean
           telefone?: string | null
           updated_at?: string
         }
@@ -488,6 +507,8 @@ export type Database = {
           especialidades?: string[] | null
           id?: string
           nome?: string
+          notif_email?: boolean
+          notif_whatsapp?: boolean
           telefone?: string | null
           updated_at?: string
         }
