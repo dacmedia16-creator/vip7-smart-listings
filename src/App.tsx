@@ -34,6 +34,7 @@ import CrmTarefas from "./crm/pages/Tarefas";
 import CrmAgenda from "./crm/pages/Agenda";
 import CrmConfiguracoes from "./crm/pages/Configuracoes";
 import CrmRelatorios from "./crm/pages/Relatorios";
+import CrmSincronizacaoImoview from "./crm/pages/SincronizacaoImoview";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,7 @@ const App = () => (
                 <Route path="/crm/agenda" element={<RequireAuth><CrmAgenda /></RequireAuth>} />
                 <Route path="/crm/relatorios" element={<RequireAuth><CrmRelatorios /></RequireAuth>} />
                 <Route path="/crm/configuracoes" element={<RequireAuth><CrmConfiguracoes /></RequireAuth>} />
+                <Route path="/crm/configuracoes/imoview" element={<RequireAuth roles={['admin','gestor']}><CrmSincronizacaoImoview /></RequireAuth>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

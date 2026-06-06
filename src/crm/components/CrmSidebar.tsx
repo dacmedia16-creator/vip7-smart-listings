@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -36,6 +37,7 @@ const items = [
   { title: 'Agenda', url: '/crm/agenda', icon: Calendar, roles: ['admin', 'gestor', 'corretor'] },
   { title: 'Relatórios', url: '/crm/relatorios', icon: BarChart3, roles: ['admin', 'gestor'] },
   { title: 'Configurações', url: '/crm/configuracoes', icon: Settings, roles: ['admin', 'gestor'] },
+  { title: 'Sincronizar Imoview', url: '/crm/configuracoes/imoview', icon: RefreshCw, roles: ['admin', 'gestor'] },
 ];
 
 export function CrmSidebar() {
