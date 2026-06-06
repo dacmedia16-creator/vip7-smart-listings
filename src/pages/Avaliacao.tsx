@@ -155,6 +155,21 @@ export default function Avaliacao() {
     try {
       const { error } = await enviarEmail(data);
       if (error) throw error;
+      // Captura lead no CRM (não bloqueia em caso de falha)
+      try {
+        const { capturarLead } = await import('@/lib/leadCapture');
+        await capturarLead({
+          nome: data.nome,
+          telefone: data.telefone,
+          email: data.email,
+          origem: 'site_avaliacao',
+          tipo_imovel: data.tipoImovel,
+          finalidade: data.finalidade,
+          cidade_interesse: data.cidade,
+          bairro_interesse: data.bairro,
+          observacoes: `Solicitação de avaliação. Endereço: ${data.endereco}. ${data.descricao ?? ''}`.trim(),
+        });
+      } catch (e) { console.warn('CRM capture failed', e); }
       toast({ title: 'Solicitação enviada com sucesso!', description: 'Entraremos em contato em até 24 horas.' });
       form.reset();
     } catch (error: any) {
@@ -164,6 +179,7 @@ export default function Avaliacao() {
       setIsSubmitting(false);
     }
   };
+
 
   const handleEstimarIA = async () => {
     // Validate essential fields manually

@@ -22,11 +22,17 @@ import CrmLogin from "./crm/pages/Login";
 import CrmSetup from "./crm/pages/Setup";
 import CrmDashboard from "./crm/pages/Dashboard";
 import CrmSemAcesso from "./crm/pages/SemAcesso";
-import CrmPlaceholder from "./crm/pages/Placeholder";
+
 import CrmLeads from "./crm/pages/Leads";
 import CrmLeadForm from "./crm/pages/LeadForm";
 import CrmLeadDetail from "./crm/pages/LeadDetail";
 import CrmFunil from "./crm/pages/Funil";
+import CrmImoveis from "./crm/pages/Imoveis";
+import CrmImovelForm from "./crm/pages/ImovelForm";
+import CrmTarefas from "./crm/pages/Tarefas";
+import CrmAgenda from "./crm/pages/Agenda";
+import CrmConfiguracoes from "./crm/pages/Configuracoes";
+import CrmRelatorios from "./crm/pages/Relatorios";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -63,11 +69,13 @@ const App = () => (
                 <Route path="/crm/leads/:id" element={<RequireAuth><CrmLeadDetail /></RequireAuth>} />
                 <Route path="/crm/leads/:id/editar" element={<RequireAuth><CrmLeadForm /></RequireAuth>} />
                 <Route path="/crm/funil" element={<RequireAuth><CrmFunil /></RequireAuth>} />
-                <Route path="/crm/imoveis" element={<RequireAuth><CrmPlaceholder title="Imóveis" /></RequireAuth>} />
-                <Route path="/crm/tarefas" element={<RequireAuth><CrmPlaceholder title="Tarefas" /></RequireAuth>} />
-                <Route path="/crm/agenda" element={<RequireAuth><CrmPlaceholder title="Agenda" /></RequireAuth>} />
-                <Route path="/crm/relatorios" element={<RequireAuth><CrmPlaceholder title="Relatórios" /></RequireAuth>} />
-                <Route path="/crm/configuracoes" element={<RequireAuth><CrmPlaceholder title="Configurações" /></RequireAuth>} />
+                <Route path="/crm/imoveis" element={<RequireAuth><CrmImoveis /></RequireAuth>} />
+                <Route path="/crm/imoveis/novo" element={<RequireAuth><CrmImovelForm /></RequireAuth>} />
+                <Route path="/crm/imoveis/:id/editar" element={<RequireAuth><CrmImovelForm /></RequireAuth>} />
+                <Route path="/crm/tarefas" element={<RequireAuth><CrmTarefas /></RequireAuth>} />
+                <Route path="/crm/agenda" element={<RequireAuth><CrmAgenda /></RequireAuth>} />
+                <Route path="/crm/relatorios" element={<RequireAuth><CrmRelatorios /></RequireAuth>} />
+                <Route path="/crm/configuracoes" element={<RequireAuth><CrmConfiguracoes /></RequireAuth>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

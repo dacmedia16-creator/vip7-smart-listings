@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit, Loader2, Phone, Mail, MessageSquare, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Loader2, Phone, Mail, MessageSquare, Trash2, Shuffle } from 'lucide-react';
 import { statusMeta, origemLabel, fmtPhone, fmtMoney, LEAD_STATUS } from '../lib/leads';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -116,6 +116,16 @@ export default function LeadDetail() {
             <Button variant="outline" onClick={() => navigate(`/crm/leads/${id}/editar`)}>
               <Edit className="h-4 w-4 mr-1" /> Editar
             </Button>
+            {isManager && (
+              <Button variant="outline" onClick={async () => {
+                const { data, error } = await supabase.rpc('distribuir_lead', { _lead_id: id! });
+                if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+                toast({ title: 'Lead distribuído', description: 'Corretor atribuído automaticamente.' });
+                load();
+              }}>
+                <Shuffle className="h-4 w-4 mr-1" /> Distribuir
+              </Button>
+            )}
             {isManager && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
