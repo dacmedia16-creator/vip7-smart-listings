@@ -657,6 +657,7 @@ export type Database = {
     }
     Functions: {
       count_admins: { Args: never; Returns: number }
+      distribuir_lead: { Args: { _lead_id: string }; Returns: string }
       find_duplicate_lead: {
         Args: { _email: string; _telefone: string }
         Returns: string
