@@ -29,6 +29,7 @@ import CrmLeadDetail from "./crm/pages/LeadDetail";
 import CrmFunil from "./crm/pages/Funil";
 import CrmImoveis from "./crm/pages/Imoveis";
 import CrmImovelForm from "./crm/pages/ImovelForm";
+import CrmImovelDetail from "./crm/pages/ImovelDetail";
 import CrmTarefas from "./crm/pages/Tarefas";
 import CrmAgenda from "./crm/pages/Agenda";
 import CrmConfiguracoes from "./crm/pages/Configuracoes";
