@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
@@ -19,8 +19,13 @@ export default function Imoveis() {
   const canCreate = isManager || isCorretor;
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
+  const [searchParams] = useSearchParams();
+  const [q, setQ] = useState(searchParams.get('q') ?? '');
   const [status, setStatus] = useState('todos');
+
+  useEffect(() => {
+    setQ(searchParams.get('q') ?? '');
+  }, [searchParams]);
 
   useEffect(() => {
     (async () => {

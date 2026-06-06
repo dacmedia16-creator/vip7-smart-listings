@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CrmLayout } from '../components/CrmLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,8 @@ type Lead = {
 export default function LeadsList() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [origemFilter, setOrigemFilter] = useState<string>('all');
   const navigate = useNavigate();
@@ -59,6 +60,14 @@ export default function LeadsList() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, origemFilter]);
+
+  // Re-run when URL ?q= changes (from global search)
+  useEffect(() => {
+    const q = searchParams.get('q') ?? '';
+    setSearch(q);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   return (
     <CrmLayout title="Leads">
