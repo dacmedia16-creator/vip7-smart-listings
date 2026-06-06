@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit, Loader2, Phone, Mail, MessageSquare, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Loader2, Phone, Mail, MessageSquare, Trash2, Shuffle } from 'lucide-react';
 import { statusMeta, origemLabel, fmtPhone, fmtMoney, LEAD_STATUS } from '../lib/leads';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
