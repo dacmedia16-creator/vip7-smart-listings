@@ -305,8 +305,20 @@ export default function ImovelForm() {
             )}
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-3">
+          <Card className="p-6 space-y-4">
+            {isManager && (
+              <div>
+                <Label>Corretor responsável</Label>
+                <Select value={corretorId || 'nenhum'} onValueChange={(v) => setCorretorId(v === 'nenhum' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">Nenhum</SelectItem>
+                    {corretores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
               <Label>Destaque</Label>
               <FormField control={form.control} name="destaque" render={({ field }) => (
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -321,14 +333,15 @@ export default function ImovelForm() {
           </Card>
 
           <div className="flex justify-between">
-            {id ? (
+            {id && canDeleteThisRecord ? (
               <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Excluir</Button>
             ) : <div />}
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => navigate('/crm/imoveis')}>Cancelar</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+              <Button type="submit" disabled={saving || (!!id && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
           </div>
+
         </form>
       </Form>
     </CrmLayout>
