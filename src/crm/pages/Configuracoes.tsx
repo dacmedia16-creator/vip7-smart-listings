@@ -13,7 +13,7 @@ const ROLES = ['admin', 'gestor', 'corretor', 'atendente'] as const;
 
 export default function Configuracoes() {
   const { toast } = useToast();
-  const { isAdmin } = useRole();
+  const { isAdmin } = useRoles();
   const [users, setUsers] = useState<any[]>([]);
 
   const load = async () => {
