@@ -27,6 +27,12 @@ import CrmLeads from "./crm/pages/Leads";
 import CrmLeadForm from "./crm/pages/LeadForm";
 import CrmLeadDetail from "./crm/pages/LeadDetail";
 import CrmFunil from "./crm/pages/Funil";
+import CrmImoveis from "./crm/pages/Imoveis";
+import CrmImovelForm from "./crm/pages/ImovelForm";
+import CrmTarefas from "./crm/pages/Tarefas";
+import CrmAgenda from "./crm/pages/Agenda";
+import CrmConfiguracoes from "./crm/pages/Configuracoes";
+import CrmRelatorios from "./crm/pages/Relatorios";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
