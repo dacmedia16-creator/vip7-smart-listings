@@ -4,11 +4,11 @@ import { CrmLayout } from '../components/CrmLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Building2, CheckSquare, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
+import { Users, Building2, CheckSquare, TrendingUp, AlertTriangle, Clock, CalendarClock } from 'lucide-react';
 import { useRoles } from '../hooks/useRole';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { LEAD_STATUS, fmtMoney, fmtPhone, statusMeta } from '../lib/leads';
-import { format, subDays, startOfDay, differenceInDays } from 'date-fns';
+import { format, subDays, addDays, startOfDay, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function CrmDashboard() {
