@@ -1,78 +1,80 @@
-# Plano: Validação do CRUD de Imóveis Próprios por Role
 
-Objetivo: confirmar que `atendente`, `corretor`, `gestor` e `admin` enxergam e executam apenas as ações permitidas em `/crm/imoveis`, incluindo a atribuição de corretor responsável.
+# Evolução do CRM — Fase 1
 
-## 1. Preparação do ambiente de teste
+Adiciona histórico de interações com timeline, dashboard do gestor mais robusto e notificações on-demand por Email (Resend) e WhatsApp (ZionTalk), sem cron.
 
-1. Garantir que existe pelo menos 1 usuário em cada role no `user_roles`. Caso falte algum, criar via `/crm/configuracoes` (admin) ou via insert direto no banco.
-2. Criar (como admin) 2 imóveis-semente:
-   - **IMV-A**: `corretor_id = <corretor de teste>`
-   - **IMV-B**: `corretor_id = NULL` (ou outro corretor)
-3. Anotar e-mails/senhas de teste de cada role para alternar logins rapidamente.
+## 1. Banco de dados
 
-## 2. Matriz esperada de permissões
+Estender `lead_interacoes` (mantém RLS e dados atuais):
 
-| Ação | atendente | corretor (dono) | corretor (não dono) | gestor | admin |
-|---|---|---|---|---|---|
-| Listar imóveis | sim (read-only) | sim | sim | sim | sim |
-| Ver detalhe `/crm/imoveis/:id` | sim | sim | sim | sim | sim |
-| Botão "Novo Imóvel" visível | não | sim | sim | sim | sim |
-| Criar imóvel | não (rota bloqueada) | sim (corretor_id = self) | sim (corretor_id = self) | sim | sim |
-| Editar IMV-A | não | sim | não | sim | sim |
-| Excluir IMV-A | não | sim | não | sim | sim |
-| Alterar "Corretor responsável" | não | não (campo oculto) | não | sim | sim |
+- `resultado` text — ex: `sem_resposta`, `interessado`, `agendado`, `descartado`
+- `notas_internas` text — visível só para CRM
+- `duracao_minutos` int
+- `proxima_acao_em` timestamptz — data sugerida para próximo contato
+- `updated_at` timestamptz default now() + trigger `update_updated_at_column`
 
-## 3. Checklist manual por role
+Atualizar coluna `last_contact_at` do lead automaticamente quando uma nova interação for inserida (trigger `AFTER INSERT`).
 
-Para cada role, login → `/crm/imoveis` e validar:
+Nenhum CREATE TABLE novo nesta fase.
 
-### atendente
-- [ ] Lista carrega sem erro.
-- [ ] Botão "Novo Imóvel" **não** aparece.
-- [ ] Acesso direto a `/crm/imoveis/novo` redireciona/bloqueia.
-- [ ] Detalhe abre, mas sem botões "Editar"/"Excluir".
+## 2. Timeline de interações no detalhe do lead
 
-### corretor
-- [ ] Lista mostra badge "Meu" apenas em IMV-A.
-- [ ] Cria novo imóvel; após salvar, `corretor_id` = próprio uid (validar no detalhe e via `supabase--read_query`).
-- [ ] Edita IMV-A com sucesso; campo "Corretor responsável" oculto.
-- [ ] Tenta editar IMV-B → bloqueado (UI sem botão e/ou erro RLS se forçar URL).
-- [ ] Exclui imóvel próprio recém-criado.
+Em `LeadDetail`, nova seção "Histórico" com:
 
-### gestor
-- [ ] Edita IMV-A e IMV-B.
-- [ ] Reatribui "Corretor responsável" de IMV-B para outro corretor; persiste após reload.
-- [ ] Exclui qualquer imóvel.
+- Formulário rápido: tipo (ligação/WhatsApp/email/visita/outro), descrição, resultado, duração, notas internas, próxima ação.
+- Timeline vertical agrupada por dia, ícone por tipo, autor (nome do profile) e badge de resultado.
+- Filtro por tipo e por autor.
+- Botões de atalho ao registrar: "Ligar" (tel:) e "WhatsApp" (wa.me com telefone do lead) — apenas links, sem envio automático.
 
-### admin
-- [ ] Mesmas validações de gestor.
-- [ ] Confirma em `activity_log` que ações de criar/editar/excluir foram registradas.
+## 3. Dashboard do gestor
 
-## 4. Verificações no banco (via supabase--read_query)
+Reescrita do `Dashboard` (somente para admin/gestor; corretor/atendente veem versão simplificada já existente):
 
-- `SELECT id, titulo, corretor_id FROM imoveis_proprios ORDER BY updated_at DESC LIMIT 10;` após cada bloco.
-- `SELECT entidade, acao, user_id, created_at FROM activity_log WHERE entidade='imoveis_proprios' ORDER BY created_at DESC LIMIT 20;` para auditoria.
+- 4 cards de KPI: leads novos (7d), leads em negociação, taxa de conversão (fechamento / total etapas), tarefas atrasadas.
+- Card "Leads sem contato há +3 dias" (lista clicável).
+- Card "Leads atrasados na etapa" (mais de 7 dias sem mudança de `status_funil`).
+- Gráfico de barras (recharts) — leads por etapa do funil.
+- Gráfico de linha — novos leads por dia (últimos 30d).
+- Ranking de corretores por leads ativos.
 
-## 5. Como executarei os testes
+Todas as queries via React Query com filtros já permitidos pelas RLS atuais.
 
-Existem duas formas — escolha qual prefere antes de aprovar o plano:
+## 4. Notificações on-demand
 
-- **A. Eu testo pelo browser tool**: preciso que você me passe credenciais de teste (ou crie usuários descartáveis) para cada role. Faço o roteiro acima e devolvo um relatório com prints/observações.
-- **B. Você testa manualmente**: eu entrego este checklist como `docs/qa/imoveis-rbac.md` no projeto e fico de plantão para corrigir qualquer divergência que aparecer.
+### 4.1 Email — edge function `send-lead-email`
+Usa `RESEND_API_KEY` (já configurada). Templates simples inline (HTML) para:
 
-## 6. Critérios de aceite
+- **Lead atribuído** — corretor recebe dados do lead.
+- **Mudança de etapa** — gestor + corretor recebem.
+- **Nova tarefa atribuída** — responsável recebe.
 
-- Todos os itens da seção 3 marcados conforme a matriz da seção 2.
-- Nenhum erro de RLS no console durante fluxos permitidos.
-- `activity_log` registra criar/editar/excluir do role correto.
-- Caso algum item falhe, abro correção pontual (UI ou política RLS) antes de fechar a entrega.
+Disparo on-demand via `supabase.functions.invoke` nos pontos:
+- ao atualizar `corretor_id` em leads;
+- ao mudar `status_funil`;
+- ao criar tarefa.
 
-## Detalhes técnicos relevantes
+### 4.2 WhatsApp — edge function `send-whatsapp-ziontalk`
+Novo secret `ZIONTALK_API_KEY` (solicitado ao usuário). Chamada:
 
-- Políticas atuais em `imoveis_proprios`:
-  - `imoveis_admin_write` (ALL para admin/gestor)
-  - `imoveis_corretor_write_own` (ALL para corretor quando `corretor_id = auth.uid()`)
-  - `imoveis_crm_read_all` (SELECT para qualquer usuário do CRM, cobre atendente)
-  - `imoveis_public_read` (SELECT público para ativos)
-- UI já implementada em `Imoveis.tsx`, `ImovelForm.tsx`, `ImovelDetail.tsx`, com `RequireAuth roles={['admin','gestor','corretor']}` nas rotas `/novo` e `/editar` (App.tsx).
-- Nenhuma mudança de schema é prevista; só serão criadas migrações se algum teste revelar gap real (ex.: permitir corretor excluir somente próprios via política DELETE separada).
+```
+POST https://app.ziontalk.com/api/send_message/
+Authorization: Basic base64(ZIONTALK_API_KEY + ":")
+form-data: msg=<texto>, mobile_phone=<E.164>
+```
+
+Mensagens disparadas nos mesmos eventos do email (lead atribuído, mudança de etapa, nova tarefa) para o telefone do corretor (em `profiles.telefone`).
+
+### 4.3 Preferências de notificação
+Adicionar em `profiles` colunas `notif_email boolean default true` e `notif_whatsapp boolean default true`. UI em Configurações > Perfil para o usuário desligar cada canal. Edge functions respeitam essas flags.
+
+## 5. Detalhes técnicos
+
+- Migração 1: alterações em `lead_interacoes`, trigger `last_contact_at`, colunas `notif_*` em `profiles`.
+- Edge functions novas: `send-lead-email`, `send-whatsapp-ziontalk`. Ambas com `getClaims()` para garantir usuário autenticado, validação com Zod e CORS.
+- Hooks novos: `useLeadInteracoes(leadId)`, `useDashboardMetrics()`, `useNotify()` (wrapper que chama email + whatsapp respeitando prefs).
+- Componentes novos: `InteracaoForm`, `InteracaoTimeline`, `LeadsSemContatoCard`, `LeadsAtrasadosCard`, `FunilBarChart`, `LeadsLineChart`, `RankingCorretores`.
+- Sem alterações nas policies RLS existentes (continua via `is_crm_user`/`has_role`).
+- Secret necessário: `ZIONTALK_API_KEY` (pedirei após aprovação do plano).
+
+## 6. Fora do escopo (próximas fases)
+Busca global (Cmd+K), relatórios avançados, cron de lembretes, Twilio, agenda drag&drop, export PDF, refactor UI.
