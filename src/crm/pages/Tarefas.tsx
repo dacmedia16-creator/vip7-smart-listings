@@ -27,7 +27,7 @@ const TIPOS = [
 ];
 
 const PRIORIDADES = [
-  { v: 'baixa', l: 'Baixa', color: 'bg-slate-100 text-[#1A1A1F]' },
+  { v: 'baixa', l: 'Baixa', color: 'bg-[#F0E9D6] text-[#1A1A1F]' },
   { v: 'media', l: 'Média', color: 'bg-[#FBF3DC] text-[#7A5A14]' },
   { v: 'alta', l: 'Alta', color: 'bg-amber-100 text-amber-700' },
   { v: 'urgente', l: 'Urgente', color: 'bg-rose-100 text-rose-700' },

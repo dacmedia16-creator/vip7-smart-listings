@@ -21,11 +21,11 @@ export const TIPO_INTERACAO = [
   { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'bg-emerald-50 text-emerald-600' },
   { value: 'email', label: 'Email', icon: Mail, color: 'bg-amber-50 text-amber-600' },
   { value: 'visita', label: 'Visita', icon: MapPin, color: 'bg-purple-50 text-purple-600' },
-  { value: 'nota', label: 'Nota', icon: FileText, color: 'bg-slate-100 text-[#2A2A30]' },
+  { value: 'nota', label: 'Nota', icon: FileText, color: 'bg-[#F0E9D6] text-[#2A2A30]' },
 ] as const;
 
 export const RESULTADO_INTERACAO = [
-  { value: 'sem_resposta', label: 'Sem resposta', color: 'bg-slate-100 text-[#2A2A30]' },
+  { value: 'sem_resposta', label: 'Sem resposta', color: 'bg-[#F0E9D6] text-[#2A2A30]' },
   { value: 'interessado', label: 'Interessado', color: 'bg-emerald-100 text-emerald-700' },
   { value: 'agendado', label: 'Agendado', color: 'bg-[#FBF3DC] text-[#7A5A14]' },
   { value: 'descartado', label: 'Descartado', color: 'bg-rose-100 text-rose-700' },
@@ -258,7 +258,7 @@ export function InteracaoTimeline({ interacoes, profilesMap, onChanged }: Timeli
           <div className="text-xs font-medium text-[#4A4A52] uppercase tracking-wide mb-2">
             {format(g.day, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </div>
-          <div className="space-y-2 border-l-2 border-slate-100 pl-4 ml-2">
+          <div className="space-y-2 border-l-2 border-[#F0E9D6] pl-4 ml-2">
             {g.items.map((i) => {
               const T = TIPO_INTERACAO.find((x) => x.value === i.tipo) ?? TIPO_INTERACAO[4];
               const R = RESULTADO_INTERACAO.find((x) => x.value === i.resultado);

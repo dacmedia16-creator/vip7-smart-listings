@@ -4,7 +4,7 @@ export const LEAD_STATUS = [
   { value: 'visita_agendada', label: 'Visita Agendada', color: 'bg-purple-100 text-purple-700 border-purple-200' },
   { value: 'proposta_enviada', label: 'Proposta Enviada', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
   { value: 'fechamento', label: 'Fechamento', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  { value: 'perdido', label: 'Perdido', color: 'bg-slate-100 text-[#2A2A30] border-[#E8E4D9]' },
+  { value: 'perdido', label: 'Perdido', color: 'bg-[#F0E9D6] text-[#2A2A30] border-[#E8E4D9]' },
 ] as const;
 
 export type LeadStatus = (typeof LEAD_STATUS)[number]['value'];

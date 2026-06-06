@@ -36,7 +36,7 @@ export default function CrmLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#F0E9D6] p-4">
       <Card className="w-full max-w-md border-[#E8E4D9]">
         <CardHeader className="text-center">
           <div className="mx-auto h-12 w-12 rounded-xl bg-[#C9A24C] flex items-center justify-center text-[#0F0F12] text-xl font-bold mb-2">
