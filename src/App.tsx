@@ -29,6 +29,7 @@ import CrmLeadDetail from "./crm/pages/LeadDetail";
 import CrmFunil from "./crm/pages/Funil";
 import CrmImoveis from "./crm/pages/Imoveis";
 import CrmImovelForm from "./crm/pages/ImovelForm";
+import CrmImovelDetail from "./crm/pages/ImovelDetail";
 import CrmTarefas from "./crm/pages/Tarefas";
 import CrmAgenda from "./crm/pages/Agenda";
 import CrmConfiguracoes from "./crm/pages/Configuracoes";
@@ -70,8 +71,9 @@ const App = () => (
                 <Route path="/crm/leads/:id/editar" element={<RequireAuth><CrmLeadForm /></RequireAuth>} />
                 <Route path="/crm/funil" element={<RequireAuth><CrmFunil /></RequireAuth>} />
                 <Route path="/crm/imoveis" element={<RequireAuth><CrmImoveis /></RequireAuth>} />
-                <Route path="/crm/imoveis/novo" element={<RequireAuth><CrmImovelForm /></RequireAuth>} />
-                <Route path="/crm/imoveis/:id/editar" element={<RequireAuth><CrmImovelForm /></RequireAuth>} />
+                <Route path="/crm/imoveis/novo" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />
+                <Route path="/crm/imoveis/:id" element={<RequireAuth><CrmImovelDetail /></RequireAuth>} />
+                <Route path="/crm/imoveis/:id/editar" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />
                 <Route path="/crm/tarefas" element={<RequireAuth><CrmTarefas /></RequireAuth>} />
                 <Route path="/crm/agenda" element={<RequireAuth><CrmAgenda /></RequireAuth>} />
                 <Route path="/crm/relatorios" element={<RequireAuth><CrmRelatorios /></RequireAuth>} />

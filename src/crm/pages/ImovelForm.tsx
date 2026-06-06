@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { useAuth } from '../hooks/useAuth';
+import { useRoles } from '../hooks/useRole';
 import { IMOVEL_STATUS, TIPO_IMOVEL, FINALIDADE } from '../lib/imoveis';
 
 const schema = z.object({
@@ -48,9 +50,14 @@ export default function ImovelForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { isManager, isCorretor, isAtendente, loading: rolesLoading } = useRoles();
   const [saving, setSaving] = useState(false);
   const [fotos, setFotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [corretorId, setCorretorId] = useState<string>('');
+  const [corretores, setCorretores] = useState<any[]>([]);
+  const [loadedRecord, setLoadedRecord] = useState<any>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -60,11 +67,33 @@ export default function ImovelForm() {
     },
   });
 
+  // Block atendente from accessing form
+  useEffect(() => {
+    if (!rolesLoading && isAtendente && !isManager && !isCorretor) {
+      toast({ title: 'Sem permissão', description: 'Atendentes não podem criar ou editar imóveis.', variant: 'destructive' });
+      navigate('/crm/imoveis');
+    }
+  }, [rolesLoading, isAtendente, isManager, isCorretor, navigate, toast]);
+
+  // Load corretores list (for admin/gestor)
+  useEffect(() => {
+    if (!isManager) return;
+    (async () => {
+      const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', 'corretor');
+      const ids = (roles ?? []).map((r) => r.user_id);
+      if (ids.length === 0) return setCorretores([]);
+      const { data: profs } = await supabase.from('profiles').select('id, nome').in('id', ids).eq('ativo', true);
+      setCorretores(profs ?? []);
+    })();
+  }, [isManager]);
+
   useEffect(() => {
     if (!id) return;
     (async () => {
       const { data } = await supabase.from('imoveis_proprios').select('*').eq('id', id).maybeSingle();
       if (data) {
+        setLoadedRecord(data);
+        setCorretorId(data.corretor_id ?? '');
         form.reset({
           ...data,
           codigo_interno: data.codigo_interno ?? '',
@@ -76,6 +105,11 @@ export default function ImovelForm() {
       }
     })();
   }, [id]);
+
+  // Corretor can only edit own records
+  const canEditThisRecord = isManager || (isCorretor && (!loadedRecord || loadedRecord.corretor_id === user?.id));
+  // Corretor can only delete own; managers always
+  const canDeleteThisRecord = isManager || (isCorretor && loadedRecord?.corretor_id === user?.id);
 
   const onSubmit = async (values: FormData) => {
     setSaving(true);
@@ -89,6 +123,14 @@ export default function ImovelForm() {
       payload.status = values.status;
       payload.ativo = values.ativo;
       payload.destaque = values.destaque;
+
+      // Set corretor_id: managers choose, corretor becomes own
+      if (isManager) {
+        payload.corretor_id = corretorId || null;
+      } else if (isCorretor) {
+        // Corretor: stay as themselves on create; on edit, keep original
+        payload.corretor_id = loadedRecord?.corretor_id ?? user!.id;
+      }
 
       if (id) {
         const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', id);
@@ -105,6 +147,8 @@ export default function ImovelForm() {
       setSaving(false);
     }
   };
+
+
 
   const handleUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -261,8 +305,20 @@ export default function ImovelForm() {
             )}
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-3">
+          <Card className="p-6 space-y-4">
+            {isManager && (
+              <div>
+                <Label>Corretor responsável</Label>
+                <Select value={corretorId || 'nenhum'} onValueChange={(v) => setCorretorId(v === 'nenhum' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">Nenhum</SelectItem>
+                    {corretores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
               <Label>Destaque</Label>
               <FormField control={form.control} name="destaque" render={({ field }) => (
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -277,14 +333,15 @@ export default function ImovelForm() {
           </Card>
 
           <div className="flex justify-between">
-            {id ? (
+            {id && canDeleteThisRecord ? (
               <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Excluir</Button>
             ) : <div />}
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => navigate('/crm/imoveis')}>Cancelar</Button>
-              <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+              <Button type="submit" disabled={saving || (!!id && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
           </div>
+
         </form>
       </Form>
     </CrmLayout>

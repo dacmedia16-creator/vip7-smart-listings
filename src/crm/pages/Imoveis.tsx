@@ -10,8 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { IMOVEL_STATUS, imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
+import { useAuth } from '../hooks/useAuth';
+import { useRoles } from '../hooks/useRole';
 
 export default function Imoveis() {
+  const { user } = useAuth();
+  const { isManager, isCorretor } = useRoles();
+  const canCreate = isManager || isCorretor;
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -52,9 +57,11 @@ export default function Imoveis() {
           <h1 className="text-2xl font-bold">Imóveis Próprios</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} imóveis</p>
         </div>
-        <Button asChild>
-          <Link to="/crm/imoveis/novo"><Plus className="h-4 w-4 mr-2" />Novo Imóvel</Link>
-        </Button>
+        {canCreate && (
+          <Button asChild>
+            <Link to="/crm/imoveis/novo"><Plus className="h-4 w-4 mr-2" />Novo Imóvel</Link>
+          </Button>
+        )}
       </div>
 
       <Card className="p-4 mb-6 flex flex-wrap gap-3">
@@ -83,12 +90,14 @@ export default function Imoveis() {
           {filtered.map((im) => {
             const meta = imovelStatusMeta(im.status);
             const foto = im.fotos?.[0];
+            const isMine = im.corretor_id && im.corretor_id === user?.id;
             return (
-              <Link key={im.id} to={`/crm/imoveis/${im.id}/editar`}>
+              <Link key={im.id} to={`/crm/imoveis/${im.id}`}>
                 <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-video bg-muted relative">
                     {foto ? <img src={foto} alt={im.titulo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Building2 className="h-12 w-12 text-muted-foreground/40" /></div>}
                     <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
+                    {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
                   </div>
                   <div className="p-4">
                     <p className="text-xs text-muted-foreground mb-1">{im.codigo_interno || '—'} · {im.tipo}</p>
