@@ -222,10 +222,14 @@ serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const cronSecretHeader = req.headers.get("x-cron-secret") ?? "";
-  const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
-  const authorized =
-    authHeader === `Bearer ${SERVICE_ROLE}` ||
-    (CRON_SECRET && cronSecretHeader === CRON_SECRET);
+
+  let authorized = authHeader === `Bearer ${SERVICE_ROLE}`;
+  if (!authorized && cronSecretHeader) {
+    const { data } = await admin.from("app_config" as any)
+      .select("value").eq("key", "cron_secret").maybeSingle();
+    const expected = (data as any)?.value ?? Deno.env.get("CRON_SECRET") ?? "";
+    if (expected && cronSecretHeader === expected) authorized = true;
+  }
   if (!authorized) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
