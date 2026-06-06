@@ -20,6 +20,7 @@ import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { LEAD_ORIGEM, LEAD_STATUS, TIPO_IMOVEL } from '../lib/leads';
 import { useAuth } from '../hooks/useAuth';
 import { useRoles } from '../hooks/useRole';
+import { notifyUser, crmUrl } from '../lib/notify';
 
 type Profile = { id: string; nome: string };
 
@@ -144,6 +145,12 @@ export default function LeadForm() {
       corretor_id: form.corretor_id || null,
     };
 
+    let prevCorretor: string | null = null;
+    if (isEdit) {
+      const { data: prev } = await supabase.from('leads').select('corretor_id').eq('id', id!).maybeSingle();
+      prevCorretor = (prev?.corretor_id as string | null) ?? null;
+    }
+
     let result;
     if (isEdit) {
       result = await supabase.from('leads').update(payload).eq('id', id!).select().maybeSingle();
@@ -156,8 +163,22 @@ export default function LeadForm() {
       toast({ title: 'Erro ao salvar', description: result.error.message, variant: 'destructive' });
       return;
     }
+    const saved = result.data!;
+    // notify corretor on assignment / change
+    if (saved.corretor_id && saved.corretor_id !== prevCorretor && saved.corretor_id !== user?.id) {
+      notifyUser({
+        recipientUserId: saved.corretor_id,
+        tipo: 'lead_atribuido',
+        data: {
+          lead_nome: saved.nome,
+          lead_telefone: saved.telefone,
+          origem: saved.origem,
+          url: crmUrl(`/crm/leads/${saved.id}`),
+        },
+      });
+    }
     toast({ title: isEdit ? 'Lead atualizado' : 'Lead criado' });
-    navigate(`/crm/leads/${result.data!.id}`);
+    navigate(`/crm/leads/${saved.id}`);
   };
 
   if (loading) {
