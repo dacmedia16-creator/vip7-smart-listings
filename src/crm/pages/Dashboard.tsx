@@ -31,7 +31,7 @@ export default function CrmDashboard() {
       const [imoveisCount, leadsAll, tarefasAtrasadasCount, profiles] = await Promise.all([
         supabase.from('imoveis_proprios').select('id', { count: 'exact', head: true }),
         supabase.from('leads').select('id, nome, telefone, status_funil, origem, orcamento_max, created_at, updated_at, last_contact_at, corretor_id'),
-        supabase.from('tarefas').select('id', { count: 'exact', head: true }).in('status', ['pendente', 'em_andamento']).lt('data_hora', now.toISOString()),
+        supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('status', 'pendente').lt('data_hora', now.toISOString()),
         supabase.from('profiles').select('id, nome'),
       ]);
 
