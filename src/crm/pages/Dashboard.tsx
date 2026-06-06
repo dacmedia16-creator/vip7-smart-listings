@@ -29,11 +29,20 @@ export default function CrmDashboard() {
       const tresDias = subDays(now, 3);
       const seteDiasEtapa = subDays(now, 7);
 
-      const [imoveisCount, leadsAll, tarefasAtrasadasCount, profiles] = await Promise.all([
+      const proximos3 = addDays(now, 3).toISOString();
+
+      const [imoveisCount, leadsAll, tarefasAtrasadasCount, profiles, proximas] = await Promise.all([
         supabase.from('imoveis_proprios').select('id', { count: 'exact', head: true }),
         supabase.from('leads').select('id, nome, telefone, status_funil, origem, orcamento_max, created_at, updated_at, last_contact_at, corretor_id'),
         supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('status', 'pendente').lt('data_hora', now.toISOString()),
         supabase.from('profiles').select('id, nome'),
+        supabase.from('tarefas')
+          .select('id, titulo, tipo, prioridade, data_hora, responsavel_id, lead_id')
+          .eq('status', 'pendente')
+          .gte('data_hora', now.toISOString())
+          .lte('data_hora', proximos3)
+          .order('data_hora', { ascending: true })
+          .limit(8),
       ]);
 
       const all = leadsAll.data ?? [];
