@@ -18,6 +18,12 @@ import Comparar from "./pages/Comparar";
 import Leilao from "./pages/Leilao";
 import AdminOgTester from "./pages/AdminOgTester";
 import NotFound from "./pages/NotFound";
+import CrmLogin from "./crm/pages/Login";
+import CrmSetup from "./crm/pages/Setup";
+import CrmDashboard from "./crm/pages/Dashboard";
+import CrmSemAcesso from "./crm/pages/SemAcesso";
+import CrmPlaceholder from "./crm/pages/Placeholder";
+import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +49,18 @@ const App = () => (
                 <Route path="/leilao" element={<Leilao />} />
               <Route path="/condominios" element={<Imoveis />} />
                 <Route path="/admin/og-tester" element={<AdminOgTester />} />
+                {/* CRM routes */}
+                <Route path="/crm/login" element={<CrmLogin />} />
+                <Route path="/crm/setup" element={<CrmSetup />} />
+                <Route path="/crm/sem-acesso" element={<CrmSemAcesso />} />
+                <Route path="/crm" element={<RequireAuth><CrmDashboard /></RequireAuth>} />
+                <Route path="/crm/leads" element={<RequireAuth><CrmPlaceholder title="Leads" /></RequireAuth>} />
+                <Route path="/crm/funil" element={<RequireAuth><CrmPlaceholder title="Funil" /></RequireAuth>} />
+                <Route path="/crm/imoveis" element={<RequireAuth><CrmPlaceholder title="Imóveis" /></RequireAuth>} />
+                <Route path="/crm/tarefas" element={<RequireAuth><CrmPlaceholder title="Tarefas" /></RequireAuth>} />
+                <Route path="/crm/agenda" element={<RequireAuth><CrmPlaceholder title="Agenda" /></RequireAuth>} />
+                <Route path="/crm/relatorios" element={<RequireAuth><CrmPlaceholder title="Relatórios" /></RequireAuth>} />
+                <Route path="/crm/configuracoes" element={<RequireAuth><CrmPlaceholder title="Configurações" /></RequireAuth>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
