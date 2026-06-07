@@ -346,10 +346,20 @@ export default function ImportarClientes() {
                     <Badge className="bg-amber-100 text-amber-800 border-0">Ignorados: {result.ignorados}</Badge>
                     <Badge className="bg-emerald-100 text-emerald-800 border-0">Leads novos: {result.leads_inseridos}</Badge>
                     <Badge className="bg-cyan-100 text-cyan-800 border-0">Leads atualizados: {result.leads_atualizados}</Badge>
+                    <Badge className="bg-violet-100 text-violet-800 border-0">Vínculos imóvel⇄cliente: {result.vinculos_criados}</Badge>
+                    {result.vinculos_ignorados_sem_imovel > 0 && (
+                      <Badge className="bg-orange-100 text-orange-800 border-0">Imóveis não encontrados: {result.vinculos_ignorados_sem_imovel}</Badge>
+                    )}
                   </div>
                   {result.corretores_nao_encontrados.length > 0 && (
                     <div className="text-xs text-[#4A4A52]">
                       <span className="font-medium">Corretores não encontrados:</span> {result.corretores_nao_encontrados.join(', ')}
+                    </div>
+                  )}
+                  {result.codigos_imoveis_nao_encontrados.length > 0 && (
+                    <div className="text-xs text-[#4A4A52]">
+                      <span className="font-medium">Códigos de imóvel ausentes do CRM (rode a sync de imóveis):</span>{' '}
+                      {result.codigos_imoveis_nao_encontrados.join(', ')}
                     </div>
                   )}
                   {result.erros.length > 0 && (
