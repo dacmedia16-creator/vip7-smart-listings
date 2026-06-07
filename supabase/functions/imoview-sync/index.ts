@@ -106,6 +106,47 @@ async function fetchListing(finalidade: number, pagina: number): Promise<Record<
   }
 }
 
+const toArr = (data: unknown): Record<string, unknown>[] =>
+  Array.isArray(data) ? data as Record<string, unknown>[]
+  : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+
+const isInativoRaw = (r: Record<string, unknown>): boolean => {
+  const s = String(r.situacao ?? r.statusimovel ?? r.status ?? "").toLowerCase();
+  return !!s && (s.includes("inativ") || s.includes("suspens") || s.includes("bloque") || s.includes("desativ") || s.includes("indispon"));
+};
+
+async function fetchListingDesativados(finalidade: number, pagina: number): Promise<Record<string, unknown>[]> {
+  // Tentativa 1: endpoint dedicado de inativos
+  try {
+    const data = await imoviewFetch("/Imovel/RetornarImoveisInativos", {
+      finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    const arr = toArr(data);
+    if (pagina === 1) console.log(`[sync-desat] RetornarImoveisInativos fin=${finalidade} -> ${arr.length} itens`);
+    return arr;
+  } catch (e1) {
+    if (pagina === 1) console.warn(`[sync-desat] RetornarImoveisInativos falhou:`, (e1 as Error).message);
+  }
+  // Tentativa 2: RetornarImoveis com filtro situacao=Inativo
+  try {
+    const data = await imoviewFetch("/Imovel/RetornarImoveis", {
+      finalidade, situacao: "Inativo", numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    const arr = toArr(data);
+    if (pagina === 1) console.log(`[sync-desat] RetornarImoveis situacao=Inativo fin=${finalidade} -> ${arr.length} itens`);
+    if (arr.length > 0) return arr;
+  } catch (e2) {
+    if (pagina === 1) console.warn(`[sync-desat] RetornarImoveis(situacao) falhou:`, (e2 as Error).message);
+  }
+  // Tentativa 3: varre RetornarImoveis e filtra inativos no servidor
+  const data = await imoviewFetch("/Imovel/RetornarImoveis", {
+    finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+  });
+  const arr = toArr(data).filter(isInativoRaw);
+  if (pagina === 1) console.log(`[sync-desat] fallback varredura fin=${finalidade} -> ${arr.length} inativos no chunk`);
+  return arr;
+}
+
 function unwrapDetail(d: unknown): Record<string, unknown> | null {
   if (!d || typeof d !== "object") return null;
   const r = d as Record<string, unknown>;
