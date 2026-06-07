@@ -49,9 +49,14 @@ export default function ClientesPage() {
             <h1 className="text-2xl font-semibold text-[#0F0F12] flex items-center gap-2"><Users className="h-6 w-6" /> Clientes</h1>
             <p className="text-sm text-[#4A4A52]">Base de pessoas: proprietários, compradores, locatários e interessados.</p>
           </div>
-          <Button onClick={() => nav('/crm/clientes/novo')} className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]">
-            <Plus className="h-4 w-4 mr-2" /> Novo cliente
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => nav('/crm/clientes/importar')}>
+              Importar CSV/Excel
+            </Button>
+            <Button onClick={() => nav('/crm/clientes/novo')} className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]">
+              <Plus className="h-4 w-4 mr-2" /> Novo cliente
+            </Button>
+          </div>
         </div>
 
         <Card>
