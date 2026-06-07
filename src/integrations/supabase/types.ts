@@ -144,6 +144,7 @@ export type Database = {
           caracteristicas: string[] | null
           cep: string | null
           cidade: string | null
+          codigo_condominio_imoview: number | null
           codigo_imoview: number | null
           codigo_interno: string | null
           condominio: number | null
@@ -188,6 +189,7 @@ export type Database = {
           caracteristicas?: string[] | null
           cep?: string | null
           cidade?: string | null
+          codigo_condominio_imoview?: number | null
           codigo_imoview?: number | null
           codigo_interno?: string | null
           condominio?: number | null
@@ -232,6 +234,7 @@ export type Database = {
           caracteristicas?: string[] | null
           cep?: string | null
           cidade?: string | null
+          codigo_condominio_imoview?: number | null
           codigo_imoview?: number | null
           codigo_interno?: string | null
           condominio?: number | null
