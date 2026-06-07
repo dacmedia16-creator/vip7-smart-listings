@@ -166,7 +166,7 @@ export default function LeadsList() {
                   const dias = differenceInDays(new Date(), ref);
                   const atrasado = dias > 3 && !['fechamento', 'perdido'].includes(l.status_funil);
                   return (
-                    <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(`/crm/leads/${l.id}`)}>
+                    <TableRow key={l.id} className="cursor-pointer border-[#E8E4D9] hover:bg-[#FAF8F3]" onClick={() => navigate(`/crm/leads/${l.id}`)}>
                       <TableCell className="font-medium text-[#0F0F12]">{l.nome}</TableCell>
                       <TableCell className="text-[#2A2A30]">{fmtPhone(l.telefone)}</TableCell>
                       <TableCell className="text-[#2A2A30] text-sm">
