@@ -8,8 +8,8 @@ import { useRoles } from '../hooks/useRole';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Download, RotateCw, Users } from 'lucide-react';
-import { triggerSyncClientes } from '../lib/clientes';
+import { Loader2, RefreshCw, Download, RotateCw, Users, Home } from 'lucide-react';
+import { triggerSyncClientes, triggerSyncProprietarios } from '../lib/clientes';
 
 type SyncLog = {
   id: string;
