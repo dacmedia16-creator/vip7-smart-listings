@@ -240,14 +240,43 @@ export default function ImportarProprietarios() {
         toast.success(`${file.name}: ${data.length} linhas`);
       } else if (ext === 'xlsx' || ext === 'xls') {
         const buf = await file.arrayBuffer();
-        const wb = XLSX.read(buf, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false });
-        const hdrSet = new Set<string>();
-        for (let i = 0; i < Math.min(json.length, 50); i++) for (const k of Object.keys(json[i] || {})) hdrSet.add(k);
-        const hdrs = Array.from(hdrSet);
-        setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
-        toast.success(`${file.name}: ${json.length} linhas`);
+        // Imoview frequently exports .xls as HTML (a <table>). Detect by sniffing the start.
+        const head = new TextDecoder('utf-8').decode(new Uint8Array(buf, 0, Math.min(buf.byteLength, 256))).trimStart().toLowerCase();
+        const looksLikeHtml = head.startsWith('<!doctype') || head.startsWith('<html') || head.startsWith('<table') || head.startsWith('<div') || head.startsWith('<?xml');
+        if (looksLikeHtml) {
+          const text = new TextDecoder('utf-8').decode(new Uint8Array(buf));
+          const doc = new DOMParser().parseFromString(text, 'text/html');
+          const table = doc.querySelector('table');
+          if (!table) { toast.error('Arquivo HTML sem <table>.'); return; }
+          const trs = Array.from(table.querySelectorAll('tr'));
+          if (!trs.length) { toast.error('Tabela vazia.'); return; }
+          const headerCells = Array.from(trs[0].querySelectorAll('th,td')).map((c) => (c.textContent ?? '').trim());
+          const hdrs = headerCells.map((h, i) => h || `Coluna ${i + 1}`);
+          const json: Record<string, unknown>[] = [];
+          for (let i = 1; i < trs.length; i++) {
+            const cells = Array.from(trs[i].querySelectorAll('th,td'));
+            if (!cells.length) continue;
+            const row: Record<string, unknown> = {};
+            let hasAny = false;
+            for (let j = 0; j < hdrs.length; j++) {
+              const val = ((cells[j]?.textContent) ?? '').trim();
+              row[hdrs[j]] = val;
+              if (val) hasAny = true;
+            }
+            if (hasAny) json.push(row);
+          }
+          setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
+          toast.success(`${file.name}: ${json.length} linhas (HTML)`);
+        } else {
+          const wb = XLSX.read(buf, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false });
+          const hdrSet = new Set<string>();
+          for (let i = 0; i < Math.min(json.length, 50); i++) for (const k of Object.keys(json[i] || {})) hdrSet.add(k);
+          const hdrs = Array.from(hdrSet);
+          setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
+          toast.success(`${file.name}: ${json.length} linhas`);
+        }
       } else { toast.error('Use CSV ou XLSX.'); }
     } catch (e) { toast.error('Falha: ' + (e as Error).message); }
   };
