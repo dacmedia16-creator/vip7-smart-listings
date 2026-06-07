@@ -91,10 +91,19 @@ async function imoviewFetch(path: string, body?: unknown, method = "POST"): Prom
 }
 
 async function fetchListing(finalidade: number, pagina: number): Promise<Record<string, unknown>[]> {
-  const data = await imoviewFetch("/Imovel/RetornarImoveisDisponiveis", {
-    finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
-  });
-  return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+  // Tenta o endpoint geral (todos os status); se a conta não tiver acesso, cai para "Disponiveis".
+  try {
+    const data = await imoviewFetch("/Imovel/RetornarImoveis", {
+      finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+  } catch (e) {
+    if (pagina === 1) console.warn(`[sync] RetornarImoveis indisponível, usando RetornarImoveisDisponiveis. Motivo:`, (e as Error).message);
+    const data = await imoviewFetch("/Imovel/RetornarImoveisDisponiveis", {
+      finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+  }
 }
 
 function unwrapDetail(d: unknown): Record<string, unknown> | null {
@@ -103,7 +112,6 @@ function unwrapDetail(d: unknown): Record<string, unknown> | null {
   if (r.imovel && typeof r.imovel === "object") return r.imovel as Record<string, unknown>;
   if (r.dados && typeof r.dados === "object") return r.dados as Record<string, unknown>;
   if (r.resultado && typeof r.resultado === "object") return r.resultado as Record<string, unknown>;
-  // single-key wrapper
   const keys = Object.keys(r);
   if (keys.length === 1 && r[keys[0]] && typeof r[keys[0]] === "object") {
     return r[keys[0]] as Record<string, unknown>;
@@ -112,17 +120,21 @@ function unwrapDetail(d: unknown): Record<string, unknown> | null {
 }
 
 async function fetchDetails(codigo: number): Promise<Record<string, unknown> | null> {
-  try {
-    const d = await imoviewFetch(`/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${codigo}`, undefined, "GET");
-    const unwrapped = unwrapDetail(d);
-    if (unwrapped && !unwrapped.codigo) {
-      unwrapped.codigo = codigo; // garantir
+  // Endpoint geral primeiro (cobre vendido/alugado/inativo); fallback ao de "Disponivel".
+  for (const path of [
+    `/Imovel/RetornarDetalhesImovel?codigoimovel=${codigo}`,
+    `/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${codigo}`,
+  ]) {
+    try {
+      const d = await imoviewFetch(path, undefined, "GET");
+      const unwrapped = unwrapDetail(d);
+      if (unwrapped && !unwrapped.codigo) unwrapped.codigo = codigo;
+      if (unwrapped) return unwrapped;
+    } catch (e) {
+      console.warn(`[sync] ${path} falhou:`, (e as Error).message);
     }
-    return unwrapped;
-  } catch (e) {
-    console.error(`[sync] detalhes ${codigo} falhou:`, e);
-    return null;
   }
+  return null;
 }
 
 // ---------- mapeamento ----------
