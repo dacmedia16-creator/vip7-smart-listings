@@ -103,8 +103,15 @@ type Mapped = {
   fotosUrls: string[];
 };
 
+function pickCodigo(it: Record<string, unknown>): number {
+  const v = it.codigo ?? it.codigoimovel ?? (it as Record<string, unknown>).codigoImovel
+    ?? (it as Record<string, unknown>).codigoImovelDisponivel ?? it.id;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 function mapToRow(raw: Record<string, unknown>): Mapped {
-  const codigo = Number(raw.codigo);
+  const codigo = pickCodigo(raw);
   const fin = normFinalidade(raw.finalidade);
   const valor = parseCurrencyValue(raw.valor);
   const condominio = parseCurrencyValue(raw.valorcondominio);
@@ -345,7 +352,10 @@ serve(async (req) => {
       }
 
       // Buscar detalhes em paralelo (concorrência limitada)
-      const codigos = lista.map((it) => Number(it.codigo)).filter(Boolean);
+      const codigos = lista.map(pickCodigo).filter((n) => n > 0);
+      if (codigos.length === 0 && lista.length > 0) {
+        console.warn(`[sync] sem codigo em ${lista.length} itens. Keys do primeiro:`, Object.keys(lista[0]).sort().join(","));
+      }
       const conc = 3;
       for (let i = 0; i < codigos.length; i += conc) {
         const slice = codigos.slice(i, i + conc);
