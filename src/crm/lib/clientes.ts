@@ -134,3 +134,11 @@ export async function triggerSyncClientes(mode: 'full' | 'incremental' | 'single
   if (error) throw error;
   return data;
 }
+
+export async function triggerSyncProprietarios(mode: 'full' | 'incremental' | 'single', opts?: { codigoImovel?: number; hours?: number }) {
+  const { data, error } = await supabase.functions.invoke('imoview-sync-proprietarios', {
+    body: { mode, codigoImovel: opts?.codigoImovel, hours: opts?.hours },
+  });
+  if (error) throw error;
+  return data;
+}

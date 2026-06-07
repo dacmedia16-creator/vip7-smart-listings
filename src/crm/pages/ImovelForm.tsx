@@ -25,6 +25,8 @@ import {
   CARACT_INTERNAS, CARACT_EXTERNAS, LAZER,
 } from '../lib/imoveis';
 import { CaracteristicasToggleGrid } from '../components/CaracteristicasToggleGrid';
+import { ProprietariosSection } from '../components/ProprietariosSection';
+import { addVinculo, type Cliente } from '../lib/clientes';
 
 const num = z.coerce.number().optional().nullable();
 const int = z.coerce.number().int().optional().nullable();
@@ -105,6 +107,8 @@ export default function ImovelForm() {
   const [corretores, setCorretores] = useState<any[]>([]);
   const [loadedRecord, setLoadedRecord] = useState<any>(null);
   const [tab, setTab] = useState('endereco');
+  const [pendingProprietarios, setPendingProprietarios] = useState<{ cliente: Cliente; percentual: number | null }[]>([]);
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -173,8 +177,13 @@ export default function ImovelForm() {
         const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('imoveis_proprios').insert(payload);
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id').single();
         if (error) throw error;
+        const newId = (ins as { id: string }).id;
+        for (const p of pendingProprietarios) {
+          try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
+          catch (e) { console.error('vinculo proprietario falhou', e); }
+        }
       }
       toast({ title: 'Imóvel salvo' });
       navigate('/crm/imoveis');
@@ -508,7 +517,7 @@ export default function ImovelForm() {
             </TabsContent>
 
             {/* RELACIONAMENTOS */}
-            <TabsContent value="relacionamentos">
+            <TabsContent value="relacionamentos" className="space-y-4">
               <Card className="p-6 space-y-4">
                 <h2 className="font-semibold">Relacionamentos</h2>
                 {isManager && (
@@ -536,6 +545,8 @@ export default function ImovelForm() {
                   )} />
                 </div>
               </Card>
+
+              <ProprietariosSection imovelId={id ?? null} onPendingChange={setPendingProprietarios} />
             </TabsContent>
 
             {/* ANOTAÇÕES */}
