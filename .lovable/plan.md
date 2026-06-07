@@ -1,38 +1,52 @@
-## Diagnóstico
+# Condomínios no CRM + vínculo com imóveis
 
-- Hoje só existem **3 imóveis** em `imoveis_proprios` (todos ativos/públicos) — por isso o site mostra quase nada.
-- O log de sync mostra que rodadas anteriores marcaram `status=ok` com `total=1213` mas `inserted=0` (rodaram antes dos fixes recentes em `pickCodigo` / `unwrapDetail` / `persistStats`).
-- Há um log `259aa774-…` ainda em `status=running` desde 00:24 (chunk derrubado por timeout, nunca retomou). Ele bloqueia visualmente novas execuções e polui a tela "Sincronização Imoview".
+## Objetivo
+1. Nova entrada **Condomínios** na barra lateral do CRM.
+2. Reimportar todos os condomínios do Imoview (já existe a função `sync-condominios`; 203 hoje em `condominios_cache`).
+3. Ligar cada imóvel ao seu condomínio pelo **código Imoview** (campo `codigocondominio` já vem no payload), como o próprio Imoview faz.
 
-## Causa
+## Banco (migration)
 
-O catálogo nunca foi populado porque os primeiros runs da edge function `imoview-sync` rodaram com bugs já corrigidos:
-1. `pickCodigo` não conseguia extrair `codigo` dos itens da listagem → `fetchDetails` nunca era chamado.
-2. `fetchDetails` não desempacotava o envelope (`imovel`/`dados`/`resultado`) → mapeamento devolvia row sem `codigo_imoview`.
-3. Updates do `imoview_sync_log` só aconteciam no fim do chunk → timeouts deixavam contadores zerados e cursor parado.
+`imoveis_proprios`
+- Adicionar coluna `codigo_condominio_imoview int` (nullable) + índice.
 
-Esses três bugs já estão corrigidos no `supabase/functions/imoview-sync/index.ts` da edição anterior, mas **nunca chegou a rodar um full sync limpo depois disso**.
+`condominios_cache`
+- Já tem `codigo` (PK numérica do Imoview), `nome`, `cidade`, `cidade_codigo`, `finalidade`. Mantemos.
+- Adicionar índice em `nome` e `cidade` para busca rápida.
 
-## Plano
+Backfill: `UPDATE imoveis_proprios SET codigo_condominio_imoview = (imoview_raw->>'codigocondominio')::int WHERE imoview_raw ? 'codigocondominio'`.
 
-1. **Encerrar o sync travado** `259aa774-…`: marcar como `failed` para liberar a UI de "Sincronização Imoview".
-2. **Disparar full sync novo** via edge function (`POST /functions/v1/imoview-sync` com `{ mode: 'full' }`) usando o código já corrigido. Ele:
-   - usa `pickCodigo` tolerante;
-   - desempacota detalhes com `unwrapDetail`;
-   - persiste a linha do imóvel ANTES de espelhar fotos;
-   - atualiza contadores do log a cada imóvel (sobrevive a timeout);
-   - auto-reinvoca em chunks de 4 páginas até concluir as 60 páginas (~1213 itens).
-3. **Acompanhar progresso** consultando `imoview_sync_log` a cada ~30s até `status='ok'` ou `'partial'`. Esperado: `inserted ≈ 1213`.
-4. **Validar no site**: abrir `/`, `/imoveis`, e um `/imovel/:codigo` no preview — confirmar listagem populada, filtros respondendo, e imagens carregando do bucket `imoveis-fotos`.
+## Edge function `imoview-sync`
+- No mapeamento de cada imóvel, gravar também `codigo_condominio_imoview = raw.codigocondominio`. Uma linha adicional, nada mais muda no fluxo de sync.
 
-## Validação
+## Edge function `sync-condominios`
+- Já existe e funciona (lista cidades → varre condomínios de cada cidade). Vamos:
+  - Expor um botão de "Sincronizar agora" na nova página (chama essa função via `supabase.functions.invoke`).
+  - Mostrar última atualização lendo `MAX(updated_at)` de `condominios_cache`.
 
-- `SELECT count(*) FROM imoveis_proprios` deve subir de 3 para ~1200+.
-- Last `imoview_sync_log` com `status='ok'` e `inserted > 0`, `photos_uploaded > 0`.
-- Home renderiza seções "Destaques Venda" e "Destaques Locação" com cards reais.
+## Frontend
+
+**Sidebar** (`src/crm/components/CrmSidebar.tsx`)
+- Novo item `{ title: 'Condomínios', url: '/crm/condominios', icon: Building, roles: ['admin','gestor','corretor'] }` logo após "Imóveis".
+
+**Rota** (`src/App.tsx`)
+- `/crm/condominios` → `<RequireAuth><CrmCondominios/></RequireAuth>`
+- `/crm/condominios/:codigo` → detalhe do condomínio com lista de imóveis ligados.
+
+**Páginas novas**
+1. `src/crm/pages/Condominios.tsx`
+   - Tabela: Nome, Cidade, Nº de imóveis (count via `imoveis_proprios.codigo_condominio_imoview = codigo`), última sync.
+   - Filtros: busca por nome, filtro por cidade.
+   - Botão "Sincronizar do Imoview" (admin/gestor) chamando `sync-condominios`.
+   - Paginação client-side.
+2. `src/crm/pages/CondominioDetail.tsx`
+   - Cabeçalho com nome, cidade, código Imoview.
+   - Lista de imóveis vinculados (reuso de cards/linhas já existentes em `/crm/imoveis`), com link para `/crm/imoveis/:id`.
+
+**Hook utilitário**
+- `src/crm/hooks/useCondominios.ts` para queries (lista + contagem agregada).
 
 ## Fora de escopo
-
-- Mudanças de UI/filtros/tema.
-- Reescrita do scheduler de sync incremental.
-- Limpeza dos logs antigos com `inserted=0` (ficam só como histórico).
+- Sem mudanças no site público (filtro por condomínio público já existe via `condominios_cache`).
+- Sem CRUD manual de condomínio (fonte da verdade = Imoview).
+- Sem alterar a lógica do sync de imóveis além de gravar o campo novo.

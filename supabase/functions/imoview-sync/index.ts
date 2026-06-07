@@ -186,6 +186,7 @@ function mapToRow(raw: Record<string, unknown>): Mapped {
       latitude: parseNum(raw.latitude) || null,
       longitude: parseNum(raw.longitude) || null,
       condominio_nome: (raw.nomecondominio as string) || null,
+      codigo_condominio_imoview: parseInt2(raw.codigocondominio) || null,
       aceita_permuta: raw.permuta === true || raw.permuta === 1 || raw.permuta === "1" || raw.permuta === "Sim",
       valor_m2: parseCurrencyValue(raw.valorm2) || null,
       destaque: raw.destaque === "Destaque" || raw.destaque === 1 || raw.destaque === "1",
