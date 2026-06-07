@@ -372,7 +372,17 @@ export default function Imoveis() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>{N('Edifício')}<Input value={filters.edificio} onChange={(e) => update('edificio', e.target.value)} /></div>
+              <div className="lg:col-span-2">{N('Condomínio / Edifício')}
+                <Input
+                  list="cond-edif-list"
+                  value={filters.edificio}
+                  onChange={(e) => update('edificio', e.target.value)}
+                  placeholder="Digite ou selecione o condomínio..."
+                />
+                <datalist id="cond-edif-list">
+                  {opts.tiposCond.map((t) => <option key={t} value={t} />)}
+                </datalist>
+              </div>
               <div>{N('Imóvel ocupado')}
                 <Select value={filters.imovel_ocupado} onValueChange={(v) => update('imovel_ocupado', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
