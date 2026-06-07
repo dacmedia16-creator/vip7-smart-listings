@@ -419,9 +419,10 @@ serve(async (req) => {
         const slice = codigos.slice(i, i + conc);
         const details = await Promise.all(slice.map((c) => fetchDetails(c)));
         for (const d of details) {
-          if (d) await syncOne(sb, d, stats);
+          if (d) await syncOne(sb, d, stats, activeSyncId!);
         }
       }
+
 
       pagesProcessed++;
       if (lista.length < PAGE_SIZE) {
