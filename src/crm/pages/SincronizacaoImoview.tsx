@@ -1,0 +1,182 @@
+import { useEffect, useState } from 'react';
+import { CrmLayout } from '../components/CrmLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useRoles } from '../hooks/useRole';
+import { Navigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Loader2, RefreshCw, Download, RotateCw } from 'lucide-react';
+
+type SyncLog = {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: 'running' | 'ok' | 'partial' | 'error';
+  mode: string;
+  total: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  removed: number;
+  photos_uploaded: number;
+  errors_count: number;
+};
+
+export default function SincronizacaoImoview() {
+  const { roles, loading: rolesLoading } = useRoles();
+  const isAdmin = roles.includes('admin') || roles.includes('gestor');
+
+  const [logs, setLogs] = useState<SyncLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [codigoSingle, setCodigoSingle] = useState('');
+
+  const fetchLogs = async () => {
+    const { data } = await supabase
+      .from('imoview_sync_log')
+      .select('id, started_at, finished_at, status, mode, total, inserted, updated, unchanged, removed, photos_uploaded, errors_count')
+      .order('started_at', { ascending: false })
+      .limit(20);
+    setLogs((data as SyncLog[]) || []);
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    const id = setInterval(fetchLogs, 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (rolesLoading) return null;
+  if (!isAdmin) return <Navigate to="/crm" replace />;
+
+  const trigger = async (mode: 'full' | 'incremental' | 'single', codigo?: number) => {
+    if (mode === 'full' && !confirm('Sincronização completa pode levar vários minutos e consumir bastante da API Imoview. Continuar?')) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('imoview-sync', {
+        body: { mode, codigo },
+      });
+      if (error) throw error;
+      toast.success(mode === 'single' ? 'Imóvel sincronizado' : `Sincronização iniciada: ${(data as { sync_id?: string })?.sync_id?.slice(0, 8)}`);
+      fetchLogs();
+    } catch (e: unknown) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const running = logs.find((l) => l.status === 'running');
+
+  return (
+    <CrmLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-[#0F0F12]">Sincronização Imoview</h1>
+          <p className="text-sm text-[#4A4A52]">Importa imóveis do Imoview para o banco local e faz mirror das fotos.</p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Disparar sincronização</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => trigger('full')}
+                disabled={loading || !!running}
+                className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+              >
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Sincronização completa
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => trigger('incremental')}
+                disabled={loading || !!running}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Incremental (últimos 7 dias)
+              </Button>
+            </div>
+            <div className="flex gap-2 max-w-md">
+              <Input
+                placeholder="Código do imóvel"
+                value={codigoSingle}
+                onChange={(e) => setCodigoSingle(e.target.value)}
+                disabled={loading}
+              />
+              <Button
+                variant="outline"
+                disabled={loading || !codigoSingle}
+                onClick={() => trigger('single', Number(codigoSingle))}
+              >
+                <RotateCw className="h-4 w-4 mr-2" /> Re-sincronizar
+              </Button>
+            </div>
+            {running && (
+              <div className="text-sm text-[#7A5A14] bg-[#FBF3DC] border border-[#E8D9A8] rounded p-3">
+                Sincronização em andamento — {running.total} lidos · {running.inserted} novos · {running.updated} atualizados · {running.unchanged} inalterados · {running.photos_uploaded} fotos · {running.errors_count} erros
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Histórico</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[#4A4A52] border-b border-[#E8E4D9]">
+                    <th className="py-2 pr-3">Início</th>
+                    <th className="py-2 pr-3">Modo</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3">Lidos</th>
+                    <th className="py-2 pr-3">Novos</th>
+                    <th className="py-2 pr-3">Atual.</th>
+                    <th className="py-2 pr-3">Inalt.</th>
+                    <th className="py-2 pr-3">Removidos</th>
+                    <th className="py-2 pr-3">Fotos</th>
+                    <th className="py-2 pr-3">Erros</th>
+                    <th className="py-2 pr-3">Duração</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((l) => {
+                    const duration = l.finished_at
+                      ? Math.round((new Date(l.finished_at).getTime() - new Date(l.started_at).getTime()) / 1000)
+                      : null;
+                    const statusColor = l.status === 'ok' ? 'bg-green-100 text-green-800' : l.status === 'partial' ? 'bg-amber-100 text-amber-800' : l.status === 'error' ? 'bg-red-100 text-red-800' : 'bg-[#FBF3DC] text-[#7A5A14]';
+                    return (
+                      <tr key={l.id} className="border-b border-[#F0E9D6]">
+                        <td className="py-2 pr-3 text-[#1A1A1F]">{new Date(l.started_at).toLocaleString('pt-BR')}</td>
+                        <td className="py-2 pr-3 text-[#2A2A30]">{l.mode}</td>
+                        <td className="py-2 pr-3"><Badge className={statusColor + ' border-0'}>{l.status}</Badge></td>
+                        <td className="py-2 pr-3">{l.total}</td>
+                        <td className="py-2 pr-3">{l.inserted}</td>
+                        <td className="py-2 pr-3">{l.updated}</td>
+                        <td className="py-2 pr-3">{l.unchanged}</td>
+                        <td className="py-2 pr-3">{l.removed}</td>
+                        <td className="py-2 pr-3">{l.photos_uploaded}</td>
+                        <td className="py-2 pr-3 text-red-600">{l.errors_count || ''}</td>
+                        <td className="py-2 pr-3">{duration !== null ? `${duration}s` : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                  {logs.length === 0 && (
+                    <tr><td colSpan={11} className="py-6 text-center text-[#7A7A80]">Nenhuma sincronização ainda</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </CrmLayout>
+  );
+}
