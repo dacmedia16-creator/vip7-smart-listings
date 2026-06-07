@@ -242,6 +242,82 @@ export default function ImportarClientes() {
           <p className="text-sm text-[#4A4A52]">Suba uma planilha exportada do Imoview. Clientes são inseridos/atualizados; se houver código de atendimento, um lead é criado/atualizado.</p>
         </div>
 
+        {/* === Sync de proprietários do Imoview === */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" /> Sincronizar proprietários dos imóveis (Imoview)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-[#4A4A52]">
+              Busca os proprietários de cada imóvel diretamente na API do Imoview e vincula ao CRM. Requer login Imoview ativo.
+            </p>
+            <div className="flex flex-wrap items-end gap-4">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={syncProp.onlyMissing}
+                  onCheckedChange={(v) => setSyncProp((s) => ({ ...s, onlyMissing: !!v }))}
+                />
+                Só imóveis sem proprietário
+              </label>
+              <div className="space-y-1">
+                <Label className="text-xs">Limite (opcional)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="ex: 100"
+                  value={syncProp.limit}
+                  onChange={(e) => setSyncProp((s) => ({ ...s, limit: e.target.value }))}
+                  className="w-32"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={async () => {
+                  setSyncProp((s) => ({ ...s, running: true, result: null }));
+                  try {
+                    const res = await triggerSyncProprietarios('full', {
+                      onlyMissing: syncProp.onlyMissing,
+                      limit: syncProp.limit ? Number(syncProp.limit) : undefined,
+                    });
+                    const r = res as { sync_id?: string; total?: number; status?: string };
+                    setSyncProp((s) => ({
+                      ...s,
+                      running: false,
+                      result: {
+                        syncId: r.sync_id,
+                        total: r.total,
+                        msg: `Sync iniciada — ${r.total ?? 0} imóveis na fila. O processamento roda em background; acompanhe em "Logs Imoview" ou recarregue os imóveis em alguns minutos.`,
+                      },
+                    }));
+                    toast.success('Sync de proprietários iniciada');
+                  } catch (e) {
+                    setSyncProp((s) => ({ ...s, running: false, result: { msg: `Erro: ${(e as Error).message}` } }));
+                    toast.error('Falha ao iniciar sync', { description: (e as Error).message });
+                  }
+                }}
+                disabled={syncProp.running}
+                className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+              >
+                {syncProp.running ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Iniciar sync
+              </Button>
+            </div>
+            {syncProp.result && (
+              <div className="text-xs text-[#4A4A52] border border-[#E8E4D9] rounded p-2 bg-[#FBF9F4]">
+                {syncProp.result.msg}
+                {syncProp.result.syncId && <div className="font-mono mt-1">sync_id: {syncProp.result.syncId}</div>}
+              </div>
+            )}
+            <p className="text-[11px] text-[#7A7A80]">
+              Se a sync falhar com erro de login, atualize a senha Imoview em Configurações antes de tentar novamente.
+            </p>
+          </CardContent>
+        </Card>
+
+
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" /> 1. Selecione o arquivo</CardTitle>
