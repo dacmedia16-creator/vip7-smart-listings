@@ -40,6 +40,7 @@ import CrmCondominioDetail from "./crm/pages/CondominioDetail";
 import CrmClientes from "./crm/pages/Clientes";
 import CrmClienteForm from "./crm/pages/ClienteForm";
 import CrmClienteDetail from "./crm/pages/ClienteDetail";
+import CrmImportarClientes from "./crm/pages/ImportarClientes";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
