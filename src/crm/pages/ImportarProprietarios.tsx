@@ -29,6 +29,12 @@ const IMOVEL_FIELD: FieldDef = {
   aliases: ['codigo', 'código', 'codigo imovel', 'código imóvel', 'cod imovel', 'cod. imovel', 'cod. imóvel', 'id', 'id imovel', 'id imóvel', 'codigo do imovel', 'código do imóvel', 'codigo imoview', 'código imoview'],
 };
 
+const PROPRIETARIOS_RAW_FIELD: FieldDef = {
+  key: 'proprietarios_raw',
+  label: 'Proprietários (campo único do Imoview)',
+  aliases: ['proprietarios', 'proprietários', 'proprietario', 'proprietário'],
+};
+
 const PROP_FIELDS_BASE: FieldDef[] = [
   { key: 'nome', label: 'Nome do proprietário', required: true, aliases: ['nome do proprietario', 'nome do proprietário', 'proprietario', 'proprietário', 'nome proprietario', 'nome proprietário', 'cliente', 'razao social', 'razão social'] },
   { key: 'tipo_pessoa', label: 'Tipo pessoa (PF/PJ)', aliases: ['tipo pessoa', 'tipo de pessoa', 'pj pf', 'pf pj', 'tipo'] },
@@ -57,13 +63,13 @@ function aliasesForSlot(base: string[], slot: number): string[] {
 }
 
 function allFields(): FieldDef[] {
-  const fields: FieldDef[] = [IMOVEL_FIELD];
+  const fields: FieldDef[] = [IMOVEL_FIELD, PROPRIETARIOS_RAW_FIELD];
   for (const slot of SLOTS) {
     for (const f of PROP_FIELDS_BASE) {
       fields.push({
         key: `p${slot}_${f.key}`,
         label: `${slot === 1 ? 'Proprietário' : `Proprietário ${slot}`} — ${f.label}`,
-        required: slot === 1 && f.required,
+        required: false,
         aliases: aliasesForSlot(f.aliases, slot),
       });
     }
@@ -107,6 +113,99 @@ type Result = {
 const digits = (v: unknown) => String(v ?? '').replace(/\D/g, '');
 const str = (v: unknown) => { const s = String(v ?? '').trim(); return s || null; };
 
+type OwnerData = {
+  nome: string | null;
+  tipo_pessoa?: string | null;
+  cpf_cnpj?: string | null;
+  rg?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  telefone_secundario?: string | null;
+  data_nascimento?: string | null;
+  cep?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  codigo_imoview?: number | null;
+  percentual?: number | null;
+  observacoes?: string | null;
+};
+
+// Parse "Proprietarios" cell from Imoview Imóveis export.
+// Format examples:
+//   "Cód. 2652 | Eder Souza | (15) 98176-7268 | eder@x.com"
+//   "Cód. 3727 | Francisco | CPF: 229.216.178-89 | (15) 99752-3267 | f@x.com"
+//   "1) Cód. 4607 | Daniel | (11) 98208-2350 2) Cód. 4612 | Fernando | (19) 99195-3433"
+//   "Cód. 6430 | NIELSEN | (15) 99836-7938, (15) 99662-4798"
+export function parseProprietariosCell(input: string | null | undefined): OwnerData[] {
+  const text = String(input ?? '').trim();
+  if (!text) return [];
+
+  // Split by "N) " markers; keep delimiter as start of each slot
+  const slotParts: string[] = [];
+  const re = /(?:^|\s)(\d+)\)\s+/g;
+  const indices: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) indices.push(m.index + (m[0].length - (m[0].trimStart().length)));
+  if (indices.length === 0) {
+    slotParts.push(text);
+  } else {
+    for (let i = 0; i < indices.length; i++) {
+      const start = indices[i];
+      const end = i + 1 < indices.length ? indices[i + 1] : text.length;
+      slotParts.push(text.slice(start, end).replace(/^\s*\d+\)\s*/, '').trim());
+    }
+  }
+
+  const owners: OwnerData[] = [];
+  for (const raw of slotParts) {
+    if (!raw) continue;
+    const owner: OwnerData = { nome: null };
+    const tokens = raw.split('|').map((t) => t.trim()).filter(Boolean);
+    const obsParts: string[] = [];
+
+    for (const tok of tokens) {
+      // Código Imoview
+      const codMatch = tok.match(/^c[oó]d\.?\s*(\d+)/i);
+      if (codMatch) { owner.codigo_imoview = Number(codMatch[1]); continue; }
+      // CPF/CNPJ
+      const docMatch = tok.match(/(?:CPF|CNPJ)\s*:?\s*([\d./\- ]+)/i);
+      if (docMatch) { owner.cpf_cnpj = docMatch[1].trim(); continue; }
+      // E-mail
+      const emailMatch = tok.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+      if (emailMatch && !/^https?:/i.test(tok)) { owner.email = emailMatch[0].toLowerCase(); continue; }
+      // URL — ignore
+      if (/^https?:\/\//i.test(tok)) continue;
+      // Telefone(s)
+      const phoneMatches = tok.match(/\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4}/g);
+      if (phoneMatches && phoneMatches.length) {
+        if (!owner.telefone) owner.telefone = phoneMatches[0].trim();
+        else if (!owner.telefone_secundario) owner.telefone_secundario = phoneMatches[0].trim();
+        if (phoneMatches[1] && !owner.telefone_secundario) owner.telefone_secundario = phoneMatches[1].trim();
+        continue;
+      }
+      // Plain name (first unlabeled text token)
+      if (!owner.nome) {
+        // Extract parenthetical notes into observacoes; keep clean name
+        const notes: string[] = [];
+        const cleaned = tok.replace(/\(([^)]+)\)/g, (_full, inner) => { notes.push(String(inner).trim()); return ''; }).replace(/\s+/g, ' ').trim();
+        owner.nome = cleaned || tok;
+        if (notes.length) obsParts.push(...notes);
+      } else {
+        obsParts.push(tok);
+      }
+    }
+
+    if (obsParts.length) owner.observacoes = obsParts.join(' | ');
+    if (owner.nome) owners.push(owner);
+    if (owners.length >= 3) break;
+  }
+  return owners;
+}
+
 export default function ImportarProprietarios() {
   const { roles, loading: rolesLoading } = useRoles();
   const isAdmin = roles.includes('admin') || roles.includes('gestor');
@@ -141,14 +240,43 @@ export default function ImportarProprietarios() {
         toast.success(`${file.name}: ${data.length} linhas`);
       } else if (ext === 'xlsx' || ext === 'xls') {
         const buf = await file.arrayBuffer();
-        const wb = XLSX.read(buf, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false });
-        const hdrSet = new Set<string>();
-        for (let i = 0; i < Math.min(json.length, 50); i++) for (const k of Object.keys(json[i] || {})) hdrSet.add(k);
-        const hdrs = Array.from(hdrSet);
-        setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
-        toast.success(`${file.name}: ${json.length} linhas`);
+        // Imoview frequently exports .xls as HTML (a <table>). Detect by sniffing the start.
+        const head = new TextDecoder('utf-8').decode(new Uint8Array(buf, 0, Math.min(buf.byteLength, 256))).trimStart().toLowerCase();
+        const looksLikeHtml = head.startsWith('<!doctype') || head.startsWith('<html') || head.startsWith('<table') || head.startsWith('<div') || head.startsWith('<?xml');
+        if (looksLikeHtml) {
+          const text = new TextDecoder('utf-8').decode(new Uint8Array(buf));
+          const doc = new DOMParser().parseFromString(text, 'text/html');
+          const table = doc.querySelector('table');
+          if (!table) { toast.error('Arquivo HTML sem <table>.'); return; }
+          const trs = Array.from(table.querySelectorAll('tr'));
+          if (!trs.length) { toast.error('Tabela vazia.'); return; }
+          const headerCells = Array.from(trs[0].querySelectorAll('th,td')).map((c) => (c.textContent ?? '').trim());
+          const hdrs = headerCells.map((h, i) => h || `Coluna ${i + 1}`);
+          const json: Record<string, unknown>[] = [];
+          for (let i = 1; i < trs.length; i++) {
+            const cells = Array.from(trs[i].querySelectorAll('th,td'));
+            if (!cells.length) continue;
+            const row: Record<string, unknown> = {};
+            let hasAny = false;
+            for (let j = 0; j < hdrs.length; j++) {
+              const val = ((cells[j]?.textContent) ?? '').trim();
+              row[hdrs[j]] = val;
+              if (val) hasAny = true;
+            }
+            if (hasAny) json.push(row);
+          }
+          setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
+          toast.success(`${file.name}: ${json.length} linhas (HTML)`);
+        } else {
+          const wb = XLSX.read(buf, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false });
+          const hdrSet = new Set<string>();
+          for (let i = 0; i < Math.min(json.length, 50); i++) for (const k of Object.keys(json[i] || {})) hdrSet.add(k);
+          const hdrs = Array.from(hdrSet);
+          setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
+          toast.success(`${file.name}: ${json.length} linhas`);
+        }
       } else { toast.error('Use CSV ou XLSX.'); }
     } catch (e) { toast.error('Falha: ' + (e as Error).message); }
   };
@@ -169,7 +297,10 @@ export default function ImportarProprietarios() {
 
   const startImport = async () => {
     if (!mapping[IMOVEL_FIELD.key]) { toast.error('Mapeie o Código do imóvel'); return; }
-    if (!mapping['p1_nome']) { toast.error('Mapeie o Nome do Proprietário 1'); return; }
+    if (!mapping['p1_nome'] && !mapping['proprietarios_raw']) {
+      toast.error('Mapeie o "Nome do Proprietário 1" ou a coluna "Proprietários (campo único do Imoview)"');
+      return;
+    }
     if (!rows.length) { toast.error('Nenhuma linha para importar'); return; }
 
     setImporting(true);
@@ -216,28 +347,46 @@ export default function ImportarProprietarios() {
 
           agg.imoveis_processados++;
 
-          // Processa cada slot
+          // Build owners list for this row: parsed-raw first, then slots — dedup by signature.
+          const owners: OwnerData[] = [];
+          const seen = new Set<string>();
+          const pushOwner = (o: OwnerData) => {
+            if (!o.nome) return;
+            const sig = o.codigo_imoview
+              ? `c:${o.codigo_imoview}`
+              : o.cpf_cnpj
+                ? `d:${digits(o.cpf_cnpj)}`
+                : `n:${(o.nome || '').toLowerCase()}|${digits(o.telefone || '')}`;
+            if (seen.has(sig)) return;
+            seen.add(sig);
+            owners.push(o);
+          };
+
+          // From "Proprietarios" raw cell
+          const rawCol = mapping['proprietarios_raw'];
+          if (rawCol) {
+            const parsed = parseProprietariosCell(String(row[rawCol] ?? ''));
+            for (const o of parsed) pushOwner(o);
+          }
+
+          // From slot columns
           for (const slot of SLOTS) {
             const get = (key: string) => {
               const col = mapping[`p${slot}_${key}`];
               return col ? row[col] : undefined;
             };
             const nome = str(get('nome'));
-            if (!nome) continue; // slot vazio
-
+            if (!nome) continue;
             const cpfCnpj = str(get('cpf_cnpj'));
-            const cpfDigits = cpfCnpj ? digits(cpfCnpj) : '';
-            const isJuridica = (cpfDigits.length > 11) || /^pj$|juridica|jurídica/i.test(String(get('tipo_pessoa') ?? ''));
-            const telefone = str(get('telefone'));
-            const codigoImoviewCli = Number(digits(get('codigo_imoview'))) || null;
-
-            const clientePayload: Record<string, unknown> = {
+            const pctRaw = get('percentual');
+            const pctSlot = pctRaw != null && pctRaw !== '' ? Number(String(pctRaw).replace(',', '.').replace(/[^\d.]/g, '')) : null;
+            pushOwner({
               nome,
-              tipo_pessoa: isJuridica ? 'juridica' : 'fisica',
+              tipo_pessoa: str(get('tipo_pessoa')),
               cpf_cnpj: cpfCnpj,
               rg: str(get('rg')),
               email: str(get('email'))?.toLowerCase() ?? null,
-              telefone,
+              telefone: str(get('telefone')),
               telefone_secundario: str(get('telefone_secundario')),
               data_nascimento: str(get('data_nascimento')),
               cep: str(get('cep')),
@@ -247,7 +396,38 @@ export default function ImportarProprietarios() {
               bairro: str(get('bairro')),
               cidade: str(get('cidade')),
               estado: str(get('estado')),
+              codigo_imoview: Number(digits(get('codigo_imoview'))) || null,
+              percentual: pctSlot != null && Number.isFinite(pctSlot) ? pctSlot : null,
               observacoes: str(get('observacoes')),
+            });
+          }
+
+          // Process each owner
+          for (const o of owners) {
+            const nome = o.nome!;
+            const cpfCnpj = o.cpf_cnpj ?? null;
+            const cpfDigits = cpfCnpj ? digits(cpfCnpj) : '';
+            const isJuridica = (cpfDigits.length > 11) || /^pj$|juridica|jurídica/i.test(String(o.tipo_pessoa ?? ''));
+            const telefone = o.telefone ?? null;
+            const codigoImoviewCli = o.codigo_imoview ?? null;
+
+            const clientePayload: Record<string, unknown> = {
+              nome,
+              tipo_pessoa: isJuridica ? 'juridica' : 'fisica',
+              cpf_cnpj: cpfCnpj,
+              rg: o.rg ?? null,
+              email: o.email ?? null,
+              telefone,
+              telefone_secundario: o.telefone_secundario ?? null,
+              data_nascimento: o.data_nascimento ?? null,
+              cep: o.cep ?? null,
+              endereco: o.endereco ?? null,
+              numero: o.numero ?? null,
+              complemento: o.complemento ?? null,
+              bairro: o.bairro ?? null,
+              cidade: o.cidade ?? null,
+              estado: o.estado ?? null,
+              observacoes: o.observacoes ?? null,
               ativo: true,
             };
 
@@ -258,7 +438,7 @@ export default function ImportarProprietarios() {
               if (data) existing = data as { id: string; categorias: string[] | null };
             }
             if (!existing && cpfDigits) {
-              const { data } = await supabase.from('clientes').select('id, categorias').eq('cpf_cnpj', cpfCnpj).maybeSingle();
+              const { data } = await supabase.from('clientes').select('id, categorias').eq('cpf_cnpj', cpfCnpj!).maybeSingle();
               if (data) existing = data as { id: string; categorias: string[] | null };
             }
             if (!existing && telefone) {
@@ -270,7 +450,6 @@ export default function ImportarProprietarios() {
             if (existing) {
               const cats = new Set<string>(existing.categorias || []);
               cats.add('proprietario');
-              // Atualiza só campos que vieram preenchidos
               const update: Record<string, unknown> = { categorias: Array.from(cats) };
               for (const [k, v] of Object.entries(clientePayload)) {
                 if (v != null && v !== '') update[k] = v;
@@ -294,8 +473,7 @@ export default function ImportarProprietarios() {
             }
 
             // Vínculo
-            const pctRaw = get('percentual');
-            const pct = pctRaw != null && pctRaw !== '' ? Number(String(pctRaw).replace(',', '.').replace(/[^\d.]/g, '')) : null;
+            const pct = o.percentual ?? null;
             const { data: existingLink } = await supabase
               .from('cliente_imoveis')
               .select('id')
@@ -455,7 +633,7 @@ export default function ImportarProprietarios() {
               <div className="flex items-center gap-3">
                 <Button
                   onClick={startImport}
-                  disabled={importing || !mapping[IMOVEL_FIELD.key] || !mapping['p1_nome']}
+                  disabled={importing || !mapping[IMOVEL_FIELD.key] || (!mapping['p1_nome'] && !mapping['proprietarios_raw'])}
                   className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
                 >
                   {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
