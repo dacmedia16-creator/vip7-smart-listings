@@ -35,6 +35,8 @@ import CrmAgenda from "./crm/pages/Agenda";
 import CrmConfiguracoes from "./crm/pages/Configuracoes";
 import CrmRelatorios from "./crm/pages/Relatorios";
 import CrmSincronizacaoImoview from "./crm/pages/SincronizacaoImoview";
+import CrmCondominios from "./crm/pages/Condominios";
+import CrmCondominioDetail from "./crm/pages/CondominioDetail";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
