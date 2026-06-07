@@ -404,8 +404,10 @@ serve(async (req) => {
       if (lista.length === 0) {
         finalidadeIdx++;
         pagina = 1;
+        await sb.from("imoview_sync_log").update({ cursor: { finalidadeIdx, pagina }, updated_at: new Date().toISOString() }).eq("id", activeSyncId);
         continue;
       }
+
 
       // Buscar detalhes em paralelo (concorrência limitada)
       const codigos = lista.map(pickCodigo).filter((n) => n > 0);
