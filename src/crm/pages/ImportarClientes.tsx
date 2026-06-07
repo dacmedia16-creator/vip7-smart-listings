@@ -193,13 +193,17 @@ export default function ImportarClientes() {
         agg.ignorados += r.ignorados || 0;
         agg.leads_inseridos += r.leads_inseridos || 0;
         agg.leads_atualizados += r.leads_atualizados || 0;
+        agg.vinculos_criados += r.vinculos_criados || 0;
+        agg.vinculos_ignorados_sem_imovel += r.vinculos_ignorados_sem_imovel || 0;
         for (const n of r.corretores_nao_encontrados || []) corretoresSet.add(n);
+        for (const c of r.codigos_imoveis_nao_encontrados || []) codigosImoveisNaoEncSet.add(c);
         if (r.erros?.length) agg.erros.push(...r.erros);
         setProgress({ done: Math.min(offset + slice.length, total), total });
       }
       agg.corretores_nao_encontrados = Array.from(corretoresSet);
+      agg.codigos_imoveis_nao_encontrados = Array.from(codigosImoveisNaoEncSet).slice(0, 100);
       setResult(agg);
-      toast.success(`OK: ${agg.inseridos} novos, ${agg.atualizados} atualizados, ${agg.leads_inseridos + agg.leads_atualizados} leads`);
+      toast.success(`OK: ${agg.inseridos} novos, ${agg.atualizados} atualizados, ${agg.vinculos_criados} vínculos, ${agg.leads_inseridos + agg.leads_atualizados} leads`);
     } catch (e) {
       console.error(e);
       toast.error('Falha: ' + (e as Error).message);
