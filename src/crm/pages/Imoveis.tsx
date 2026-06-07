@@ -55,7 +55,7 @@ const EMPTY: Filters = {
 };
 
 const splitList = (s: string) => s.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
-const numOrNull = (s: string) => { const n = Number(s.replace(',', '.')); return Number.isFinite(n) ? n : null; };
+const numOrNull = (s: string) => { const t = (s ?? '').trim(); if (!t) return null; const n = Number(t.replace(',', '.')); return Number.isFinite(n) ? n : null; };
 
 export default function Imoveis() {
   const { user } = useAuth();
