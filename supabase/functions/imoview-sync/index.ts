@@ -58,6 +58,17 @@ const normFinalidade = (raw: unknown): "venda" | "aluguel" => {
   return "venda";
 };
 
+// Mapeia situação/statusimovel do Imoview para o enum local imovel_status
+const mapStatus = (raw: Record<string, unknown>): "disponivel" | "sob_proposta" | "vendido" | "alugado" | "inativo" => {
+  const s = String(raw.situacao ?? raw.statusimovel ?? raw.status ?? "").toLowerCase().trim();
+  if (!s) return "disponivel";
+  if (s.includes("vend")) return "vendido";
+  if (s.includes("alug") || s.includes("loca")) return "alugado";
+  if (s.includes("propost") || s.includes("reserv")) return "sob_proposta";
+  if (s.includes("inativ") || s.includes("suspens") || s.includes("bloque") || s.includes("desativ") || s.includes("indispon")) return "inativo";
+  return "disponivel";
+};
+
 async function sha256Hex(s: string): Promise<string> {
   const data = new TextEncoder().encode(s);
   const buf = await crypto.subtle.digest("SHA-256", data);
