@@ -297,7 +297,10 @@ export default function ImportarProprietarios() {
 
   const startImport = async () => {
     if (!mapping[IMOVEL_FIELD.key]) { toast.error('Mapeie o Código do imóvel'); return; }
-    if (!mapping['p1_nome']) { toast.error('Mapeie o Nome do Proprietário 1'); return; }
+    if (!mapping['p1_nome'] && !mapping['proprietarios_raw']) {
+      toast.error('Mapeie o "Nome do Proprietário 1" ou a coluna "Proprietários (campo único do Imoview)"');
+      return;
+    }
     if (!rows.length) { toast.error('Nenhuma linha para importar'); return; }
 
     setImporting(true);
