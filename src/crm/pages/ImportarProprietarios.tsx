@@ -29,6 +29,12 @@ const IMOVEL_FIELD: FieldDef = {
   aliases: ['codigo', 'código', 'codigo imovel', 'código imóvel', 'cod imovel', 'cod. imovel', 'cod. imóvel', 'id', 'id imovel', 'id imóvel', 'codigo do imovel', 'código do imóvel', 'codigo imoview', 'código imoview'],
 };
 
+const PROPRIETARIOS_RAW_FIELD: FieldDef = {
+  key: 'proprietarios_raw',
+  label: 'Proprietários (campo único do Imoview)',
+  aliases: ['proprietarios', 'proprietários', 'proprietario', 'proprietário'],
+};
+
 const PROP_FIELDS_BASE: FieldDef[] = [
   { key: 'nome', label: 'Nome do proprietário', required: true, aliases: ['nome do proprietario', 'nome do proprietário', 'proprietario', 'proprietário', 'nome proprietario', 'nome proprietário', 'cliente', 'razao social', 'razão social'] },
   { key: 'tipo_pessoa', label: 'Tipo pessoa (PF/PJ)', aliases: ['tipo pessoa', 'tipo de pessoa', 'pj pf', 'pf pj', 'tipo'] },
