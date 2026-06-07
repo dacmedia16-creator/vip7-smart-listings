@@ -103,8 +103,15 @@ type Mapped = {
   fotosUrls: string[];
 };
 
+function pickCodigo(it: Record<string, unknown>): number {
+  const v = it.codigo ?? it.codigoimovel ?? (it as Record<string, unknown>).codigoImovel
+    ?? (it as Record<string, unknown>).codigoImovelDisponivel ?? it.id;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 function mapToRow(raw: Record<string, unknown>): Mapped {
-  const codigo = Number(raw.codigo);
+  const codigo = pickCodigo(raw);
   const fin = normFinalidade(raw.finalidade);
   const valor = parseCurrencyValue(raw.valor);
   const condominio = parseCurrencyValue(raw.valorcondominio);
