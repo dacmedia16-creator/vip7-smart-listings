@@ -25,6 +25,8 @@ import {
   CARACT_INTERNAS, CARACT_EXTERNAS, LAZER,
 } from '../lib/imoveis';
 import { CaracteristicasToggleGrid } from '../components/CaracteristicasToggleGrid';
+import { ProprietariosSection } from '../components/ProprietariosSection';
+import { addVinculo, type Cliente } from '../lib/clientes';
 
 const num = z.coerce.number().optional().nullable();
 const int = z.coerce.number().int().optional().nullable();
