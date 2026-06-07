@@ -163,7 +163,7 @@ export default function Condominios() {
               ) : pageItems.map((c) => {
                 const n = counts[c.codigo] ?? 0;
                 return (
-                  <TableRow key={c.codigo} className="hover:bg-[#FAF8F3]">
+                  <TableRow key={c.codigo} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
                     <TableCell className="font-medium">
                       <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
                     </TableCell>
