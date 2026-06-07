@@ -1,74 +1,31 @@
-## Diagnóstico da planilha
+## Problema
 
-`atendimentos-2026-06-07-004721.xls` é HTML disfarçado de `.xls` (igual ao export de proprietários), com **40 colunas separadas**:
+Na página `/crm/leads`, o card de filtros e a tabela estão renderizando com **fundo preto** e **texto preto** (nomes dos leads invisíveis, labels "Nome / Telefone / Interesse..." quase ilegíveis). O resto do CRM usa tema claro creme (`#FAF8F3` + bordas `#E8E4D9` + texto `#0F0F12`), então essa página ficou destoante e ilegível.
 
-```
-Codigo, Finalidade, UnidadeCodigo, Unidade, ClienteNome, ClienteTelefone,
-ClienteEmail, Midia, Campanha, Tipo, Fase, Termometro, Mql, Corretor,
-Equipe, Situacao, SituacaoDescarte, ImoveisCarrinho, ImoveisVisita,
-ImoveisProposta, DataHoraInclusao, UsuarioInclusao, DataHoraUltimaInteracao,
-UltimaInteracao, UsuarioUltimaInteracao, PerfilQuartos, PerfilBanhos,
-PerfilSuites, PerfilVagas, PerfilValorDe, PerfilValorAte,
-PerfilAreaInternaDe, PerfilAreaInternaAte, PerfilTipos, PerfilCidades,
-PerfilBairros, PerfilRegioes, Valor, PerfilSistema, Indicacao, Etiquetas
-```
+A causa é que o `Card` e o `Table` do shadcn estão pegando os tokens padrão `bg-card` / `bg-background` do tema escuro global, sem as classes de cor explícitas que as outras páginas do CRM aplicam.
 
-Como cada campo já vem em coluna própria, **não preciso de parser de texto livre** como fiz nos proprietários — basta auto-mapear e gravar.
+## Correção (apenas visual, sem mudar lógica)
 
-## O que vou construir
+Editar **`src/crm/pages/Leads.tsx`** para forçar o esquema claro do CRM, igual às páginas Clientes / Imóveis / Funil:
 
-Nova página `src/crm/pages/ImportarLeads.tsx` em `/crm/leads/importar`, com a mesma UX mínima da importação de proprietários:
-1. Upload do `.xls` (detecta HTML e parseia via `DOMParser`).
-2. Pré-visualização das primeiras 10 linhas.
-3. **Auto-mapeamento** das colunas → campos da tabela `leads` (mostrado de forma compacta, apenas duas linhas obrigatórias para confirmar: **Nome** e **Telefone**).
-4. Botão **Importar** com barra de progresso e relatório final (inseridos / duplicados / erros).
+1. **Card de filtros**: adicionar `bg-white` ao `<Card>` e garantir que o `<CardContent>` tenha texto escuro. Inputs e selects já são claros — só o container está preto.
+2. **Card da tabela**: adicionar `bg-white` ao `<Card>` que envolve a `<Table>`.
+3. **Cabeçalho da tabela**: aplicar `bg-[#FAF8F3]` no `<TableHeader>` e `text-[#4A4A52]` nos `<TableHead>` para o creme suave usado nas outras listagens.
+4. **Linhas**: garantir `hover:bg-[#FAF8F3]` e remover qualquer herança escura — as células já têm cores explícitas, mas o `<TableRow>` precisa de `border-[#E8E4D9]`.
+5. **Nome do lead**: já está `text-[#0F0F12]`, vai voltar a aparecer assim que o fundo virar branco.
 
-## Mapeamento Imoview → `leads`
+Nenhuma alteração em:
+- Lógica de busca / filtros / paginação
+- Estrutura de colunas
+- Componentes compartilhados (`Card`, `Table`) — fix é local na página, não mexe no design system global, para não afetar outras telas.
 
-| Coluna planilha | Campo `leads` | Tratamento |
-|---|---|---|
-| ClienteNome | `nome` | obrigatório |
-| ClienteTelefone | `telefone` | só dígitos, obrigatório |
-| ClienteEmail | `email` | lowercase, opcional |
-| Finalidade | `finalidade` | "Venda"→`venda`, "Locação"→`aluguel` |
-| PerfilTipos | `tipo_imovel` | primeiro tipo da string |
-| PerfilCidades | `cidade_interesse` | primeira cidade |
-| PerfilBairros | `bairro_interesse` | string completa |
-| PerfilValorDe | `orcamento_min` | número |
-| PerfilValorAte | `orcamento_max` | número |
-| PerfilQuartos/Banhos/Suites/Vagas | concatena em `perfil_busca` | texto descritivo |
-| Midia + Campanha | `origem` + `origem_url` | "cliqueimudei"→`portal`, etc; padrão `importado` |
-| Etiquetas | `tags` | split por vírgula |
-| DataHoraInclusao | `created_at` | parse `dd/MM/yyyy HH:mm` |
-| DataHoraUltimaInteracao | `last_contact_at` | idem |
-| Fase + Situacao | `status_funil` | mapa: "Lead qualificado"→`em_atendimento`, "Visita"→`visita_agendada`, "Proposta"→`proposta_enviada`, "Negócio fechado"→`fechamento`, Situacao="Descartado"→`perdido`, padrão `novo` |
-| Codigo | `imovel_interesse_codigo` | string |
-| UltimaInteracao + SituacaoDescarte | `observacoes` | texto consolidado |
+## Arquivo
 
-Campos sem destino direto (Termometro, Mql, Corretor, Equipe, etc.) vão para `observacoes` como texto extra para não perder informação.
+- **Editado**: `src/crm/pages/Leads.tsx` (apenas classes Tailwind nos wrappers `Card`, `TableHeader`, `TableHead`, `TableRow`).
 
-## Deduplicação
+## Validação
 
-Antes de inserir cada linha, chamo o RPC já existente `find_duplicate_lead(_telefone, _email)`. Se retornar um lead, **pulo** (sem criar interação, já que é importação em massa, não contato novo). Contador "duplicados" no relatório final.
-
-## Acesso à página
-
-- Rota nova em `src/App.tsx`: `/crm/leads/importar` → `ImportarLeads` (com `RequireAuth`).
-- Botão **"Importar planilha"** em `src/crm/pages/Leads.tsx`, ao lado do "Novo lead".
-
-## Arquivos
-
-- **Novo**: `src/crm/pages/ImportarLeads.tsx`
-- **Editados**: `src/App.tsx` (rota), `src/crm/pages/Leads.tsx` (botão)
-
-## O que NÃO vou fazer
-
-- Não vou criar `clientes` a partir da planilha (só `leads`). Se depois você quiser duplicar como cliente categoria "interessado", é um passo extra.
-- Não vou vincular ao corretor importado por nome (só gravo o nome em `observacoes`). Vincular exigiria uma tabela de-para que você ainda não tem.
-- Não vou alterar nada na importação de proprietários.
-
-## Validação após implementar
-
-- Abrir `/crm/leads/importar`, subir o `.xls` enviado.
-- Conferir: ~N linhas detectadas, colunas auto-mapeadas, preview correto.
-- Importar e verificar no Funil (`/crm/funil`) que aparecem distribuídos nas colunas certas conforme `Fase`/`Situacao`.
+Abrir `/crm/leads` e conferir:
+- Card de filtros com fundo branco, texto escuro legível.
+- Tabela com cabeçalho creme, linhas brancas, nomes dos leads visíveis em preto.
+- Visual idêntico ao da página `/crm/clientes`.

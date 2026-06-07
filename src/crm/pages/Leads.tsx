@@ -87,7 +87,7 @@ export default function LeadsList() {
           </div>
         </div>
 
-        <Card className="border-[#E8E4D9]">
+        <Card className="border-[#E8E4D9] bg-white">
           <CardContent className="p-4 space-y-3">
             <div className="flex flex-wrap gap-3">
               <form
