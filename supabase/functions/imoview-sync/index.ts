@@ -110,41 +110,29 @@ const toArr = (data: unknown): Record<string, unknown>[] =>
   Array.isArray(data) ? data as Record<string, unknown>[]
   : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
 
-const isInativoRaw = (r: Record<string, unknown>): boolean => {
-  const s = String(r.situacao ?? r.statusimovel ?? r.status ?? "").toLowerCase();
-  return !!s && (s.includes("inativ") || s.includes("suspens") || s.includes("bloque") || s.includes("desativ") || s.includes("indispon"));
-};
-
-async function fetchListingDesativados(finalidade: number, pagina: number): Promise<Record<string, unknown>[]> {
-  // Tentativa 1: endpoint dedicado de inativos
-  try {
-    const data = await imoviewFetch("/Imovel/RetornarImoveisInativos", {
+// Modo 'desativados': a API Imoview desta conta só expõe endpoints *Disponiveis*
+// (RetornarImoveis e RetornarImoveisInativos retornam 404). Estratégia:
+// reconciliar — listar TODOS os códigos atualmente disponíveis e marcar
+// como inativo no banco tudo que não estiver nessa lista.
+async function collectAvailableCodes(finalidade: number): Promise<Set<number>> {
+  const codes = new Set<number>();
+  let pagina = 1;
+  // hard cap defensivo (300 págs * 20 = 6000 imóveis por finalidade)
+  while (pagina <= 300) {
+    const data = await imoviewFetch("/Imovel/RetornarImoveisDisponiveis", {
       finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
     });
-    const arr = toArr(data);
-    if (pagina === 1) console.log(`[sync-desat] RetornarImoveisInativos fin=${finalidade} -> ${arr.length} itens`);
-    return arr;
-  } catch (e1) {
-    if (pagina === 1) console.warn(`[sync-desat] RetornarImoveisInativos falhou:`, (e1 as Error).message);
+    const lista = toArr(data);
+    if (lista.length === 0) break;
+    for (const it of lista) {
+      const c = pickCodigo(it);
+      if (c > 0) codes.add(c);
+    }
+    if (lista.length < PAGE_SIZE) break;
+    pagina++;
   }
-  // Tentativa 2: RetornarImoveis com filtro situacao=Inativo
-  try {
-    const data = await imoviewFetch("/Imovel/RetornarImoveis", {
-      finalidade, situacao: "Inativo", numeropagina: pagina, numeroregistros: PAGE_SIZE,
-    });
-    const arr = toArr(data);
-    if (pagina === 1) console.log(`[sync-desat] RetornarImoveis situacao=Inativo fin=${finalidade} -> ${arr.length} itens`);
-    if (arr.length > 0) return arr;
-  } catch (e2) {
-    if (pagina === 1) console.warn(`[sync-desat] RetornarImoveis(situacao) falhou:`, (e2 as Error).message);
-  }
-  // Tentativa 3: varre RetornarImoveis e filtra inativos no servidor
-  const data = await imoviewFetch("/Imovel/RetornarImoveis", {
-    finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
-  });
-  const arr = toArr(data).filter(isInativoRaw);
-  if (pagina === 1) console.log(`[sync-desat] fallback varredura fin=${finalidade} -> ${arr.length} inativos no chunk`);
-  return arr;
+  console.log(`[sync-desat] fin=${finalidade} -> ${codes.size} códigos disponíveis (${pagina} pág)`);
+  return codes;
 }
 
 function unwrapDetail(d: unknown): Record<string, unknown> | null {
@@ -408,6 +396,97 @@ serve(async (req) => {
       const stats = { inserted: 0, updated: 0, unchanged: 0, photos: 0, errors: 0 };
       await syncOne(sb, detail, stats, null);
       return new Response(JSON.stringify({ ok: true, stats }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ===== modo desativados (reconciliação em uma única invocação) =====
+    if (isDesat) {
+      const auth = req.headers.get("Authorization") || "";
+      let userId: string | null = null;
+      if (auth.startsWith("Bearer ")) {
+        const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
+        const { data } = await userClient.auth.getUser();
+        userId = data.user?.id ?? null;
+      }
+      const { data: log, error: logErr } = await sb
+        .from("imoview_sync_log")
+        .insert({ status: "running", mode, triggered_by: userId })
+        .select("id")
+        .single();
+      if (logErr) throw logErr;
+      const desatSyncId = log.id as string;
+
+      // resposta imediata, processamento em background
+      (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil(
+        (async () => {
+          try {
+            // 1) coletar códigos disponíveis nas duas finalidades
+            const available = new Set<number>();
+            for (const fin of FINALIDADES) {
+              const codes = await collectAvailableCodes(fin);
+              for (const c of codes) available.add(c);
+            }
+
+            // 2) ler todos os ativos da nossa base que vieram da Imoview
+            const localCodes: { id: string; codigo_imoview: number }[] = [];
+            const pageSize = 1000;
+            let from = 0;
+            while (true) {
+              const { data: rows, error } = await sb
+                .from("imoveis_proprios")
+                .select("id, codigo_imoview")
+                .eq("origem", "imoview")
+                .eq("ativo", true)
+                .not("codigo_imoview", "is", null)
+                .range(from, from + pageSize - 1);
+              if (error) throw error;
+              if (!rows || rows.length === 0) break;
+              for (const r of rows) localCodes.push(r as { id: string; codigo_imoview: number });
+              if (rows.length < pageSize) break;
+              from += pageSize;
+            }
+
+            // 3) diff: o que está no banco e NÃO está disponível na API
+            const staleIds = localCodes
+              .filter((r) => !available.has(Number(r.codigo_imoview)))
+              .map((r) => r.id);
+
+            console.log(`[sync-desat] disponíveis=${available.size} locais_ativos=${localCodes.length} a_desativar=${staleIds.length}`);
+
+            // 4) marcar inativos em lotes
+            let removed = 0;
+            const batch = 500;
+            for (let i = 0; i < staleIds.length; i += batch) {
+              const slice = staleIds.slice(i, i + batch);
+              const { error } = await sb
+                .from("imoveis_proprios")
+                .update({ ativo: false, status: "inativo", imoview_sync_at: new Date().toISOString() })
+                .in("id", slice);
+              if (error) throw error;
+              removed += slice.length;
+            }
+
+            await sb.from("imoview_sync_log").update({
+              status: "ok",
+              total: available.size,
+              removed,
+              finished_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }).eq("id", desatSyncId);
+          } catch (e) {
+            console.error("[sync-desat] fatal:", e);
+            await sb.from("imoview_sync_log").update({
+              status: "error",
+              error_details: { error: (e as Error).message },
+              finished_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }).eq("id", desatSyncId);
+          }
+        })(),
+      );
+
+      return new Response(JSON.stringify({ ok: true, sync_id: desatSyncId, status: "running" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ===== iniciar log se primeira chamada =====
