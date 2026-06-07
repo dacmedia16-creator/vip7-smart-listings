@@ -43,6 +43,7 @@ import CrmClienteDetail from "./crm/pages/ClienteDetail";
 import CrmImportarClientes from "./crm/pages/ImportarClientes";
 import CrmImportarProprietarios from "./crm/pages/ImportarProprietarios";
 import CrmImportarLeads from "./crm/pages/ImportarLeads";
+import CrmImportarImoveisDesativados from "./crm/pages/ImportarImoveisDesativados";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -82,6 +83,7 @@ const App = () => (
                 <Route path="/crm/funil" element={<RequireAuth><CrmFunil /></RequireAuth>} />
                 <Route path="/crm/imoveis" element={<RequireAuth><CrmImoveis /></RequireAuth>} />
                 <Route path="/crm/imoveis/importar-proprietarios" element={<RequireAuth roles={['admin','gestor']}><CrmImportarProprietarios /></RequireAuth>} />
+                <Route path="/crm/imoveis/importar-desativados" element={<RequireAuth roles={['admin','gestor']}><CrmImportarImoveisDesativados /></RequireAuth>} />
                 <Route path="/crm/imoveis/novo" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />
                 <Route path="/crm/imoveis/:id" element={<RequireAuth><CrmImovelDetail /></RequireAuth>} />
                 <Route path="/crm/imoveis/:id/editar" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />

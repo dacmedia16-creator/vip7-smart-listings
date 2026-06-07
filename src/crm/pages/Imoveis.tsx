@@ -234,9 +234,14 @@ export default function Imoveis() {
         </div>
         <div className="flex gap-2">
           {isManager && (
-            <Button asChild variant="outline">
-              <Link to="/crm/imoveis/importar-proprietarios">Importar proprietários</Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link to="/crm/imoveis/importar-proprietarios">Importar proprietários</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/crm/imoveis/importar-desativados">Importar desativados</Link>
+              </Button>
+            </>
           )}
           {canCreate && (
             <Button asChild>
