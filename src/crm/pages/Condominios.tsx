@@ -121,14 +121,21 @@ export default function Condominios() {
           )}
         </div>
 
-        <Card className="p-4">
+        <Card className="p-4 bg-white border-[#E8E4D9]">
           <div className="flex gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#4A4A52]" />
-              <Input placeholder="Buscar condomínio..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input
+                placeholder="Buscar condomínio..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-white border-[#E8E4D9] text-[#0F0F12] placeholder:text-[#4A4A52]"
+              />
             </div>
             <Select value={cidade} onValueChange={setCidade}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Cidade" /></SelectTrigger>
+              <SelectTrigger className="w-[220px] bg-white border-[#E8E4D9] text-[#0F0F12]">
+                <SelectValue placeholder="Cidade" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as cidades</SelectItem>
                 {cidades.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -137,14 +144,14 @@ export default function Condominios() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="bg-white border-[#E8E4D9] overflow-hidden">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Cidade</TableHead>
-                <TableHead className="text-right">Imóveis</TableHead>
-                <TableHead>Código Imoview</TableHead>
+            <TableHeader className="bg-[#FAF8F3]">
+              <TableRow className="border-b border-[#E8E4D9] hover:bg-transparent">
+                <TableHead className="text-[#4A4A52]">Nome</TableHead>
+                <TableHead className="text-[#4A4A52]">Cidade</TableHead>
+                <TableHead className="text-right text-[#4A4A52]">Imóveis</TableHead>
+                <TableHead className="text-[#4A4A52]">Código Imoview</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -156,7 +163,7 @@ export default function Condominios() {
               ) : pageItems.map((c) => {
                 const n = counts[c.codigo] ?? 0;
                 return (
-                  <TableRow key={c.codigo} className="hover:bg-[#FAF8F3]">
+                  <TableRow key={c.codigo} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
                     <TableCell className="font-medium">
                       <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
                     </TableCell>
