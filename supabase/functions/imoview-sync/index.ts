@@ -431,25 +431,27 @@ serve(async (req) => {
       } else {
         pagina++;
       }
+
+      // Persistir cursor + total a cada página (sobrevive a timeout)
+      const { data: curTotal } = await sb.from("imoview_sync_log").select("total").eq("id", activeSyncId).single();
+      await sb.from("imoview_sync_log").update({
+        cursor: { finalidadeIdx, pagina },
+        total: (curTotal?.total || 0) + lista.length,
+        updated_at: new Date().toISOString(),
+      }).eq("id", activeSyncId);
     }
 
     if (finalidadeIdx >= FINALIDADES.length) done = true;
 
-    // Atualizar log incremental
-    const { data: cur } = await sb.from("imoview_sync_log").select("inserted, updated, unchanged, photos_uploaded, errors_count, total").eq("id", activeSyncId).single();
+    // Final do chunk: counts já foram persistidos por persistStats dentro de syncOne.
+    // Apenas atualizar cursor e, se done, finalizar com removidos/status.
     const update: Record<string, unknown> = {
-      inserted: (cur?.inserted || 0) + stats.inserted,
-      updated: (cur?.updated || 0) + stats.updated,
-      unchanged: (cur?.unchanged || 0) + stats.unchanged,
-      photos_uploaded: (cur?.photos_uploaded || 0) + stats.photos,
-      errors_count: (cur?.errors_count || 0) + stats.errors,
-      total: (cur?.total || 0) + totalSeen,
       cursor: { finalidadeIdx, pagina },
+      updated_at: new Date().toISOString(),
     };
 
     if (done) {
-      // Marcar imoview que não foi visto neste sync como inativo
-      const startedAtRes = await sb.from("imoview_sync_log").select("started_at").eq("id", activeSyncId).single();
+      const startedAtRes = await sb.from("imoview_sync_log").select("started_at, errors_count").eq("id", activeSyncId).single();
       const startedAt = startedAtRes.data?.started_at as string | undefined;
       if (startedAt) {
         const { data: stale, count } = await sb
@@ -460,11 +462,12 @@ serve(async (req) => {
           .select("id");
         update.removed = (stale?.length ?? count) || 0;
       }
-      update.status = stats.errors > 0 ? "partial" : "ok";
+      update.status = (startedAtRes.data?.errors_count || 0) > 0 ? "partial" : "ok";
       update.finished_at = new Date().toISOString();
     }
 
     await sb.from("imoview_sync_log").update(update).eq("id", activeSyncId);
+
 
     if (!done) {
       // re-invocar para próximo chunk
