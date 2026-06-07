@@ -633,7 +633,7 @@ export default function ImportarProprietarios() {
               <div className="flex items-center gap-3">
                 <Button
                   onClick={startImport}
-                  disabled={importing || !mapping[IMOVEL_FIELD.key] || !mapping['p1_nome']}
+                  disabled={importing || !mapping[IMOVEL_FIELD.key] || (!mapping['p1_nome'] && !mapping['proprietarios_raw'])}
                   className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
                 >
                   {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
