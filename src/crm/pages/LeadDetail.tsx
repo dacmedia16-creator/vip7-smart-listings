@@ -196,6 +196,14 @@ export default function LeadDetail() {
           </CardContent>
         </Card>
 
+        <LeadImoveisInteresseCard
+          carrinho={lead.imoveis_carrinho_codigos}
+          visita={lead.imoveis_visita_codigos}
+          proposta={lead.imoveis_proposta_codigos}
+        />
+
+
+
         <Tabs defaultValue="historico">
           <TabsList>
             <TabsTrigger value="historico">Histórico ({interacoes.length})</TabsTrigger>
