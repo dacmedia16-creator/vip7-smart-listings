@@ -121,8 +121,6 @@ export default function ImportarProprietarios() {
 
   const preview = useMemo(() => rows.slice(0, 10), [rows]);
 
-  if (rolesLoading) return null;
-  if (!isAdmin) return <Navigate to="/crm" replace />;
 
   const handleFile = async (file: File) => {
     setFileName(file.name);
