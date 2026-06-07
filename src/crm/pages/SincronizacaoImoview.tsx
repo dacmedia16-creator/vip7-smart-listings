@@ -128,6 +128,27 @@ export default function SincronizacaoImoview() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><Archive className="h-4 w-4" /> Imóveis desativados / inativos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-[#4A4A52]">
+              Importa do Imoview todos os imóveis marcados como inativos/desativados/suspensos. Eles entram com <strong>status Inativo</strong> e <strong>não aparecem no site público</strong> — ficam visíveis só no CRM filtrando por Status = Inativo.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => trigger('desativados')}
+                disabled={loading || !!running}
+                className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+              >
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Sincronizar desativados (API)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" /> Sincronização de Clientes</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
