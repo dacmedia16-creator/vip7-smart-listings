@@ -95,6 +95,9 @@ export default function ImportarClientes() {
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [result, setResult] = useState<ResultAgg | null>(null);
 
+  // Sync de proprietários do Imoview
+  const [syncProp, setSyncProp] = useState({ running: false, onlyMissing: true, limit: '' as string, result: null as null | { syncId?: string; total?: number; msg: string } });
+
   const preview = useMemo(() => rows.slice(0, 10), [rows]);
 
   if (rolesLoading) return null;
