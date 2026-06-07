@@ -282,41 +282,29 @@ async function syncOne(
       return;
     }
 
-    // 1) PERSISTIR a linha PRIMEIRO (sem fotos novas) para garantir dados mesmo em timeout
-    const existingFotos = (existing?.fotos as string[] | undefined) || [];
+    // Usar URLs ORIGINAIS do Imoview no campo `fotos` para popular o catálogo rápido.
+    // O espelhamento para o bucket `imoveis-fotos` fica como otimização futura (job dedicado),
+    // evitando estourar o timeout da edge function (20+ fotos × upload por imóvel).
+    const fotosOrigem = mapped.fotosUrls.length > 0
+      ? mapped.fotosUrls
+      : ((existing?.fotos as string[] | undefined) || []);
     const baseRow = {
       ...mapped.payload,
-      fotos: existingFotos,
+      fotos: fotosOrigem,
       imoview_hash: hash,
       imoview_sync_at: new Date().toISOString(),
     };
 
-    let rowId: string | null = null;
     if (existing) {
       await sb.from("imoveis_proprios").update(baseRow).eq("id", existing.id);
-      rowId = existing.id as string;
       stats.updated++;
       if (syncId) await persistStats(sb, syncId, { updated: 1 });
     } else {
-      const { data: ins } = await sb.from("imoveis_proprios").insert(baseRow).select("id").single();
-      rowId = (ins?.id as string) || null;
+      await sb.from("imoveis_proprios").insert(baseRow);
       stats.inserted++;
       if (syncId) await persistStats(sb, syncId, { inserted: 1 });
     }
 
-    // 2) Espelhar fotos incrementalmente, atualizando fotos + log a cada lote
-    const mirrored: string[] = [];
-    const concurrency = 4;
-    for (let i = 0; i < mapped.fotosUrls.length; i += concurrency) {
-      const batch = mapped.fotosUrls.slice(i, i + concurrency);
-      const res = await Promise.all(batch.map((url, j) => mirrorPhoto(sb, mapped.codigo, i + j, url)));
-      let added = 0;
-      for (const url of res) if (url) { mirrored.push(url); stats.photos++; added++; }
-      if (rowId && mirrored.length > 0) {
-        await sb.from("imoveis_proprios").update({ fotos: mirrored }).eq("id", rowId);
-      }
-      if (added > 0 && syncId) await persistStats(sb, syncId, { photos: added });
-    }
   } catch (e) {
     stats.errors++;
     if (syncId) await persistStats(sb, syncId, { errors: 1 });
