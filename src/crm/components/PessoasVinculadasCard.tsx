@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users } from 'lucide-react';
+import { Users, Phone, Mail } from 'lucide-react';
 import { CLIENTE_PAPEIS, listVinculosByImovel } from '../lib/clientes';
 
 type Row = {
@@ -11,6 +11,12 @@ type Row = {
   percentual: number | null;
   clientes: { id: string; nome: string; email: string | null; telefone: string | null } | null;
 };
+
+function waLink(tel: string) {
+  const digits = tel.replace(/\D/g, '');
+  const withDDI = digits.startsWith('55') ? digits : `55${digits}`;
+  return `https://wa.me/${withDDI}`;
+}
 
 export function PessoasVinculadasCard({ imovelId }: { imovelId: string }) {
   const [rows, setRows] = useState<Row[]>([]);
@@ -38,7 +44,18 @@ export function PessoasVinculadasCard({ imovelId }: { imovelId: string }) {
             <div key={r.id} className="flex items-center justify-between text-sm border-b border-[#F0E9D6] pb-2 last:border-0">
               <div className="min-w-0">
                 <Link to={`/crm/clientes/${r.clientes.id}`} className="font-medium text-[#0F0F12] hover:underline truncate block">{r.clientes.nome}</Link>
-                <div className="text-xs text-[#7A7A80]">{r.clientes.telefone || r.clientes.email || ''}</div>
+                <div className="flex flex-wrap gap-3 mt-0.5 text-xs text-[#4A4A52]">
+                  {r.clientes.telefone && (
+                    <a href={waLink(r.clientes.telefone)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-[#25D366]">
+                      <Phone className="h-3 w-3" /> {r.clientes.telefone}
+                    </a>
+                  )}
+                  {r.clientes.email && (
+                    <a href={`mailto:${r.clientes.email}`} className="flex items-center gap-1 hover:text-primary">
+                      <Mail className="h-3 w-3" /> {r.clientes.email}
+                    </a>
+                  )}
+                </div>
               </div>
               <Badge variant="outline" className="text-xs ml-2 shrink-0">
                 {papelLabel(r.papel)}{r.percentual ? ` ${r.percentual}%` : ''}
