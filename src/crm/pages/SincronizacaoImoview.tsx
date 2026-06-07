@@ -8,7 +8,7 @@ import { useRoles } from '../hooks/useRole';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Download, RotateCw, Users, Home } from 'lucide-react';
+import { Loader2, RefreshCw, Download, RotateCw, Users, Home, Archive } from 'lucide-react';
 import { triggerSyncClientes, triggerSyncProprietarios } from '../lib/clientes';
 
 type SyncLog = {
@@ -52,8 +52,9 @@ export default function SincronizacaoImoview() {
   if (rolesLoading) return null;
   if (!isAdmin) return <Navigate to="/crm" replace />;
 
-  const trigger = async (mode: 'full' | 'incremental' | 'single', codigo?: number) => {
+  const trigger = async (mode: 'full' | 'incremental' | 'single' | 'desativados', codigo?: number) => {
     if (mode === 'full' && !confirm('Sincronização completa pode levar vários minutos e consumir bastante da API Imoview. Continuar?')) return;
+    if (mode === 'desativados' && !confirm('Importar imóveis desativados/inativos do Imoview? Eles entrarão com status Inativo (não aparecem no site público).')) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('imoview-sync', {
@@ -122,6 +123,27 @@ export default function SincronizacaoImoview() {
                 Sincronização em andamento — {running.total} lidos · {running.inserted} novos · {running.updated} atualizados · {running.unchanged} inalterados · {running.photos_uploaded} fotos · {running.errors_count} erros
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><Archive className="h-4 w-4" /> Imóveis desativados / inativos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-[#4A4A52]">
+              Importa do Imoview todos os imóveis marcados como inativos/desativados/suspensos. Eles entram com <strong>status Inativo</strong> e <strong>não aparecem no site público</strong> — ficam visíveis só no CRM filtrando por Status = Inativo.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => trigger('desativados')}
+                disabled={loading || !!running}
+                className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+              >
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                Sincronizar desativados (API)
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

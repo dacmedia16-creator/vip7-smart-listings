@@ -106,6 +106,47 @@ async function fetchListing(finalidade: number, pagina: number): Promise<Record<
   }
 }
 
+const toArr = (data: unknown): Record<string, unknown>[] =>
+  Array.isArray(data) ? data as Record<string, unknown>[]
+  : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+
+const isInativoRaw = (r: Record<string, unknown>): boolean => {
+  const s = String(r.situacao ?? r.statusimovel ?? r.status ?? "").toLowerCase();
+  return !!s && (s.includes("inativ") || s.includes("suspens") || s.includes("bloque") || s.includes("desativ") || s.includes("indispon"));
+};
+
+async function fetchListingDesativados(finalidade: number, pagina: number): Promise<Record<string, unknown>[]> {
+  // Tentativa 1: endpoint dedicado de inativos
+  try {
+    const data = await imoviewFetch("/Imovel/RetornarImoveisInativos", {
+      finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    const arr = toArr(data);
+    if (pagina === 1) console.log(`[sync-desat] RetornarImoveisInativos fin=${finalidade} -> ${arr.length} itens`);
+    return arr;
+  } catch (e1) {
+    if (pagina === 1) console.warn(`[sync-desat] RetornarImoveisInativos falhou:`, (e1 as Error).message);
+  }
+  // Tentativa 2: RetornarImoveis com filtro situacao=Inativo
+  try {
+    const data = await imoviewFetch("/Imovel/RetornarImoveis", {
+      finalidade, situacao: "Inativo", numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    const arr = toArr(data);
+    if (pagina === 1) console.log(`[sync-desat] RetornarImoveis situacao=Inativo fin=${finalidade} -> ${arr.length} itens`);
+    if (arr.length > 0) return arr;
+  } catch (e2) {
+    if (pagina === 1) console.warn(`[sync-desat] RetornarImoveis(situacao) falhou:`, (e2 as Error).message);
+  }
+  // Tentativa 3: varre RetornarImoveis e filtra inativos no servidor
+  const data = await imoviewFetch("/Imovel/RetornarImoveis", {
+    finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+  });
+  const arr = toArr(data).filter(isInativoRaw);
+  if (pagina === 1) console.log(`[sync-desat] fallback varredura fin=${finalidade} -> ${arr.length} inativos no chunk`);
+  return arr;
+}
+
 function unwrapDetail(d: unknown): Record<string, unknown> | null {
   if (!d || typeof d !== "object") return null;
   const r = d as Record<string, unknown>;
@@ -286,10 +327,16 @@ async function syncOne(
   raw: Record<string, unknown>,
   stats: { inserted: number; updated: number; unchanged: number; photos: number; errors: number },
   syncId: string | null,
+  forceInativo = false,
 ) {
   try {
     const mapped = mapToRow(raw);
     if (!mapped.codigo) return;
+
+    if (forceInativo) {
+      mapped.payload.status = "inativo";
+      mapped.payload.ativo = false;
+    }
 
     const hash = await sha256Hex(JSON.stringify(mapped.payload));
 
@@ -301,14 +348,14 @@ async function syncOne(
 
     if (existing && existing.imoview_hash === hash) {
       stats.unchanged++;
-      await sb.from("imoveis_proprios").update({ imoview_sync_at: new Date().toISOString(), ativo: true }).eq("id", existing.id);
+      await sb.from("imoveis_proprios").update({
+        imoview_sync_at: new Date().toISOString(),
+        ...(forceInativo ? { ativo: false, status: "inativo" } : { ativo: true }),
+      }).eq("id", existing.id);
       if (syncId) await persistStats(sb, syncId, { unchanged: 1 });
       return;
     }
 
-    // Usar URLs ORIGINAIS do Imoview no campo `fotos` para popular o catálogo rápido.
-    // O espelhamento para o bucket `imoveis-fotos` fica como otimização futura (job dedicado),
-    // evitando estourar o timeout da edge function (20+ fotos × upload por imóvel).
     const fotosOrigem = mapped.fotosUrls.length > 0
       ? mapped.fotosUrls
       : ((existing?.fotos as string[] | undefined) || []);
@@ -346,11 +393,12 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const { mode = "full", sync_id, codigo, internal_cursor } = body as {
-      mode?: "full" | "incremental" | "single";
+      mode?: "full" | "incremental" | "single" | "desativados";
       sync_id?: string;
       codigo?: number;
       internal_cursor?: { finalidadeIdx: number; pagina: number };
     };
+    const isDesat = mode === "desativados";
 
     // ===== modo single =====
     if (mode === "single") {
@@ -409,8 +457,8 @@ serve(async (req) => {
 
     while (pagesProcessed < PAGES_PER_CHUNK && finalidadeIdx < FINALIDADES.length) {
       const fin = FINALIDADES[finalidadeIdx];
-      const lista = await fetchListing(fin, pagina);
-      console.log(`[sync] fin=${fin} pag=${pagina} -> ${lista.length} itens`);
+      const lista = isDesat ? await fetchListingDesativados(fin, pagina) : await fetchListing(fin, pagina);
+      console.log(`[sync${isDesat ? '-desat' : ''}] fin=${fin} pag=${pagina} -> ${lista.length} itens`);
       totalSeen += lista.length;
 
       if (lista.length === 0) {
@@ -431,7 +479,7 @@ serve(async (req) => {
         const slice = codigos.slice(i, i + conc);
         const details = await Promise.all(slice.map((c) => fetchDetails(c)));
         for (const d of details) {
-          if (d) await syncOne(sb, d, stats, activeSyncId!);
+          if (d) await syncOne(sb, d, stats, activeSyncId!, isDesat);
         }
       }
 
@@ -465,7 +513,7 @@ serve(async (req) => {
     if (done) {
       const startedAtRes = await sb.from("imoview_sync_log").select("started_at, errors_count").eq("id", activeSyncId).single();
       const startedAt = startedAtRes.data?.started_at as string | undefined;
-      if (startedAt) {
+      if (startedAt && !isDesat) {
         const { data: stale, count } = await sb
           .from("imoveis_proprios")
           .update({ ativo: false, status: "inativo" }, { count: "exact" })
