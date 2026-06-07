@@ -1,51 +1,39 @@
-## O que vai mudar
+## O que a planilha tem
 
-No importador de leads (`/crm/leads/importar`):
+`imoveis-2026-06-07-014614.xls` é o export HTML do Imoview com **1.140 imóveis**, 158 colunas. As que importam:
 
-### 1. Subir todos os leads (resolver limite de 200)
+- `Codigo` (col 0) — código Imoview do imóvel
+- `Proprietarios` (col 121) — campo único no formato `Cód. 2652 | Eder Souza | (15) 98176-7268 | email@x.com`, com suporte a múltiplos (`1) ... 2) ...`)
 
-O export "Atendimentos" do Imoview pagina em 200 linhas por arquivo. O importador hoje aceita só um arquivo. Vou:
+A página `/crm/imoveis/importar-proprietarios` já tem o parser exato (`parseProprietariosCell`) e o fluxo de upsert cliente + vínculo `cliente_imoveis(papel='proprietario')`. Só que rodar 1.140 linhas pelo navegador é lento e instável.
 
-- Trocar o input para aceitar **vários arquivos de uma vez** (`multiple`).
-- Ler cada arquivo (CSV / XLSX / XLS-HTML), juntar todas as linhas em uma única lista, deduplicar dentro do próprio lote (mesmo telefone aparecendo em duas páginas exportadas conta uma vez só), e mostrar quantas linhas vieram de cada arquivo.
-- Manter o mesmo passo de preview/mapeamento, só que aplicado ao conjunto unificado.
+## O que vou fazer
 
-Resultado: você baixa todas as páginas do Imoview, seleciona todas juntas e sobe de uma vez.
+Rodar a importação **direto no banco**, em lote, usando a mesma lógica da página:
 
-### 2. Criar/atualizar cliente como "comprador"
+1. **Ler a planilha** no sandbox (parser HTML idêntico ao da página).
+2. **Casar pelo código do imóvel** com `imoveis_proprios.codigo_imoview` (carrego todos uma vez num Map).
+3. Para cada linha, **parsear a célula `Proprietarios`** com a mesma função (suporta 1, 2 ou 3 sócios, extrai nome, código Imoview do cliente, CPF/CNPJ, e-mail, telefone, telefone 2).
+4. **Upsert do cliente** em `public.clientes`:
+   - se `codigo_imoview` do cliente já existir → update preenchendo só campos vazios e adicionando `'proprietario'` em `categorias`;
+   - senão se `cpf_cnpj` bater → mesmo update;
+   - senão → insert com `origem='imoview_planilha'`, `categorias=['proprietario']`.
+5. **Vínculo** em `public.cliente_imoveis` com `onConflict (cliente_id, imovel_id, papel='proprietario')` — não duplica.
+6. **Relatório final** com:
+   - imóveis processados / não encontrados no banco (lista de códigos)
+   - clientes novos / atualizados
+   - vínculos criados / já existentes
+   - linhas com erro
 
-Para cada lead que entrar (não duplicado), também gravar na tabela `clientes`:
+## Detalhes técnicos
 
-- **Buscar cliente existente** pelo telefone (dígitos) ou e-mail.
-- **Se não existir**: criar com `nome`, `telefone`, `email`, `tipo_pessoa='fisica'`, `origem='lead_import'`, `categorias=['comprador']`, e cidade/observações vindas do lead.
-- **Se já existir**: dar `update` adicionando `'comprador'` ao array `categorias` (sem duplicar — usar união) e preenchendo campos vazios (não sobrescreve dados já cadastrados).
+- Executo via script no sandbox que chama a API REST do Supabase com `SUPABASE_SERVICE_ROLE_KEY` (já disponível como secret) — bypassa RLS e roda do servidor, sem precisar abrir a página no navegador.
+- Reaproveito a função `parseProprietariosCell` exportada de `src/crm/pages/ImportarProprietarios.tsx` para garantir o mesmo comportamento.
+- Sem alteração de schema, sem novas tabelas, sem mudança na página existente.
+- O CSV/HTML da planilha não é copiado para o repositório — leio direto de `/mnt/user-uploads/`.
 
-Isso roda no mesmo loop da importação, logo após o `insert` do lead dar certo. Se a criação do cliente falhar, o lead continua válido — o erro entra no relatório como aviso, não bloqueia.
+## O que NÃO muda
 
-### 3. Relatório final ampliado
-
-Trocar o painel "Importação concluída" para mostrar:
-
-- Arquivos processados (nome + linhas)
-- Leads novos / duplicados / ignorados
-- Clientes novos / clientes atualizados (categoria adicionada)
-- Lista de erros (até 50, como hoje)
-
-### Detalhes técnicos
-
-Arquivo único alterado: `src/crm/pages/ImportarLeads.tsx`.
-
-- `handleFile(file)` vira `handleFiles(files: FileList)` que itera, reaproveita o parser atual, e concatena `rows[]`. Dedup no lote por chave `digits(telefone) || lower(email)`.
-- Novo helper `upsertClienteComprador(lead)`:
-  - `select id, categorias, email, cidade from clientes where telefone = $1 or (email is not null and lower(email)=lower($2)) limit 1`
-  - se vazio → `insert` com `categorias: ['comprador']` e `origem: 'lead_import'`
-  - se existe → `update` com `categorias = array(distinct existentes + 'comprador')`, preenchendo apenas campos `null` no registro atual.
-- Sem mudanças de schema. `clientes.categorias` já é `text[]` e RLS permite insert/update para corretor/gestor/admin (`can_manage_clientes`), que é o mesmo papel exigido na página.
-- Sem alteração na rota nem no botão de "Importar planilha" da página de Leads.
-
-### O que NÃO muda
-
-- Lógica de mapeamento de colunas, status e origem do lead.
-- Regras de dedupe de leads (RPC `find_duplicate_lead` por 30 dias).
-- Permissões (continua restrito a admin/gestor).
-- Visual da página (já está no tema claro do CRM).
+- A página `/crm/imoveis/importar-proprietarios` continua funcionando igual para próximos uploads manuais.
+- Nenhum imóvel é alterado — só insiro/atualizo em `clientes` e `cliente_imoveis`.
+- Categorias e dados já existentes nos clientes não são sobrescritos, só completados.
