@@ -1,49 +1,65 @@
-# Proprietários nos imóveis — sync via Imoview + card no topo
+# Importar proprietários a partir de planilha de Imóveis
 
-## Situação atual
-- 1.213 imóveis ativos, **0 vínculos** de proprietário em `cliente_imoveis`.
-- A edge function `imoview-sync-proprietarios` já existe e usa o endpoint `App_` do Imoview (precisa de `IMOVIEW_APP_EMAIL` + `IMOVIEW_APP_SENHA` válidos — mesma credencial da sync de clientes).
-- A aba "Proprietários" no `ImovelForm` já permite vincular manualmente, mas não há resumo visível no topo nem disparador da sync em massa.
+## Objetivo
+Como o login Imoview está fora do ar, vamos popular os proprietários via planilha de **Imóveis** (1 linha = 1 imóvel) exportada do Imoview, contendo colunas do proprietário (nome, telefone, CPF, etc.). O match no CRM é por **código Imoview do imóvel**.
 
-## O que entregar
+## Nova página `/crm/imoveis/importar-proprietarios`
 
-### 1) Página admin para rodar a sync de proprietários
-Nova seção em **Importar clientes** (ou ao lado dos cards de sync que já existem) com:
-- Botão **"Sincronizar proprietários dos imóveis"** chamando `supabase.functions.invoke('imoview-sync-proprietarios')`.
-- Filtros opcionais: "Só imóveis sem proprietário" (default ON) e limite de lote.
-- Exibe progresso: total processado, vínculos criados, clientes novos, erros (top 20).
-- Bloqueia o botão se `IMOVIEW_APP_SENHA` estiver inválida (mostra link pro formulário de atualizar senha já existente).
+Fluxo em 4 passos (mesma UX da `ImportarClientes`):
 
-### 2) Ajuste fino na edge `imoview-sync-proprietarios`
-- Aceitar body `{ onlyMissing?: boolean, limit?: number, imovelIds?: string[] }`.
-- Salvar **todos** os campos do contato vindos do Imoview no `clientes` (nome, CPF/CNPJ, RG, email, telefone, telefone_secundario, endereço completo, data_nascimento, `imoview_raw`).
-- Dedup por `codigo_imoview` → fallback `cpf_cnpj` → fallback `telefone`.
-- Upsert em `cliente_imoveis` com `papel='proprietario'` e `onConflict: cliente_id,imovel_id,papel`.
-- Gravar log em `imoview_sync_log` (`mode='proprietarios'`).
+1. **Upload** do arquivo (CSV/XLSX/XLS).
+2. **Mapeamento** de colunas — auto-detecta por alias e permite ajuste manual.
+3. **Pré-visualização** das 10 primeiras linhas + contadores ("X imóveis encontrados no CRM, Y ausentes").
+4. **Importar** com barra de progresso e relatório final.
 
-### 3) Card "Proprietário(s)" no topo do `ImovelForm`
-Acima das abas, novo `Card` mostrando para cada proprietário vinculado:
-- Nome + badge de % de participação (se houver).
-- Telefone principal (com botão WhatsApp) + telefone secundário.
-- Email (com `mailto:`).
-- CPF/CNPJ.
-- Link "ver cliente" → `/crm/clientes/:id`.
-- Se não houver proprietário: estado vazio com botão "Vincular proprietário" que abre a aba Proprietários.
+### Campos mapeáveis
+**Imóvel (chave):**
+- `codigo_imovel` *(obrigatório — match por `imoveis_proprios.codigo_imoview`)* — aliases: `código`, `codigo`, `código imóvel`, `cod. imóvel`, `id imóvel`.
 
-A aba "Proprietários" continua existindo para edição (adicionar/remover).
+**Proprietário (dados que serão salvos em `clientes`):**
+- `proprietario_nome` *(obrigatório)* — aliases: `proprietário`, `proprietario`, `nome do proprietário`, `nome proprietário`.
+- `proprietario_tipo_pessoa` — aliases: `tipo pessoa proprietário`, `pj/pf`.
+- `proprietario_cpf_cnpj` — aliases: `cpf proprietário`, `cnpj proprietário`, `cpf/cnpj proprietário`.
+- `proprietario_rg`, `proprietario_email`, `proprietario_telefone`, `proprietario_telefone_secundario`, `proprietario_data_nascimento`.
+- Endereço do proprietário: `proprietario_endereco`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `cep`.
+- `proprietario_codigo_imoview` (se vier — usado pra dedup preferencial).
+- `proprietario_percentual` (% de participação se houver — vai pra `cliente_imoveis.percentual`).
+- `proprietario_observacoes`.
 
-### 4) (Opcional, baixo custo) Botão por imóvel
-Dentro do card do topo, botão **"Buscar no Imoview"** que dispara a sync só para aquele `imovel_id` (usa o mesmo endpoint com `imovelIds`).
+Se a planilha tiver **múltiplos proprietários por imóvel** em colunas tipo `Proprietário 2 Nome`/`Proprietário 2 Telefone`, mapeia também (até 3 proprietários por linha — configurável depois se precisar de mais).
 
-## Pré-requisito
-A sync **só funciona se o login Imoview estiver OK**. Se a última execução de `imoview-sync-clientes` falhou com 401, primeiro use o formulário de atualizar `IMOVIEW_APP_SENHA` que já está implementado, depois rode esta sync.
+## Lógica de processamento (client-side, em batches de 200)
+
+Para cada linha:
+1. **Match do imóvel** por `codigo_imoview` (carrego o set de códigos do CRM uma vez no início).
+   - Se não encontrar → conta em `imoveis_ausentes` (lista com até 200 códigos no relatório, e CSV pra baixar).
+2. **Upsert do cliente** (`clientes`):
+   - Dedup: `codigo_imoview` (se mapeado) → fallback `cpf_cnpj` → fallback `telefone + nome`.
+   - Marca `categorias` com `'proprietario'` (mantém categorias existentes).
+   - `origem = 'imoview_csv'` se for novo.
+3. **Vínculo** (`cliente_imoveis`):
+   - `upsert` com `onConflict: cliente_id,imovel_id,papel`, `papel='proprietario'`, `percentual` se mapeado.
+
+### Tela de resultado
+Badges com:
+- Clientes novos / Clientes atualizados.
+- Vínculos criados / Vínculos já existentes (não recontados).
+- Imóveis ausentes do CRM (com botão "Baixar lista de códigos ausentes").
+- Erros por linha (com botão "Baixar erros").
 
 ## Detalhes técnicos
-- **Arquivos a alterar:**
-  - `supabase/functions/imoview-sync-proprietarios/index.ts` — aceitar filtros no body, melhorar mapeamento de campos, log em `imoview_sync_log`.
-  - `src/crm/pages/ImportarClientes.tsx` — novo card "Sincronizar proprietários".
-  - `src/crm/pages/ImovelForm.tsx` — renderizar `<ProprietariosCard imovelId={id} />` antes das abas.
-  - `src/crm/components/ProprietariosCard.tsx` — novo componente readonly de resumo + botão "Buscar no Imoview".
-  - `src/crm/lib/clientes.ts` — já tem `listVinculosByImovel`; adicionar `syncProprietariosImovel(imovelId)`.
-- **Sem migração de schema** — todas as tabelas (`clientes`, `cliente_imoveis`, `imoview_sync_log`) já existem com os campos necessários.
-- **RLS:** o card lê via `listVinculosByImovel` (já coberto por `cliente_imoveis_select` + `clientes_select` para usuários CRM).
+- **Arquivos a criar:**
+  - `src/crm/pages/ImportarProprietarios.tsx` — nova página completa.
+  - Rota nova em `src/App.tsx` (ou onde está o roteamento do CRM): `/crm/imoveis/importar-proprietarios` protegida por `admin|gestor`.
+  - Link no menu de "Imóveis" do CRM (botão "Importar proprietários" ao lado de "Importar imóveis"/novo).
+- **Sem migrações** — usa `imoveis_proprios`, `clientes`, `cliente_imoveis` já existentes.
+- **Sem edge function** — toda a lógica é client-side (admin/gestor), igual à `ImportarClientes`. RLS atual já permite `INSERT/UPDATE/UPSERT` nessas tabelas para admin/gestor.
+- **Sem dependências novas** — reutiliza `papaparse` + `xlsx` que já estão instalados.
+- **Texto/normalização** reutiliza helpers de `ImportarClientes.tsx` (normHeader, autoMap) extraindo pra `src/crm/lib/csvMapping.ts` se valer a pena, ou copia o necessário se for menos invasivo.
+
+## Não muda
+- A página `ImportarClientes` continua igual.
+- A edge function `imoview-sync-proprietarios` e o botão "Buscar no Imoview" do `ProprietariosCard` continuam — quando a senha voltar você usa eles.
+
+## O que você precisa fazer
+Exportar do Imoview a planilha de Imóveis garantindo que as colunas do proprietário (nome, telefone, CPF) venham no export. Se quiser me mandar 1 amostra do CSV antes, eu já configuro os aliases corretos pra auto-mapear sem você precisar ajustar coluna por coluna.
