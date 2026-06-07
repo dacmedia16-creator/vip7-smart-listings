@@ -29,7 +29,7 @@ export default function CrmDashboard() {
       const tresDias = subDays(now, 3).toISOString();
       const seteDiasEtapa = subDays(now, 7).toISOString();
       const proximos3 = addDays(now, 3).toISOString();
-      const ativosStatuses = ['novo', 'em_atendimento', 'visita_agendada', 'proposta_enviada'];
+      const ativosStatuses = ['novo', 'em_atendimento', 'visita_agendada', 'proposta_enviada'] as const;
 
       const [
         imoveisCount,
