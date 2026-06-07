@@ -347,28 +347,46 @@ export default function ImportarProprietarios() {
 
           agg.imoveis_processados++;
 
-          // Processa cada slot
+          // Build owners list for this row: parsed-raw first, then slots — dedup by signature.
+          const owners: OwnerData[] = [];
+          const seen = new Set<string>();
+          const pushOwner = (o: OwnerData) => {
+            if (!o.nome) return;
+            const sig = o.codigo_imoview
+              ? `c:${o.codigo_imoview}`
+              : o.cpf_cnpj
+                ? `d:${digits(o.cpf_cnpj)}`
+                : `n:${(o.nome || '').toLowerCase()}|${digits(o.telefone || '')}`;
+            if (seen.has(sig)) return;
+            seen.add(sig);
+            owners.push(o);
+          };
+
+          // From "Proprietarios" raw cell
+          const rawCol = mapping['proprietarios_raw'];
+          if (rawCol) {
+            const parsed = parseProprietariosCell(String(row[rawCol] ?? ''));
+            for (const o of parsed) pushOwner(o);
+          }
+
+          // From slot columns
           for (const slot of SLOTS) {
             const get = (key: string) => {
               const col = mapping[`p${slot}_${key}`];
               return col ? row[col] : undefined;
             };
             const nome = str(get('nome'));
-            if (!nome) continue; // slot vazio
-
+            if (!nome) continue;
             const cpfCnpj = str(get('cpf_cnpj'));
-            const cpfDigits = cpfCnpj ? digits(cpfCnpj) : '';
-            const isJuridica = (cpfDigits.length > 11) || /^pj$|juridica|jurídica/i.test(String(get('tipo_pessoa') ?? ''));
-            const telefone = str(get('telefone'));
-            const codigoImoviewCli = Number(digits(get('codigo_imoview'))) || null;
-
-            const clientePayload: Record<string, unknown> = {
+            const pctRaw = get('percentual');
+            const pctSlot = pctRaw != null && pctRaw !== '' ? Number(String(pctRaw).replace(',', '.').replace(/[^\d.]/g, '')) : null;
+            pushOwner({
               nome,
-              tipo_pessoa: isJuridica ? 'juridica' : 'fisica',
+              tipo_pessoa: str(get('tipo_pessoa')),
               cpf_cnpj: cpfCnpj,
               rg: str(get('rg')),
               email: str(get('email'))?.toLowerCase() ?? null,
-              telefone,
+              telefone: str(get('telefone')),
               telefone_secundario: str(get('telefone_secundario')),
               data_nascimento: str(get('data_nascimento')),
               cep: str(get('cep')),
@@ -378,7 +396,38 @@ export default function ImportarProprietarios() {
               bairro: str(get('bairro')),
               cidade: str(get('cidade')),
               estado: str(get('estado')),
+              codigo_imoview: Number(digits(get('codigo_imoview'))) || null,
+              percentual: pctSlot != null && Number.isFinite(pctSlot) ? pctSlot : null,
               observacoes: str(get('observacoes')),
+            });
+          }
+
+          // Process each owner
+          for (const o of owners) {
+            const nome = o.nome!;
+            const cpfCnpj = o.cpf_cnpj ?? null;
+            const cpfDigits = cpfCnpj ? digits(cpfCnpj) : '';
+            const isJuridica = (cpfDigits.length > 11) || /^pj$|juridica|jurídica/i.test(String(o.tipo_pessoa ?? ''));
+            const telefone = o.telefone ?? null;
+            const codigoImoviewCli = o.codigo_imoview ?? null;
+
+            const clientePayload: Record<string, unknown> = {
+              nome,
+              tipo_pessoa: isJuridica ? 'juridica' : 'fisica',
+              cpf_cnpj: cpfCnpj,
+              rg: o.rg ?? null,
+              email: o.email ?? null,
+              telefone,
+              telefone_secundario: o.telefone_secundario ?? null,
+              data_nascimento: o.data_nascimento ?? null,
+              cep: o.cep ?? null,
+              endereco: o.endereco ?? null,
+              numero: o.numero ?? null,
+              complemento: o.complemento ?? null,
+              bairro: o.bairro ?? null,
+              cidade: o.cidade ?? null,
+              estado: o.estado ?? null,
+              observacoes: o.observacoes ?? null,
               ativo: true,
             };
 
@@ -389,7 +438,7 @@ export default function ImportarProprietarios() {
               if (data) existing = data as { id: string; categorias: string[] | null };
             }
             if (!existing && cpfDigits) {
-              const { data } = await supabase.from('clientes').select('id, categorias').eq('cpf_cnpj', cpfCnpj).maybeSingle();
+              const { data } = await supabase.from('clientes').select('id, categorias').eq('cpf_cnpj', cpfCnpj!).maybeSingle();
               if (data) existing = data as { id: string; categorias: string[] | null };
             }
             if (!existing && telefone) {
@@ -401,7 +450,6 @@ export default function ImportarProprietarios() {
             if (existing) {
               const cats = new Set<string>(existing.categorias || []);
               cats.add('proprietario');
-              // Atualiza só campos que vieram preenchidos
               const update: Record<string, unknown> = { categorias: Array.from(cats) };
               for (const [k, v] of Object.entries(clientePayload)) {
                 if (v != null && v !== '') update[k] = v;
@@ -425,8 +473,7 @@ export default function ImportarProprietarios() {
             }
 
             // Vínculo
-            const pctRaw = get('percentual');
-            const pct = pctRaw != null && pctRaw !== '' ? Number(String(pctRaw).replace(',', '.').replace(/[^\d.]/g, '')) : null;
+            const pct = o.percentual ?? null;
             const { data: existingLink } = await supabase
               .from('cliente_imoveis')
               .select('id')
