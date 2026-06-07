@@ -132,18 +132,18 @@ export default function LeadsList() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#E8E4D9]">
+        <Card className="border-[#E8E4D9] bg-white">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Interesse</TableHead>
-                <TableHead>Orçamento</TableHead>
-                <TableHead>Origem</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Último contato</TableHead>
-                <TableHead>Criado</TableHead>
+            <TableHeader className="bg-[#FAF8F3]">
+              <TableRow className="border-[#E8E4D9] hover:bg-transparent">
+                <TableHead className="text-[#4A4A52]">Nome</TableHead>
+                <TableHead className="text-[#4A4A52]">Telefone</TableHead>
+                <TableHead className="text-[#4A4A52]">Interesse</TableHead>
+                <TableHead className="text-[#4A4A52]">Orçamento</TableHead>
+                <TableHead className="text-[#4A4A52]">Origem</TableHead>
+                <TableHead className="text-[#4A4A52]">Status</TableHead>
+                <TableHead className="text-[#4A4A52]">Último contato</TableHead>
+                <TableHead className="text-[#4A4A52]">Criado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
