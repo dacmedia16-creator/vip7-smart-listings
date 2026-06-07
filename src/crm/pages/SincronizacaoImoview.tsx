@@ -127,6 +127,44 @@ export default function SincronizacaoImoview() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" /> Sincronização de Clientes</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-[#4A4A52]">Importa proprietários, compradores, locatários e interessados do Imoview, com os vínculos a imóveis.</p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={async () => {
+                  if (!confirm('Sincronizar TODOS os clientes do Imoview? Pode levar vários minutos.')) return;
+                  setLoading(true);
+                  try { await triggerSyncClientes('full'); toast.success('Sincronização de clientes iniciada'); fetchLogs(); }
+                  catch (e) { toast.error((e as Error).message); }
+                  finally { setLoading(false); }
+                }}
+                disabled={loading || !!running}
+                className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+              >
+                <Download className="h-4 w-4 mr-2" /> Sincronização completa de clientes
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setLoading(true);
+                  try { await triggerSyncClientes('incremental'); toast.success('Incremental de clientes iniciada'); fetchLogs(); }
+                  catch (e) { toast.error((e as Error).message); }
+                  finally { setLoading(false); }
+                }}
+                disabled={loading || !!running}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" /> Incremental clientes
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-base">Histórico</CardTitle>
           </CardHeader>
           <CardContent>
