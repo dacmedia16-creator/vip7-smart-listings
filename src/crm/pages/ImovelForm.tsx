@@ -269,6 +269,13 @@ export default function ImovelForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {id && (
+            <ProprietariosCard
+              imovelId={id}
+              codigoImoview={(loadedRecord?.codigo_imoview as number | null) ?? null}
+              onVincularClick={() => setTab('relacionamentos')}
+            />
+          )}
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="grid grid-cols-4 w-full max-w-2xl">
               <TabsTrigger value="endereco">Endereço</TabsTrigger>
