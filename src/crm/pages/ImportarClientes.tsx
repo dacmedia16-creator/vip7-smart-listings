@@ -39,6 +39,7 @@ const CRM_FIELDS: { key: string; label: string; aliases: string[]; required?: bo
   // Atendimento → vira lead se houver código de atendimento
   { key: 'finalidade', label: 'Finalidade (venda/locação)', aliases: ['finalidade'] },
   { key: 'codigo_atendimento', label: 'Código atendimento', aliases: ['codigo atendimento', 'código atendimento', 'cod atendimento', 'atendimento'] },
+  { key: 'codigo_imovel', label: 'Código do imóvel (interesse)', aliases: ['codigo imovel', 'código imóvel', 'cod imovel', 'cod. imovel', 'imovel', 'imóvel', 'codigo do imovel', 'código do imóvel'] },
   { key: 'situacao', label: 'Situação', aliases: ['situacao', 'situação', 'status'] },
   { key: 'fase_atendimento', label: 'Fase atendimento', aliases: ['fase', 'fase atendimento', 'fase do atendimento', 'etapa'] },
   { key: 'corretor_nome', label: 'Corretor', aliases: ['corretor', 'responsavel', 'responsável', 'consultor'] },
@@ -71,6 +72,9 @@ type ResultAgg = {
   ignorados: number;
   leads_inseridos: number;
   leads_atualizados: number;
+  vinculos_criados: number;
+  vinculos_ignorados_sem_imovel: number;
+  codigos_imoveis_nao_encontrados: number[];
   corretores_nao_encontrados: string[];
   erros: { linha: number; motivo: string }[];
 };
