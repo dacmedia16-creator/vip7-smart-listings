@@ -118,6 +118,47 @@
 }
 
 @layer base {
+  .crm-scope {
+    --background: 40 24% 97%;
+    --foreground: 240 10% 7%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 7%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 7%;
+
+    --primary: 42 75% 50%;
+    --primary-foreground: 240 10% 7%;
+
+    --secondary: 40 30% 94%;
+    --secondary-foreground: 240 10% 7%;
+
+    --muted: 44 20% 92%;
+    --muted-foreground: 240 5% 31%;
+
+    --accent: 45 70% 90%;
+    --accent-foreground: 240 10% 7%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 44 25% 88%;
+    --input: 44 25% 88%;
+    --ring: 42 75% 50%;
+
+    --sidebar-background: 40 24% 97%;
+    --sidebar-foreground: 240 10% 7%;
+    --sidebar-primary: 42 75% 50%;
+    --sidebar-primary-foreground: 240 10% 7%;
+    --sidebar-accent: 40 25% 93%;
+    --sidebar-accent-foreground: 240 10% 7%;
+    --sidebar-border: 44 25% 88%;
+    --sidebar-ring: 42 75% 50%;
+  }
+}
+
+@layer base {
   * {
     @apply border-border;
   }
