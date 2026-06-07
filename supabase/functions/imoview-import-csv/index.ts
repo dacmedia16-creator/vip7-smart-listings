@@ -59,6 +59,16 @@ function mapStatusFunil(situacao: string, fase: string): string {
   return "novo";
 }
 
+type Papel = "proprietario" | "comprador" | "locatario" | "interessado";
+
+function inferPapel(situacao: string, finalidade: string): Papel {
+  const t = stripAccents(`${situacao} ${finalidade}`);
+  if (t.includes("capta") || t.includes("propriet")) return "proprietario";
+  if (t.includes("loca") || t.includes("alug") || t.includes("inquil")) return "locatario";
+  if (t.includes("vend") || t.includes("compr")) return "comprador";
+  return "interessado";
+}
+
 type Mapping = Record<string, string | null>;
 
 function buildCliente(row: Record<string, unknown>, mapping: Mapping, userId: string | null) {
@@ -151,8 +161,11 @@ serve(async (req) => {
       atualizados = 0,
       ignorados = 0,
       leads_inseridos = 0,
-      leads_atualizados = 0;
+      leads_atualizados = 0,
+      vinculos_criados = 0,
+      vinculos_ignorados_sem_imovel = 0;
     const corretores_nao_encontrados = new Set<string>();
+    const codigos_imoveis_nao_encontrados = new Set<number>();
     const erros: { linha: number; motivo: string }[] = [];
 
     // Pré-carrega códigos imoview e CPFs existentes
@@ -177,6 +190,26 @@ serve(async (req) => {
       const { data } = await admin.from("clientes").select("id, cpf_cnpj").in("cpf_cnpj", docs);
       for (const r of (data as { id: string; cpf_cnpj: string }[]) ?? []) {
         existingByDoc.set(r.cpf_cnpj, r.id);
+      }
+    }
+
+    // Pré-carrega imóveis por código_imoview presentes no lote
+    const codigosImoveis = Array.from(
+      new Set(
+        rows
+          .map((r) => onlyDigits(get(r, mapping.codigo_imovel)))
+          .filter(Boolean)
+          .map((s) => parseInt(s, 10)),
+      ),
+    );
+    const imovelByCodigo = new Map<number, string>();
+    if (codigosImoveis.length) {
+      const { data } = await admin
+        .from("imoveis_proprios")
+        .select("id, codigo_imoview")
+        .in("codigo_imoview", codigosImoveis);
+      for (const r of (data as { id: string; codigo_imoview: number }[]) ?? []) {
+        imovelByCodigo.set(r.codigo_imoview, r.id);
       }
     }
 
@@ -245,6 +278,33 @@ serve(async (req) => {
         if (c.cpf_cnpj) existingByDoc.set(c.cpf_cnpj, clienteId!);
       }
 
+      const situacao = norm(get(row, mapping.situacao));
+      const fase = norm(get(row, mapping.fase_atendimento));
+      const finalidadeRaw = get(row, mapping.finalidade);
+      const finalidade = normalizeFinalidade(finalidadeRaw);
+
+      // Vincula imóvel ao cliente (cliente_imoveis)
+      const codImovStr = onlyDigits(get(row, mapping.codigo_imovel));
+      const codImov = codImovStr ? parseInt(codImovStr, 10) : null;
+      if (codImov) {
+        const imovelId = imovelByCodigo.get(codImov);
+        if (!imovelId) {
+          vinculos_ignorados_sem_imovel++;
+          codigos_imoveis_nao_encontrados.add(codImov);
+        } else {
+          const papel = inferPapel(situacao, finalidadeRaw);
+          const { error: vErr } = await admin.from("cliente_imoveis").upsert(
+            { cliente_id: clienteId, imovel_id: imovelId, papel },
+            { onConflict: "cliente_id,imovel_id,papel" },
+          );
+          if (vErr) {
+            erros.push({ linha: idx + 2, motivo: `vinculo: ${vErr.message}` });
+          } else {
+            vinculos_criados++;
+          }
+        }
+      }
+
       // Lead opcional (quando há código de atendimento)
       const codAtend = norm(get(row, mapping.codigo_atendimento));
       if (codAtend && c.telefone) {
@@ -262,9 +322,6 @@ serve(async (req) => {
           if (!corretor_id) corretores_nao_encontrados.add(corretorNome);
         }
 
-        const situacao = norm(get(row, mapping.situacao));
-        const fase = norm(get(row, mapping.fase_atendimento));
-        const finalidade = normalizeFinalidade(get(row, mapping.finalidade));
         const status_funil = mapStatusFunil(situacao, fase);
 
         const lead = {
@@ -275,8 +332,8 @@ serve(async (req) => {
           status_funil,
           corretor_id,
           origem: "manual" as const,
-          imovel_interesse_codigo: codAtend,
-          observacoes: `[Imoview #${codAtend}] ${situacao || "-"} · ${fase || "-"}`,
+          imovel_interesse_codigo: codImov ? String(codImov) : codAtend,
+          observacoes: `[Imoview atend #${codAtend}${codImov ? ` · imóvel #${codImov}` : ""}] ${situacao || "-"} · ${fase || "-"}`,
           created_by: userId,
         };
 
@@ -304,6 +361,9 @@ serve(async (req) => {
         ignorados,
         leads_inseridos,
         leads_atualizados,
+        vinculos_criados,
+        vinculos_ignorados_sem_imovel,
+        codigos_imoveis_nao_encontrados: Array.from(codigos_imoveis_nao_encontrados).slice(0, 50),
         corretores_nao_encontrados: Array.from(corretores_nao_encontrados),
         erros,
       }),

@@ -39,6 +39,7 @@ const CRM_FIELDS: { key: string; label: string; aliases: string[]; required?: bo
   // Atendimento → vira lead se houver código de atendimento
   { key: 'finalidade', label: 'Finalidade (venda/locação)', aliases: ['finalidade'] },
   { key: 'codigo_atendimento', label: 'Código atendimento', aliases: ['codigo atendimento', 'código atendimento', 'cod atendimento', 'atendimento'] },
+  { key: 'codigo_imovel', label: 'Código do imóvel (interesse)', aliases: ['codigo imovel', 'código imóvel', 'cod imovel', 'cod. imovel', 'imovel', 'imóvel', 'codigo do imovel', 'código do imóvel'] },
   { key: 'situacao', label: 'Situação', aliases: ['situacao', 'situação', 'status'] },
   { key: 'fase_atendimento', label: 'Fase atendimento', aliases: ['fase', 'fase atendimento', 'fase do atendimento', 'etapa'] },
   { key: 'corretor_nome', label: 'Corretor', aliases: ['corretor', 'responsavel', 'responsável', 'consultor'] },
@@ -71,6 +72,9 @@ type ResultAgg = {
   ignorados: number;
   leads_inseridos: number;
   leads_atualizados: number;
+  vinculos_criados: number;
+  vinculos_ignorados_sem_imovel: number;
+  codigos_imoveis_nao_encontrados: number[];
   corretores_nao_encontrados: string[];
   erros: { linha: number; motivo: string }[];
 };
@@ -163,9 +167,12 @@ export default function ImportarClientes() {
     const agg: ResultAgg = {
       inseridos: 0, atualizados: 0, ignorados: 0,
       leads_inseridos: 0, leads_atualizados: 0,
+      vinculos_criados: 0, vinculos_ignorados_sem_imovel: 0,
+      codigos_imoveis_nao_encontrados: [],
       corretores_nao_encontrados: [], erros: [],
     };
     const corretoresSet = new Set<string>();
+    const codigosImoveisNaoEncSet = new Set<number>();
 
     try {
       for (let offset = 0; offset < total; offset += BATCH_SIZE) {
@@ -186,13 +193,17 @@ export default function ImportarClientes() {
         agg.ignorados += r.ignorados || 0;
         agg.leads_inseridos += r.leads_inseridos || 0;
         agg.leads_atualizados += r.leads_atualizados || 0;
+        agg.vinculos_criados += r.vinculos_criados || 0;
+        agg.vinculos_ignorados_sem_imovel += r.vinculos_ignorados_sem_imovel || 0;
         for (const n of r.corretores_nao_encontrados || []) corretoresSet.add(n);
+        for (const c of r.codigos_imoveis_nao_encontrados || []) codigosImoveisNaoEncSet.add(c);
         if (r.erros?.length) agg.erros.push(...r.erros);
         setProgress({ done: Math.min(offset + slice.length, total), total });
       }
       agg.corretores_nao_encontrados = Array.from(corretoresSet);
+      agg.codigos_imoveis_nao_encontrados = Array.from(codigosImoveisNaoEncSet).slice(0, 100);
       setResult(agg);
-      toast.success(`OK: ${agg.inseridos} novos, ${agg.atualizados} atualizados, ${agg.leads_inseridos + agg.leads_atualizados} leads`);
+      toast.success(`OK: ${agg.inseridos} novos, ${agg.atualizados} atualizados, ${agg.vinculos_criados} vínculos, ${agg.leads_inseridos + agg.leads_atualizados} leads`);
     } catch (e) {
       console.error(e);
       toast.error('Falha: ' + (e as Error).message);
@@ -335,10 +346,20 @@ export default function ImportarClientes() {
                     <Badge className="bg-amber-100 text-amber-800 border-0">Ignorados: {result.ignorados}</Badge>
                     <Badge className="bg-emerald-100 text-emerald-800 border-0">Leads novos: {result.leads_inseridos}</Badge>
                     <Badge className="bg-cyan-100 text-cyan-800 border-0">Leads atualizados: {result.leads_atualizados}</Badge>
+                    <Badge className="bg-violet-100 text-violet-800 border-0">Vínculos imóvel⇄cliente: {result.vinculos_criados}</Badge>
+                    {result.vinculos_ignorados_sem_imovel > 0 && (
+                      <Badge className="bg-orange-100 text-orange-800 border-0">Imóveis não encontrados: {result.vinculos_ignorados_sem_imovel}</Badge>
+                    )}
                   </div>
                   {result.corretores_nao_encontrados.length > 0 && (
                     <div className="text-xs text-[#4A4A52]">
                       <span className="font-medium">Corretores não encontrados:</span> {result.corretores_nao_encontrados.join(', ')}
+                    </div>
+                  )}
+                  {result.codigos_imoveis_nao_encontrados.length > 0 && (
+                    <div className="text-xs text-[#4A4A52]">
+                      <span className="font-medium">Códigos de imóvel ausentes do CRM (rode a sync de imóveis):</span>{' '}
+                      {result.codigos_imoveis_nao_encontrados.join(', ')}
                     </div>
                   )}
                   {result.erros.length > 0 && (
