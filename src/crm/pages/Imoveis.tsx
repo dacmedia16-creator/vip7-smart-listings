@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AutocompleteInput } from '@/crm/components/AutocompleteInput';
 import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
@@ -373,15 +374,12 @@ export default function Imoveis() {
                 </Select>
               </div>
               <div className="lg:col-span-2">{N('Condomínio / Edifício')}
-                <Input
-                  list="cond-edif-list"
+                <AutocompleteInput
+                  options={opts.tiposCond}
                   value={filters.edificio}
-                  onChange={(e) => update('edificio', e.target.value)}
-                  placeholder="Digite ou selecione o condomínio..."
+                  onValueChange={(v) => update('edificio', v)}
+                  placeholder="Digite para buscar condomínio..."
                 />
-                <datalist id="cond-edif-list">
-                  {opts.tiposCond.map((t) => <option key={t} value={t} />)}
-                </datalist>
               </div>
               <div>{N('Imóvel ocupado')}
                 <Select value={filters.imovel_ocupado} onValueChange={(v) => update('imovel_ocupado', v)}>
