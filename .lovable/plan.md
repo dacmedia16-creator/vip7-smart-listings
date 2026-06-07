@@ -1,50 +1,22 @@
-# Importar clientes do Imoview via fluxo App_ (login)
+## Objetivo
+Executar a primeira importação completa de clientes do Imoview agora que o secret `IMOVIEW_APP_SENHA` foi corrigido.
 
-A API pública não tem endpoint de listagem em massa de clientes. A única forma de listar é o conjunto `/Cliente/App_*`, que exige um **login real de usuário do Imoview CRM** (email + senha) para obter um `codigoacesso`.
+## Passos
+1. Invocar a edge function `imoview-sync-clientes` com `{ mode: 'full' }` via `supabase--curl_edge_functions`.
+2. Acompanhar `supabase--edge_function_logs` para confirmar:
+   - Login OK em `/Usuario/App_ValidarAcesso` (sem erro de senha inválida).
+   - Paginação de `App_RetornarPessoas` e `App_RetornarEmpresas`.
+   - Reinvocações em chunks até concluir.
+3. Consultar o banco:
+   - `SELECT COUNT(*) FROM clientes;`
+   - `SELECT COUNT(*) FROM cliente_imoveis;`
+   - Último registro em `imoview_sync_log` (status, totais, erros).
+4. Reportar números finais ao usuário.
 
-## 1. Credenciais (secrets)
+## Critério de sucesso
+- Log mostra login bem-sucedido.
+- `clientes` populada com >0 registros.
+- Última entrada de `imoview_sync_log` com status `success`.
 
-Vou pedir 2 novos secrets via tool de secrets:
-- `IMOVIEW_APP_EMAIL` — email do usuário Imoview CRM
-- `IMOVIEW_APP_SENHA` — senha desse usuário
-
-A `IMOVIEW_API_KEY` (chave) já existe.
-
-## 2. Adaptar `supabase/functions/imoview-sync-clientes/index.ts`
-
-Trocar as 3 tentativas atuais (`/Pessoa/...`, `/Cliente/Retornar...`, `/Proprietario/...` — todas 404) por:
-
-1. **Login** uma vez por execução:  
-   `GET /Usuario/App_ValidarAcesso?email=...&senha=...` → guardar `codigoacesso`.
-2. **Listar pessoas físicas:**  
-   `GET /Cliente/App_RetornarPessoas` paginado (header `codigoacesso`).
-3. **Listar pessoas jurídicas:**  
-   `GET /Cliente/App_RetornarEmpresas` paginado (mesmo header).
-4. **Detalhe (opcional, p/ vínculos com imóveis):**  
-   `GET /Cliente/App_RetornarDetalhesCliente?codigo=...` quando o item da lista não traz tudo.
-
-O resto do fluxo (cursor, hash dedup, `clientes` + `cliente_imoveis`, modos `full`/`incremental`/`single`, auto-reinvoke por chunks, log em `imoview_sync_log`) continua igual.
-
-## 3. Robustez
-
-- Cachear `codigoacesso` em memória da execução (uma autenticação por chunk).
-- Se receber 401 em meio da execução, refazer login e tentar de novo (1x).
-- Logar shape do primeiro item de cada endpoint p/ ajustar `mapRow` se nomes de campos forem diferentes (`pessoaFisica` vs `pessoa`, etc.).
-- Modo `incremental` tenta `App_RetornarPessoasAlteradas` se existir; se 404, faz `full` mesmo (já cobrimos pelo hash).
-
-## 4. Teste e validação
-
-- Rodar `mode: 'full'` com a edge function atualizada.
-- Confirmar contagem em `clientes` e em `cliente_imoveis`.
-- Mostrar o log em `imoview_sync_log` (inserted/updated/errors).
-
-## Arquivos afetados
-
-- `supabase/functions/imoview-sync-clientes/index.ts` (reescrita das funções `fetchListing` / `fetchListingIncremental` / `fetchDetails` + nova helper de login)
-- Novos secrets: `IMOVIEW_APP_EMAIL`, `IMOVIEW_APP_SENHA`
-
-## Risco / dependência
-
-Tudo depende do `/Usuario/App_ValidarAcesso` aceitar as credenciais. Se sua conta tem **2FA obrigatório**, o fluxo App_ exige código de acesso por SMS/email e não funciona sem intervenção humana — nesse caso voltamos para a opção 2 (importar CSV exportado do painel).
-
-Confirme aprovar este plano para eu pedir os 2 secrets e implementar.
+## Fallback
+Se o login ainda falhar (senha/2FA), parar e pedir novas credenciais ou avaliar import por CSV.
