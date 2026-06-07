@@ -243,12 +243,15 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { mode = "full", sync_id, codigoImovel, internal_cursor, hours = 24 } = body as {
+    const { mode = "full", sync_id, codigoImovel, internal_cursor, hours = 24, onlyMissing, limit, imovelIds } = body as {
       mode?: "full" | "incremental" | "single";
       sync_id?: string;
       codigoImovel?: number;
       internal_cursor?: { offset: number; ids: string[]; codigos: number[] };
       hours?: number;
+      onlyMissing?: boolean;
+      limit?: number;
+      imovelIds?: string[];
     };
 
     // ===== single =====
