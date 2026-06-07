@@ -234,10 +234,34 @@ async function mirrorPhoto(sb: ReturnType<typeof createClient>, codigo: number, 
 }
 
 // ---------- processamento de um imóvel ----------
+async function persistStats(
+  sb: ReturnType<typeof createClient>,
+  syncId: string,
+  delta: { inserted?: number; updated?: number; unchanged?: number; photos?: number; errors?: number; total?: number },
+) {
+  try {
+    const { data: cur } = await sb.from("imoview_sync_log")
+      .select("inserted, updated, unchanged, photos_uploaded, errors_count, total")
+      .eq("id", syncId).single();
+    await sb.from("imoview_sync_log").update({
+      inserted: (cur?.inserted || 0) + (delta.inserted || 0),
+      updated: (cur?.updated || 0) + (delta.updated || 0),
+      unchanged: (cur?.unchanged || 0) + (delta.unchanged || 0),
+      photos_uploaded: (cur?.photos_uploaded || 0) + (delta.photos || 0),
+      errors_count: (cur?.errors_count || 0) + (delta.errors || 0),
+      total: (cur?.total || 0) + (delta.total || 0),
+      updated_at: new Date().toISOString(),
+    }).eq("id", syncId);
+  } catch (e) {
+    console.error("[sync] persistStats falhou:", e);
+  }
+}
+
 async function syncOne(
   sb: ReturnType<typeof createClient>,
   raw: Record<string, unknown>,
   stats: { inserted: number; updated: number; unchanged: number; photos: number; errors: number },
+  syncId: string | null,
 ) {
   try {
     const mapped = mapToRow(raw);
@@ -253,39 +277,53 @@ async function syncOne(
 
     if (existing && existing.imoview_hash === hash) {
       stats.unchanged++;
-      // Marcar sync_at mesmo assim para tracking de "visto neste run"
       await sb.from("imoveis_proprios").update({ imoview_sync_at: new Date().toISOString(), ativo: true }).eq("id", existing.id);
+      if (syncId) await persistStats(sb, syncId, { unchanged: 1 });
       return;
     }
 
-    // Mirror fotos (paralelo limitado)
+    // 1) PERSISTIR a linha PRIMEIRO (sem fotos novas) para garantir dados mesmo em timeout
+    const existingFotos = (existing?.fotos as string[] | undefined) || [];
+    const baseRow = {
+      ...mapped.payload,
+      fotos: existingFotos,
+      imoview_hash: hash,
+      imoview_sync_at: new Date().toISOString(),
+    };
+
+    let rowId: string | null = null;
+    if (existing) {
+      await sb.from("imoveis_proprios").update(baseRow).eq("id", existing.id);
+      rowId = existing.id as string;
+      stats.updated++;
+      if (syncId) await persistStats(sb, syncId, { updated: 1 });
+    } else {
+      const { data: ins } = await sb.from("imoveis_proprios").insert(baseRow).select("id").single();
+      rowId = (ins?.id as string) || null;
+      stats.inserted++;
+      if (syncId) await persistStats(sb, syncId, { inserted: 1 });
+    }
+
+    // 2) Espelhar fotos incrementalmente, atualizando fotos + log a cada lote
     const mirrored: string[] = [];
     const concurrency = 4;
     for (let i = 0; i < mapped.fotosUrls.length; i += concurrency) {
       const batch = mapped.fotosUrls.slice(i, i + concurrency);
       const res = await Promise.all(batch.map((url, j) => mirrorPhoto(sb, mapped.codigo, i + j, url)));
-      for (const url of res) if (url) { mirrored.push(url); stats.photos++; }
-    }
-
-    const row = {
-      ...mapped.payload,
-      fotos: mirrored.length > 0 ? mirrored : (existing?.fotos as string[] | undefined) || [],
-      imoview_hash: hash,
-      imoview_sync_at: new Date().toISOString(),
-    };
-
-    if (existing) {
-      await sb.from("imoveis_proprios").update(row).eq("id", existing.id);
-      stats.updated++;
-    } else {
-      await sb.from("imoveis_proprios").insert(row);
-      stats.inserted++;
+      let added = 0;
+      for (const url of res) if (url) { mirrored.push(url); stats.photos++; added++; }
+      if (rowId && mirrored.length > 0) {
+        await sb.from("imoveis_proprios").update({ fotos: mirrored }).eq("id", rowId);
+      }
+      if (added > 0 && syncId) await persistStats(sb, syncId, { photos: added });
     }
   } catch (e) {
     stats.errors++;
+    if (syncId) await persistStats(sb, syncId, { errors: 1 });
     console.error(`[sync] erro processando imovel:`, e);
   }
 }
+
 
 // ---------- handler principal ----------
 serve(async (req) => {
