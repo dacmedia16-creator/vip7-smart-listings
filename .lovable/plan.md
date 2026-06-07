@@ -1,64 +1,45 @@
-# Importação de clientes — correções e novos campos
+# Filtros avançados em CRM → Imóveis
 
-## 1. Corrigir o erro no upload
+Replicar o painel de filtros da imagem em `/crm/imoveis`, consultando `imoveis_proprios` no Supabase (campos já existem no schema).
 
-Causas prováveis (a planilha do Imoview costuma ser grande e com separador `;`):
+## Painel colapsável "Filtros" com 4 seções
 
-- **Payload grande demais** — hoje mandamos todas as linhas + `imoview_raw` (linha inteira) em **uma única chamada** ao edge function. Acima de ~3–5k linhas isso estoura o limite de 6 MB e a função retorna 413/500 silenciosamente.
-- **Toast genérico** — `toast.error((e as Error).message)` mostra "Failed to send a request to the Edge Function", sem detalhe.
-- **CSV com `;`** — Papaparse acerta na maioria, mas em alguns exports do Imoview o cabeçalho vem em UTF‑8 BOM e quebra o auto‑map.
-- **Headers do XLSX** vêm só do `Object.keys(json[0])` — se a primeira linha tiver células vazias, perde colunas.
+### Identificação
+- **Códigos** (input texto, múltiplos separados por vírgula → `codigo_interno.in.()` ou `codigo_imoview.in.()`)
+- **Finalidade** (`venda` / `locacao` / `temporada`)
+- **Situação** (mapeia para `status`: disponível, sob_proposta, vendido, alugado, inativo, etc.)
+- **Tipo de imóvel** (multi-select carregado de `distinct tipo`)
+- **Etiquetas** (multi-select, busca em array `etiquetas`)
+- **Pontuação** (placeholder/desabilitado — não há campo na base; mantemos visual mas oculto até existir)
 
-### O que vou fazer
-- Enviar em **lotes de 300 linhas** a partir do frontend, com barra de progresso (`X / Total`), agregando o resultado.
-- No payload, mandar **apenas as colunas mapeadas** (não a linha inteira) — reduz drasticamente o tamanho.
-- Logar o erro real do edge function (status + body) no toast e no console.
-- Aceitar BOM e detectar `;` explicitamente no Papaparse.
-- Para XLSX: ler com `header: 1` e montar a união dos cabeçalhos das primeiras 50 linhas.
-- No edge function: aumentar o limite por chamada para 500 e tirar a checagem rígida de 10k (passa a ser somatório dos lotes).
+### Localização
+- **Cidade** (multi-input)
+- **Regiões / Sub-regiões** (`regiao`, `sub_regiao` — selects dependentes carregados de distinct)
+- **Bairro** (multi-input)
+- **Endereço / Nº / Complemento** (inputs `ilike`)
+- **Local chaves** / **Identificador chaves** (`local_chaves`, `identificador_chaves`)
 
-## 2. Novos campos da planilha
+### Características
+- **Valor imóvel** (de/até → `preco`)
+- **Valor condomínio** (de/até → `condominio`)
+- **Área interna m²** (de/até → `area`)
+- **Quartos / Suítes / Vagas** (selects 1+/2+/3+/4+)
+- **Edifício** (`edificio` ilike)
+- **Tipo condomínio** (select de distinct)
+- **Imóvel ocupado** (Todos / Sim / Não → `imovel_ocupado`)
 
-Mapeamento (aliases automáticos):
+## Implementação
 
-| Coluna planilha | Campo CRM |
-|---|---|
-| Finalidade | `finalidade` (venda/locacao) |
-| Código atendimento | `codigo_atendimento` |
-| Situação | `situacao` |
-| Fase atendimento | `fase_atendimento` |
-| Corretor | `corretor_nome` |
+- Arquivo único: `src/crm/pages/Imoveis.tsx`.
+- Estado consolidado em um objeto `filters` + botão **"Aplicar filtros"** e **"Limpar"** (sem auto-fetch, conforme padrão do projeto).
+- Persistência leve via querystring (para preservar ao navegar).
+- Query Supabase combinando `.eq`, `.in`, `.gte/.lte`, `.ilike`, `.contains` (para arrays).
+- Opções dinâmicas (Tipo, Região, Sub-região, Tipo condomínio, Etiquetas) carregadas em paralelo com um único `select` de colunas + deduplicação no cliente (uma vez na montagem).
+- Layout em `Card` com header colapsável (`ChevronDown`), seções separadas por divisores, grid responsivo 1→2→4 colunas igual à referência.
+- Mantém a busca rápida atual (input "q") no topo, fora do painel.
 
-### Comportamento híbrido (escolhido pelo usuário)
+## Sem migração
+Todos os campos já existem em `imoveis_proprios` (status, finalidade, tipo, regiao, sub_regiao, bairro, cidade, endereco, numero, complemento, local_chaves, identificador_chaves, preco, condominio, area, quartos, suites, vagas, edificio, imovel_ocupado, etiquetas, codigo_interno, codigo_imoview).
 
-Para cada linha:
-
-1. **Sempre** faz upsert do **cliente** (como hoje, por `codigo_imoview` ou `cpf_cnpj`).
-2. **Se houver `Código atendimento`** → cria/atualiza um **lead** vinculado:
-   - `nome`, `email`, `telefone` ← do cliente.
-   - `finalidade` ← normalizado (`venda` / `locacao`).
-   - `corretor_id` ← busca em `profiles` por **nome** (case/acento‑insensitive). Se não achar, fica `NULL` e registra aviso no relatório.
-   - `status_funil` ← derivado de `Situação` + `Fase atendimento` via tabela de‑para:
-     - "Em andamento / Qualificação" → `qualificacao`
-     - "Em andamento / Visita" → `visita`
-     - "Em andamento / Proposta / Negociação" → `proposta`
-     - "Concluído / Fechado / Ganho" → `fechamento`
-     - "Perdido / Cancelado" → `perdido`
-     - default → `novo`
-   - `origem` → `manual` (enum existente).
-   - `observacoes` ← prefixadas com `[Imoview #<codigo_atendimento>] <Situação> · <Fase>`.
-   - **Dedup do lead**: por `imovel_interesse_codigo = codigo_atendimento` (usamos esse campo para guardar o código do atendimento) + telefone do cliente. Se já existir, faz `UPDATE`; senão `INSERT`.
-
-### Tabela `leads` — sem migração necessária
-Todos os campos já existem (`finalidade`, `corretor_id`, `status_funil`, `imovel_interesse_codigo`, `observacoes`, `origem`).
-
-## 3. Arquivos afetados
-
-- `src/crm/pages/ImportarClientes.tsx` — novos campos no `CRM_FIELDS`, envio em lotes com progresso, mensagens de erro melhores, leitura mais robusta de CSV/XLSX.
-- `supabase/functions/imoview-import-csv/index.ts` — aceitar `batch`/`batchIndex`, construir e upsertar lead quando houver `codigo_atendimento`, resolver corretor por nome, retornar contagens de leads (`leads_inseridos`, `leads_atualizados`, `corretores_nao_encontrados`).
-
-## 4. Resultado final na tela
-Cards de resumo passam a mostrar:
-- Clientes: inseridos / atualizados / ignorados
-- Leads: inseridos / atualizados / sem corretor encontrado
-- Botão de baixar CSV de erros (mantido)
+## Arquivo afetado
+- `src/crm/pages/Imoveis.tsx` (refactor do bloco de filtros + lógica de query)
