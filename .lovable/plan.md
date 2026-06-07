@@ -1,21 +1,15 @@
-## Contexto
-Atualmente, ao abrir a página `/crm/imoveis`, o filtro de status vem definido como "Todas", exibindo todos os imóveis independentemente do status.
+Ao acessar a tela de Imóveis no CRM, a listagem deve iniciar já filtrada para mostrar apenas imóveis **Disponíveis** com finalidade **Venda**.
 
-## Objetivo
-Sempre que o usuário abrir a página de Imóveis, a listagem deve vir filtrada para mostrar **apenas imóveis com status "disponível"** por padrão.
+### Mudanças
 
-## Mudanças necessárias
-1. **`src/crm/pages/Imoveis.tsx`**
-   - Alterar o valor padrão do filtro `status` no objeto `EMPTY` de `'todos'` para `'disponivel'`.
-   - Verificar que o status `"disponivel"` corresponde ao valor esperado no banco de dados (já confirmado no enum `imovel_status` e na lógica de filtro existente).
-   - Garantir que o `<Select>` de "Situação" reflita corretamente o valor pré-selecionado ao montar o componente.
+1. **Objeto `EMPTY` em `src/crm/pages/Imoveis.tsx`**
+   - Alterar `finalidade` de `'todos'` para `'venda'`.
+   - `status` já está `'disponivel'` (feito anteriormente).
 
-## Impacto
-- O filtro de status começará selecionado em "Disponível" ao invés de "Todas".
-- A query Supabase aplicará `eq('status', 'disponivel')` automaticamente no primeiro carregamento.
-- O contador de filtros ativos (`activeCount`) já considerará esse filtro inicial.
-- O usuário ainda poderá manualmente alterar o select para "Todas" ou outro status quando desejar.
+2. **Ajustar contagem de filtros ativos (`activeCount`)**
+   - Garantir que os defaults (`status: 'disponivel'`, `finalidade: 'venda'`) **não** sejam contados como filtros ativos, evitando que o badge de filtros apareça na carga inicial.
 
-## Escopo
-- Apenas frontend, arquivo único (`src/crm/pages/Imoveis.tsx`).
-- Nenhuma mudança no banco de dados, RLS ou backend necessária.
+3. **Botão "Limpar"**
+   - Ao clicar em Limpar, restaurar para os defaults (`disponivel` + `venda`), não para `'todos'` em ambos.
+
+Nenhuma alteração de banco de dados, RLS ou backend é necessária.
