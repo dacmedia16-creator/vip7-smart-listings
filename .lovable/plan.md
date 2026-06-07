@@ -1,33 +1,50 @@
-## Problema
+# Importar clientes do Imoview via fluxo App_ (login)
 
-A página `/crm/imoveis` (`src/crm/pages/Imoveis.tsx`) busca tudo com `select('*')` sem `.range()`. O PostgREST aplica o limite padrão de **1000 linhas**, por isso aparecem apenas 1000 imóveis — independente de quantos existam no banco.
+A API pública não tem endpoint de listagem em massa de clientes. A única forma de listar é o conjunto `/Cliente/App_*`, que exige um **login real de usuário do Imoview CRM** (email + senha) para obter um `codigoacesso`.
 
-Além disso, todo filtro/busca hoje é client-side (`useMemo` sobre o array carregado), então mesmo se houvesse mais registros, filtrar por status/texto continuaria limitado ao que foi baixado.
+## 1. Credenciais (secrets)
 
-## Solução
+Vou pedir 2 novos secrets via tool de secrets:
+- `IMOVIEW_APP_EMAIL` — email do usuário Imoview CRM
+- `IMOVIEW_APP_SENHA` — senha desse usuário
 
-Reescrever a listagem para usar paginação no servidor + contagem real:
+A `IMOVIEW_API_KEY` (chave) já existe.
 
-1. **Contagem total**
-   - `select('*', { count: 'exact', head: false })` para receber o total e exibir o número correto em "X imóveis".
+## 2. Adaptar `supabase/functions/imoview-sync-clientes/index.ts`
 
-2. **Paginação por intervalo**
-   - Estado `pagina` (default 1) e `PAGE_SIZE = 60`.
-   - `.range((pagina-1)*PAGE_SIZE, pagina*PAGE_SIZE - 1)` na query.
-   - Botões "Anterior / Próxima" + indicador "Página X de N".
+Trocar as 3 tentativas atuais (`/Pessoa/...`, `/Cliente/Retornar...`, `/Proprietario/...` — todas 404) por:
 
-3. **Filtros no servidor**
-   - `status` → `.eq('status', status)` quando ≠ `todos`.
-   - Busca `q` (debounced ~300 ms) → `.or('titulo.ilike.%q%,codigo_interno.ilike.%q%,bairro.ilike.%q%,cidade.ilike.%q%')`.
-   - Resetar `pagina = 1` quando filtros mudam.
+1. **Login** uma vez por execução:  
+   `GET /Usuario/App_ValidarAcesso?email=...&senha=...` → guardar `codigoacesso`.
+2. **Listar pessoas físicas:**  
+   `GET /Cliente/App_RetornarPessoas` paginado (header `codigoacesso`).
+3. **Listar pessoas jurídicas:**  
+   `GET /Cliente/App_RetornarEmpresas` paginado (mesmo header).
+4. **Detalhe (opcional, p/ vínculos com imóveis):**  
+   `GET /Cliente/App_RetornarDetalhesCliente?codigo=...` quando o item da lista não traz tudo.
 
-4. **UX**
-   - Skeleton/loading mantido.
-   - Mostrar `{total} imóveis` (não `filtered.length`).
-   - Mensagem clara quando não há resultados na página atual.
+O resto do fluxo (cursor, hash dedup, `clientes` + `cliente_imoveis`, modos `full`/`incremental`/`single`, auto-reinvoke por chunks, log em `imoview_sync_log`) continua igual.
 
-## Escopo
+## 3. Robustez
 
-- Alterar somente `src/crm/pages/Imoveis.tsx`.
-- Nenhuma mudança em schema, RLS, edge function ou no site público.
-- Nenhuma mudança em outros módulos do CRM.
+- Cachear `codigoacesso` em memória da execução (uma autenticação por chunk).
+- Se receber 401 em meio da execução, refazer login e tentar de novo (1x).
+- Logar shape do primeiro item de cada endpoint p/ ajustar `mapRow` se nomes de campos forem diferentes (`pessoaFisica` vs `pessoa`, etc.).
+- Modo `incremental` tenta `App_RetornarPessoasAlteradas` se existir; se 404, faz `full` mesmo (já cobrimos pelo hash).
+
+## 4. Teste e validação
+
+- Rodar `mode: 'full'` com a edge function atualizada.
+- Confirmar contagem em `clientes` e em `cliente_imoveis`.
+- Mostrar o log em `imoview_sync_log` (inserted/updated/errors).
+
+## Arquivos afetados
+
+- `supabase/functions/imoview-sync-clientes/index.ts` (reescrita das funções `fetchListing` / `fetchListingIncremental` / `fetchDetails` + nova helper de login)
+- Novos secrets: `IMOVIEW_APP_EMAIL`, `IMOVIEW_APP_SENHA`
+
+## Risco / dependência
+
+Tudo depende do `/Usuario/App_ValidarAcesso` aceitar as credenciais. Se sua conta tem **2FA obrigatório**, o fluxo App_ exige código de acesso por SMS/email e não funciona sem intervenção humana — nesse caso voltamos para a opção 2 (importar CSV exportado do painel).
+
+Confirme aprovar este plano para eu pedir os 2 secrets e implementar.
