@@ -11,9 +11,11 @@ import { useRoles } from '../hooks/useRole';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Upload, FileSpreadsheet, Download, ArrowLeft } from 'lucide-react';
+import { Loader2, Upload, FileSpreadsheet, Download, ArrowLeft, Users, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { triggerSyncProprietarios } from '../lib/clientes';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Row = Record<string, unknown>;
 
