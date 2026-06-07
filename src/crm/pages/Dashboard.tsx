@@ -4,16 +4,16 @@ import { CrmLayout } from '../components/CrmLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Building2, CheckSquare, TrendingUp, AlertTriangle, Clock, CalendarClock } from 'lucide-react';
+import { Users, CheckSquare, TrendingUp, AlertTriangle, Clock, CalendarClock } from 'lucide-react';
 import { useRoles } from '../hooks/useRole';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { LEAD_STATUS, fmtMoney, fmtPhone, statusMeta } from '../lib/leads';
-import { format, subDays, addDays, startOfDay, differenceInDays } from 'date-fns';
+import { format, subDays, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function CrmDashboard() {
   const { isManager } = useRoles();
-  const [stats, setStats] = useState({ leads: 0, imoveis: 0, tarefasAtrasadas: 0, fechamentos: 0, valorPipeline: 0, conversao: 0, novos7d: 0 });
+  const [stats, setStats] = useState({ leads: 0, imoveis: 0, tarefasAtrasadas: 0, fechamentos: 0, valorPipeline: 0, conversao: 0, novos7d: 0, emNegociacao: 0 });
   const [funilData, setFunilData] = useState<any[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [semContato, setSemContato] = useState<any[]>([]);
@@ -26,15 +26,39 @@ export default function CrmDashboard() {
     (async () => {
       const now = new Date();
       const seteDias = subDays(now, 7).toISOString();
-      const tresDias = subDays(now, 3);
-      const seteDiasEtapa = subDays(now, 7);
-
+      const tresDias = subDays(now, 3).toISOString();
+      const seteDiasEtapa = subDays(now, 7).toISOString();
       const proximos3 = addDays(now, 3).toISOString();
+      const ativosStatuses = ['novo', 'em_atendimento', 'visita_agendada', 'proposta_enviada'];
 
-      const [imoveisCount, leadsAll, tarefasAtrasadasCount, profiles, proximas] = await Promise.all([
+      const [
+        imoveisCount,
+        leadsTotal,
+        novos7dCount,
+        emNegociacaoCount,
+        fechamentosCount,
+        perdidosCount,
+        tarefasAtrasadasCount,
+        pipelineRpc,
+        funilRpc,
+        trendRpc,
+        rankingRpc,
+        profiles,
+        proximas,
+        semContatoQ,
+        atrasadosQ,
+      ] = await Promise.all([
         supabase.from('imoveis_proprios').select('id', { count: 'exact', head: true }),
-        supabase.from('leads').select('id, nome, telefone, status_funil, origem, orcamento_max, created_at, updated_at, last_contact_at, corretor_id'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', seteDias),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).in('status_funil', ativosStatuses),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status_funil', 'fechamento'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status_funil', 'perdido'),
         supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('status', 'pendente').lt('data_hora', now.toISOString()),
+        supabase.rpc('dashboard_pipeline_total'),
+        supabase.rpc('dashboard_funil_counts'),
+        supabase.rpc('dashboard_leads_por_dia', { _dias: 30 }),
+        supabase.rpc('dashboard_ranking_corretores', { _limit: 8 }),
         supabase.from('profiles').select('id, nome'),
         supabase.from('tarefas')
           .select('id, titulo, tipo, prioridade, data_hora, responsavel_id, lead_id')
@@ -43,79 +67,66 @@ export default function CrmDashboard() {
           .lte('data_hora', proximos3)
           .order('data_hora', { ascending: true })
           .limit(8),
+        supabase.from('leads')
+          .select('id, nome, telefone, status_funil, created_at, last_contact_at')
+          .not('status_funil', 'in', '(fechamento,perdido)')
+          .or(`last_contact_at.lt.${tresDias},and(last_contact_at.is.null,created_at.lt.${tresDias})`)
+          .order('last_contact_at', { ascending: true, nullsFirst: true })
+          .limit(8),
+        supabase.from('leads')
+          .select('id, nome, status_funil, updated_at')
+          .not('status_funil', 'in', '(fechamento,perdido)')
+          .lt('updated_at', seteDiasEtapa)
+          .order('updated_at', { ascending: true })
+          .limit(8),
       ]);
 
-      const all = leadsAll.data ?? [];
-      const fechamentos = all.filter((x) => x.status_funil === 'fechamento').length;
-      const perdidos = all.filter((x) => x.status_funil === 'perdido').length;
+      const fechamentos = fechamentosCount.count ?? 0;
+      const perdidos = perdidosCount.count ?? 0;
       const finalizados = fechamentos + perdidos;
       const conversao = finalizados > 0 ? Math.round((fechamentos / finalizados) * 100) : 0;
-      const novos7d = all.filter((x) => x.created_at >= seteDias).length;
-      const valorPipeline = all
-        .filter((x) => !['perdido', 'fechamento'].includes(x.status_funil))
-        .reduce((sum, x) => sum + Number(x.orcamento_max || 0), 0);
 
       setStats({
-        leads: all.length,
+        leads: leadsTotal.count ?? 0,
         imoveis: imoveisCount.count ?? 0,
         tarefasAtrasadas: tarefasAtrasadasCount.count ?? 0,
         fechamentos,
-        valorPipeline,
+        valorPipeline: Number(pipelineRpc.data ?? 0),
         conversao,
-        novos7d,
+        novos7d: novos7dCount.count ?? 0,
+        emNegociacao: emNegociacaoCount.count ?? 0,
       });
 
-      setFunilData(LEAD_STATUS.filter((s) => s.value !== 'perdido').map((s) => ({
-        name: s.label,
-        value: all.filter((x) => x.status_funil === s.value).length,
-      })));
+      const funilMap = new Map<string, number>();
+      (funilRpc.data ?? []).forEach((r: any) => funilMap.set(r.status, Number(r.total)));
+      setFunilData(
+        LEAD_STATUS.filter((s) => s.value !== 'perdido').map((s) => ({
+          name: s.label,
+          value: funilMap.get(s.value) ?? 0,
+        }))
+      );
 
-      const days = Array.from({ length: 30 }, (_, idx) => {
-        const d = startOfDay(subDays(now, 29 - idx));
-        return { date: d, label: format(d, 'dd/MM', { locale: ptBR }), count: 0 };
-      });
-      all.forEach((lead) => {
-        const d = startOfDay(new Date(lead.created_at));
-        const found = days.find((day) => day.date.getTime() === d.getTime());
-        if (found) found.count++;
-      });
-      setTrendData(days.map(({ label, count }) => ({ label, leads: count })));
+      setTrendData(
+        (trendRpc.data ?? []).map((r: any) => ({
+          label: format(new Date(r.dia), 'dd/MM', { locale: ptBR }),
+          leads: Number(r.total),
+        }))
+      );
 
-      // Sem contato há +3 dias (não fechado/perdido)
-      const sem = all
-        .filter((l) => !['fechamento', 'perdido'].includes(l.status_funil))
-        .filter((l) => {
-          const ref = l.last_contact_at ? new Date(l.last_contact_at) : new Date(l.created_at);
-          return ref < tresDias;
-        })
-        .sort((a, b) => {
-          const ra = a.last_contact_at ? new Date(a.last_contact_at).getTime() : new Date(a.created_at).getTime();
-          const rb = b.last_contact_at ? new Date(b.last_contact_at).getTime() : new Date(b.created_at).getTime();
-          return ra - rb;
-        })
-        .slice(0, 8);
-      setSemContato(sem);
+      setSemContato(semContatoQ.data ?? []);
+      setAtrasadosEtapa(atrasadosQ.data ?? []);
 
-      // Atrasados na etapa (sem mudança há +7 dias)
-      const atras = all
-        .filter((l) => !['fechamento', 'perdido'].includes(l.status_funil))
-        .filter((l) => new Date(l.updated_at) < seteDiasEtapa)
-        .sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
-        .slice(0, 8);
-      setAtrasadosEtapa(atras);
-
-      // Ranking corretores (leads ativos)
-      const counts: Record<string, number> = {};
-      all.filter((l) => !['fechamento', 'perdido'].includes(l.status_funil) && l.corretor_id)
-        .forEach((l) => { counts[l.corretor_id] = (counts[l.corretor_id] || 0) + 1; });
       const pmap: Record<string, string> = {};
       (profiles.data ?? []).forEach((p: any) => { pmap[p.id] = p.nome; });
       setProfilesMap(pmap);
-      const rank = Object.entries(counts)
-        .map(([id, c]) => ({ id, nome: pmap[id] ?? 'Sem nome', count: c }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 8);
-      setRanking(rank);
+
+      setRanking(
+        (rankingRpc.data ?? []).map((r: any) => ({
+          id: r.corretor_id,
+          nome: r.nome ?? pmap[r.corretor_id] ?? 'Sem nome',
+          count: Number(r.total),
+        }))
+      );
 
       setProximasTarefas(proximas.data ?? []);
     })();
@@ -123,7 +134,7 @@ export default function CrmDashboard() {
 
   const cards = [
     { label: 'Novos leads (7d)', value: stats.novos7d, icon: Users, color: 'bg-[#FBF3DC] text-[#7A5A14]' },
-    { label: 'Em negociação', value: stats.leads - stats.fechamentos, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
+    { label: 'Em negociação', value: stats.emNegociacao, icon: TrendingUp, color: 'bg-purple-50 text-purple-600' },
     { label: 'Taxa de conversão', value: `${stats.conversao}%`, icon: CheckSquare, color: 'bg-emerald-50 text-emerald-600' },
     { label: 'Tarefas atrasadas', value: stats.tarefasAtrasadas, icon: AlertTriangle, color: 'bg-rose-50 text-rose-600' },
   ];
@@ -156,7 +167,7 @@ export default function CrmDashboard() {
           <CardHeader><CardTitle className="text-base">Pipeline (valor potencial)</CardTitle></CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-primary">{fmtMoney(stats.valorPipeline)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Soma dos orçamentos máximos dos leads em aberto · {stats.imoveis} imóveis cadastrados</p>
+            <p className="text-xs text-muted-foreground mt-1">Soma dos orçamentos máximos dos leads em aberto · {stats.imoveis} imóveis cadastrados · {stats.leads} leads no total</p>
           </CardContent>
         </Card>
 
