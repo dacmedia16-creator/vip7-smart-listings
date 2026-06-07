@@ -1,112 +1,74 @@
-# Importar todos os imóveis do Imoview para o banco
+# Migração de leitura: Imoview API → Supabase (`imoveis_proprios`)
 
-## Objetivo
-Mirror completo do estoque Imoview no banco (`imoveis_proprios` unificada) + fotos no Storage (`imoveis-fotos`), com sync **manual** disparado pelo admin. Após a carga, o site público lê do banco e não depende mais da API Imoview no caminho crítico.
+Após a primeira sincronização (já implementada via `imoview-sync`), o front público deixa de chamar a edge function `imoview-api` e passa a ler direto do banco. A `imoveis_proprios` já tem RLS pública para registros ativos/disponíveis.
 
-## Decisões confirmadas
-- Unificar em `imoveis_proprios` (`origem` + `codigo_imoview`).
-- Baixar fotos para Storage (`imoveis-fotos`, já existe — torná-lo público para leitura).
-- Sync **só manual** (botão no CRM para admin/gestor).
+## Estratégia: adapter, sem quebrar UI
 
-## 1. Schema (migration)
+Criar `src/services/imoveisDb.ts` que **expõe a mesma assinatura** de `imoviewApi.ts` (`ImoviewProperty`, `ImoviewFilters`, `listarImoveis`, `detalhesImovel`, `listarCidades`, `listarBairros`, `listarTiposImoveis`, `listarImoveisRecentes`, `listarCondominios` etc.), mapeando linhas do banco para o shape `ImoviewProperty`. Assim os 14 consumidores não precisam mudar — só trocam o import.
 
-Adicionar à `imoveis_proprios`:
-- `origem` text not null default `'proprio'` (`'proprio' | 'imoview'`)
-- `codigo_imoview` integer unique (null para próprios)
-- `imoview_raw` jsonb — payload bruto para debug/re-mapeamento futuro
-- `imoview_sync_at` timestamptz
-- `imoview_hash` text — hash do payload para skip de updates redundantes
-- `condominio_nome` text
-- `aceita_permuta` boolean default false
-- `valor_m2` numeric (gerado/copiado)
-- `data_atualizacao_origem` timestamptz
+Mapeamento DB → ImoviewProperty:
+- `codigo_imoview` → `codigo` (fallback hash do `id` quando `origem='proprio'`)
+- `preco` → `valor`; `condominio` → `valorCondominio`; `iptu` → `valorIptu`
+- `area`/`area_total` → `areaConstruida`/`areaTotal`
+- `quartos/suites/vagas/banheiros` → `qtde*`
+- `fotos[]` (text[]) → `[{ url }]`
+- `tipo`, `finalidade` ('venda'|'aluguel'|'venda_aluguel') → `finalidade` numérico (2/1) + `tipo` string
+- `caracteristicas`, `latitude/longitude`, `condominio_nome`, `valor_m2`, `aceita_permuta`, `data_atualizacao_origem` → campos correspondentes
 
-Índices:
-- `idx_imoveis_codigo_imoview` em `codigo_imoview`
-- `idx_imoveis_origem_status` em `(origem, status, ativo)`
-- GIN em `to_tsvector('portuguese', titulo || ' ' || descricao || ' ' || bairro || ' ' || cidade)` para busca
-- `idx_imoveis_preco`, `idx_imoveis_cidade_bairro`, `idx_imoveis_tipo_finalidade`
+## Funções implementadas
 
-RLS já cobre leitura pública (`imoveis_public_read`). Manter.
+1. **`listarImoveis(filters)`** — query no Supabase com:
+   - `.eq('ativo', true)`, `.in('status', ['disponivel','sob_proposta'])`
+   - finalidade: 1→`'aluguel'`/`'venda_aluguel'`, 2→`'venda'`/`'venda_aluguel'`
+   - tipo: `.ilike('tipo', ...)` (resolver código→nome via tabela estática)
+   - cidades/bairros: `.in('cidade', cidades)` + `.in('bairro', bairros)` normalizados
+   - condomínio: `.in('condominio_nome', ...)`
+   - faixa de valor, dorms, suítes, vagas, destaque
+   - busca textual (se houver): `.textSearch` no índice GIN já criado
+   - ordenação (`ordenarPor`: recentes, menor/maior preço, menor/maior R$/m²)
+   - paginação `.range()` com `count: 'exact'` → retorna `{ lista, quantidade }`
 
-Bucket `imoveis-fotos` → tornar público (Storage update); policy de leitura pública em `storage.objects`.
+2. **`detalhesImovel(codigo)`** — `.eq('codigo_imoview', codigo).maybeSingle()`.
 
-Tabela auxiliar `imoview_sync_log`:
-- `id`, `started_at`, `finished_at`, `status` (`running|ok|partial|error`)
-- `total`, `inserted`, `updated`, `unchanged`, `removed`, `photos_uploaded`, `errors_count`
-- `triggered_by` (uuid), `error_details` jsonb
+3. **`listarCidades(finalidade)` / `listarBairros(...)` / `listarTiposImoveis()`** — `select distinct` agregando do próprio `imoveis_proprios` filtrado por finalidade/cidade. Resultado memoizado client-side (já há `FILTER_CACHE_CONFIG`).
 
-## 2. Edge function `imoview-sync` (nova)
+4. **`listarCondominios*`** — distinct em `condominio_nome` agrupado por cidade (substitui `condominios_cache` para o caminho público; cache continua existindo como fallback).
 
-Disparada pelo CRM (admin/gestor). Modos:
-- `mode: 'full'` — varre tudo
-- `mode: 'incremental'` — usa `listarImoveisRecentes` (default 7 dias)
-- `mode: 'single', codigo: N` — re-sincroniza um imóvel
+5. **`listarImoveisRecentes`** — mesma query de `listarImoveis` ordenada por `data_atualizacao_origem desc` filtrando `>= now() - intervalo`.
 
-Fluxo full:
-1. Abre `imoview_sync_log` (`running`).
-2. Itera por finalidade (Venda=2, Aluguel=1), paginando `Imovel/RetornarImoveis` (50/página, em lotes paralelos de 3) até esgotar.
-3. Para cada imóvel:
-   - Mapeia com a mesma função `mapImoviewProperty` existente (reaproveitar de `imoview-api`).
-   - Calcula `hash` (SHA-256 do payload normalizado). Se `hash` igual ao salvo → marca `unchanged`, pula.
-   - Faz mirror das fotos: para cada URL nova, baixa, gera path `imoview/{codigo}/{idx}-{slug}.jpg`, faz upload com `upsert`. Mantém URLs já espelhadas (skip se path já existe). Atualiza `fotos` no banco para o array de URLs públicas do Storage.
-   - `upsert` em `imoveis_proprios` por `codigo_imoview` com `origem='imoview'`.
-4. Após varrer tudo, marca `removed=true` (ou `ativo=false`, `status='inativo'`) para `origem='imoview'` cujos códigos não apareceram no run (com flag `_seen_in_sync` na tabela `imoview_sync_log` ou via tabela temporária de códigos vistos).
-5. Fecha log com contagens.
+## Swap nos consumidores
 
-Retry/timeout:
-- Função roda assíncrona; retorna `sync_id` imediato e processa em background (`EdgeRuntime.waitUntil`).
-- CRM faz polling no `imoview_sync_log` via Supabase.
+Trocar o import em:
+- `src/hooks/useImoveis.ts`, `useImoveisMap.ts`, `useFiltrosIniciais.ts`, `usePropertyGeocodes.ts`, `useCompare.ts`
+- `src/components/FeaturedPropertiesSection.tsx`, `PropertyCard.tsx`, `PropertyJsonLd.tsx`, `PropertyMap.tsx`, `HeroSection.tsx`, `CompareDrawer.tsx`
+- `src/pages/Imoveis.tsx`, `ImovelDetail.tsx`, `Comparar.tsx`
 
-Limites: Edge Function tem ~150s wall-time. Se o catálogo for grande, dividir em "chunks" por cidade ou finalidade, com novo invoke após cada chunk (retomada via cursor salvo em `imoview_sync_log.cursor`).
+De: `from '@/services/imoviewApi'` → `from '@/services/imoveisDb'`.
 
-Secrets necessários: `IMOVIEW_API_KEY` (já existe), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (já existe).
+`useFiltrosIniciais` deixa de invocar a edge function `imoview-api` e chama `listarCidades` + `listarTiposImoveis` em paralelo.
 
-## 3. Camada de leitura (frontend)
+`useImoveisMap` deixa de paginar em lotes (DB devolve tudo numa query só com `.limit(2000)` + `.not('latitude','is',null)`).
 
-Trocar consumidores de `services/imoviewApi.ts` por consultas Supabase ao `imoveis_proprios`:
-- Novo `src/services/imoveisDb.ts` espelhando a API atual (`listarImoveis`, `listarImoveisRecentes`, `obterDetalhes`, `listarTipos`, `listarCidades`, `listarCondominios`).
-- Filtros, ordenação e paginação 100% em SQL (`.ilike`, `.in`, `.gte/lte`, `.order`, `.range`). Busca textual via `textSearch('search_vector', q, { type: 'websearch', config: 'portuguese' })` se quisermos full-text; senão `or(...ilike)`.
-- Cidades/tipos/condomínios: derivar via `select distinct` em views ou usar tabelas `condominios_cache` já existente (manter).
+## Edge functions
 
-Substituir arquivo por arquivo nos 14 consumidores listados, mantendo a mesma interface (`ImoviewProperty`, `ImoviewListResult`) para minimizar refactor visual.
+- `imoview-api`: mantida só como fallback admin (não removida).
+- `sync-condominios`: mantida (já popula `condominios_cache`).
 
-Edge function `imoview-api` é mantida temporariamente como fallback (admin pode comparar), mas o site público para de chamar.
+## Fora de escopo
 
-## 4. UI no CRM
+- Alterações no CRM (continua usando o banco).
+- Remoção do `imoview-api` ou do `condominios_cache`.
+- Mudanças visuais.
+- Sincronização automática/cron.
 
-Nova página `src/crm/pages/SincronizacaoImoview.tsx` (rota `/crm/configuracoes/imoview`, link na Sidebar dentro de Configurações ou item próprio se admin):
-- Card "Importar do Imoview" com:
-  - Botões: **Sincronização completa** / **Incremental (últimos 7 dias)** / **Re-sincronizar imóvel por código**
-  - Status do último sync (badge: ok/erro/em andamento, contagens, duração)
-  - Tabela com últimos 20 runs (`imoview_sync_log`)
-- Durante run em andamento: polling a cada 3s mostrando progresso (lidos/inseridos/atualizados/fotos).
-- Confirmação modal antes de full sync.
-- Guardado por `useRoles` admin/gestor.
+## Riscos / mitigações
 
-## 5. Migração inicial (operação)
+- **Antes da primeira sync o site fica vazio** → manter `imoview-api` ativa; criar flag `VITE_USE_DB_IMOVEIS` (default `true`) em `imoveisDb.ts` para reverter rápido caso necessário, delegando ao `imoviewApi.ts` quando `false`.
+- **Códigos `codigo_imoview` ausentes** em imóveis `origem='proprio'` → adapter gera código sintético estável a partir do UUID para URLs (`/imovel/:codigo`); `ImovelDetail` busca por `codigo_imoview` OR `id`.
+- **Performance de distinct cidade/bairro** → criar índices btree em `(cidade)`, `(bairro)`, `(condominio_nome)` se ainda não existirem (migração curta).
 
-Após deploy:
-1. Admin abre a página e dispara "Sincronização completa" — pode levar várias rodadas (a função se auto-reinvoca via cursor).
-2. Frontend continua funcional pela API enquanto o banco se popula.
-3. Quando log mostrar `status='ok'` e total ≈ catálogo Imoview, fazer cutover do site para `imoveisDb.ts`.
+## Validação
 
-## 6. Fora do escopo
-- Não remover `imoview-api` edge function (fica como ferramenta admin/fallback).
-- Não tocar lógica do CRM (`Leads`, `Tarefas`, etc.).
-- Não alterar tema visual.
-- Sync automático (cron) fica para depois.
-
-## 7. Riscos & mitigação
-- **Volume de fotos**: pode ser GB. Mitigado por: skip se path já existe, hash de payload, upload paralelo limitado (4 simultâneos), `Cache-Control: public, max-age=31536000`.
-- **Timeout edge function**: cursor + auto-reinvoke por chunk.
-- **Edição manual de imóvel `origem='imoview'` perdida no próximo sync**: documentar que imóveis Imoview são read-only no CRM (badge "Sincronizado do Imoview"); só `origem='proprio'` é editável. Próprios passam por sync sem tocar.
-- **Bucket público**: se workspace bloqueia public buckets, usar signed URLs com TTL longo ou manter privado + endpoint proxy.
-
-## 8. Ordem de implementação
-1. Migration (schema + índices + sync_log) e tornar bucket público.
-2. Edge function `imoview-sync` com cursor e mirror de fotos.
-3. Página CRM `/crm/configuracoes/imoview` com botões e polling.
-4. `src/services/imoveisDb.ts` espelhando contrato atual.
-5. Trocar imports nos 14 arquivos consumidores.
-6. Validação: rodar sync completo, abrir `/imoveis`, conferir filtros e detalhes.
+1. Rodar sync full em `/crm/configuracoes/imoview`.
+2. Conferir Home, `/imoveis` (filtros, paginação, mapa), `/imovel/:codigo`, `/comparar`.
+3. Verificar Network: nenhuma chamada para `functions/v1/imoview-api` no fluxo público.
