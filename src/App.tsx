@@ -42,6 +42,7 @@ import CrmClienteForm from "./crm/pages/ClienteForm";
 import CrmClienteDetail from "./crm/pages/ClienteDetail";
 import CrmImportarClientes from "./crm/pages/ImportarClientes";
 import CrmImportarProprietarios from "./crm/pages/ImportarProprietarios";
+import CrmImportarLeads from "./crm/pages/ImportarLeads";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/crm/sem-acesso" element={<CrmSemAcesso />} />
                 <Route path="/crm" element={<RequireAuth><CrmDashboard /></RequireAuth>} />
                 <Route path="/crm/leads" element={<RequireAuth><CrmLeads /></RequireAuth>} />
+                <Route path="/crm/leads/importar" element={<RequireAuth roles={['admin','gestor']}><CrmImportarLeads /></RequireAuth>} />
                 <Route path="/crm/leads/novo" element={<RequireAuth><CrmLeadForm /></RequireAuth>} />
                 <Route path="/crm/leads/:id" element={<RequireAuth><CrmLeadDetail /></RequireAuth>} />
                 <Route path="/crm/leads/:id/editar" element={<RequireAuth><CrmLeadForm /></RequireAuth>} />

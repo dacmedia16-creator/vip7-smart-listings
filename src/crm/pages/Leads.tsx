@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Loader2 } from 'lucide-react';
+import { Plus, Search, Loader2, Upload } from 'lucide-react';
 import { LEAD_STATUS, statusMeta, origemLabel, fmtPhone, fmtMoney } from '../lib/leads';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -77,9 +77,14 @@ export default function LeadsList() {
             <h2 className="text-2xl font-semibold text-[#0F0F12]">Leads</h2>
             <p className="text-sm text-[#2A2A30]">{leads.length} resultado(s)</p>
           </div>
-          <Button onClick={() => navigate('/crm/leads/novo')} className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">
-            <Plus className="h-4 w-4 mr-1" /> Novo lead
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/crm/leads/importar')} className="border-[#E8D9A8] text-[#7A5A14] hover:bg-[#FBF3DC]">
+              <Upload className="h-4 w-4 mr-1" /> Importar planilha
+            </Button>
+            <Button onClick={() => navigate('/crm/leads/novo')} className="bg-[#C9A24C] hover:bg-[#B08F3D] text-white">
+              <Plus className="h-4 w-4 mr-1" /> Novo lead
+            </Button>
+          </div>
         </div>
 
         <Card className="border-[#E8E4D9]">

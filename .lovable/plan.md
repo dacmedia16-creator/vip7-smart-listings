@@ -1,65 +1,74 @@
-## Diagnóstico
+## Diagnóstico da planilha
 
-Sua planilha tem 2 problemas que impedem a importação:
-
-**1. O arquivo `.xls` da Imoview é, na verdade, HTML**
-Começa com `<div><table>...`. A página atual usa `XLSX.read()`, que não entende esse formato → cabeçalhos não são lidos corretamente.
-
-**2. A coluna `Proprietarios` é texto livre**
-Não existem colunas separadas de Nome/CPF/Tel/Email — está tudo concatenado em uma célula, por exemplo:
+`atendimentos-2026-06-07-004721.xls` é HTML disfarçado de `.xls` (igual ao export de proprietários), com **40 colunas separadas**:
 
 ```
-Cód. 2652 | Eder Souza | (15) 98176-7268 | eder@remax.com.br
-Cód. 3727 | Francisco Nobre | CPF: 229.216.178-89 | (15) 99752-3267 | fabiano@motoresnobre.com.br
-1) Cód. 4607 | Daniel | (11) 98208-2350 2) Cód. 4612 | Fernando | (19) 99195-3433
-Cód. 6430 | GUILHERME NIELSEN | (15) 99836-7938, (15) 99662-4798
-Cód. 1339 | Paulette | (11) 99686-1190 | https://www.vip7imoveis.com.br/...
+Codigo, Finalidade, UnidadeCodigo, Unidade, ClienteNome, ClienteTelefone,
+ClienteEmail, Midia, Campanha, Tipo, Fase, Termometro, Mql, Corretor,
+Equipe, Situacao, SituacaoDescarte, ImoveisCarrinho, ImoveisVisita,
+ImoveisProposta, DataHoraInclusao, UsuarioInclusao, DataHoraUltimaInteracao,
+UltimaInteracao, UsuarioUltimaInteracao, PerfilQuartos, PerfilBanhos,
+PerfilSuites, PerfilVagas, PerfilValorDe, PerfilValorAte,
+PerfilAreaInternaDe, PerfilAreaInternaAte, PerfilTipos, PerfilCidades,
+PerfilBairros, PerfilRegioes, Valor, PerfilSistema, Indicacao, Etiquetas
 ```
 
-Por isso o seletor de "Nome do proprietário" não tem o que escolher.
+Como cada campo já vem em coluna própria, **não preciso de parser de texto livre** como fiz nos proprietários — basta auto-mapear e gravar.
 
-## Correção
+## O que vou construir
 
-Tudo na página `src/crm/pages/ImportarProprietarios.tsx`. Sem migração, sem mudança de UI fora desta tela.
+Nova página `src/crm/pages/ImportarLeads.tsx` em `/crm/leads/importar`, com a mesma UX mínima da importação de proprietários:
+1. Upload do `.xls` (detecta HTML e parseia via `DOMParser`).
+2. Pré-visualização das primeiras 10 linhas.
+3. **Auto-mapeamento** das colunas → campos da tabela `leads` (mostrado de forma compacta, apenas duas linhas obrigatórias para confirmar: **Nome** e **Telefone**).
+4. Botão **Importar** com barra de progresso e relatório final (inseridos / duplicados / erros).
 
-### 1. Suportar `.xls` em formato HTML
-No `handleFile`, antes de cair em XLSX:
-- Ler os primeiros bytes; se começar com `<` (ou `<!DOCTYPE`/`<html`/`<div`/`<table`), parsear via `DOMParser` (`text/html`), pegar a primeira `<table>`, extrair a primeira linha como cabeçalho e as demais como linhas (objeto `{header: cellText}`).
-- Caso contrário, manter o fluxo atual (XLSX para `.xlsx`/`.xls` binário, Papa para CSV).
+## Mapeamento Imoview → `leads`
 
-### 2. Detectar a coluna `Proprietarios` e novo modo "campo concatenado"
-- Adicionar no `IMOVEL_FIELD` o alias `codigo` já existe — ok.
-- Adicionar um campo especial **`proprietarios_raw`** com label "Proprietários (campo único do Imoview)" e aliases `['proprietarios','proprietários','proprietario','proprietário']`.
-- Auto-map: se a planilha tem `Proprietarios`, ele é mapeado nesse campo, e os campos `p1_*`/`p2_*`/`p3_*` ficam opcionais.
-- Validação do botão "Importar": ou `p1_nome` está mapeado **ou** `proprietarios_raw` está mapeado.
+| Coluna planilha | Campo `leads` | Tratamento |
+|---|---|---|
+| ClienteNome | `nome` | obrigatório |
+| ClienteTelefone | `telefone` | só dígitos, obrigatório |
+| ClienteEmail | `email` | lowercase, opcional |
+| Finalidade | `finalidade` | "Venda"→`venda`, "Locação"→`aluguel` |
+| PerfilTipos | `tipo_imovel` | primeiro tipo da string |
+| PerfilCidades | `cidade_interesse` | primeira cidade |
+| PerfilBairros | `bairro_interesse` | string completa |
+| PerfilValorDe | `orcamento_min` | número |
+| PerfilValorAte | `orcamento_max` | número |
+| PerfilQuartos/Banhos/Suites/Vagas | concatena em `perfil_busca` | texto descritivo |
+| Midia + Campanha | `origem` + `origem_url` | "cliqueimudei"→`portal`, etc; padrão `importado` |
+| Etiquetas | `tags` | split por vírgula |
+| DataHoraInclusao | `created_at` | parse `dd/MM/yyyy HH:mm` |
+| DataHoraUltimaInteracao | `last_contact_at` | idem |
+| Fase + Situacao | `status_funil` | mapa: "Lead qualificado"→`em_atendimento`, "Visita"→`visita_agendada`, "Proposta"→`proposta_enviada`, "Negócio fechado"→`fechamento`, Situacao="Descartado"→`perdido`, padrão `novo` |
+| Codigo | `imovel_interesse_codigo` | string |
+| UltimaInteracao + SituacaoDescarte | `observacoes` | texto consolidado |
 
-### 3. Parser do campo `Proprietarios`
-Função `parseProprietariosCell(text: string): Owner[]` (até 3):
+Campos sem destino direto (Termometro, Mql, Corretor, Equipe, etc.) vão para `observacoes` como texto extra para não perder informação.
 
-1. **Split por slots** com regex `/(?:^|\s)(\d+)\)\s+/` para separar `1) ... 2) ... 3) ...`. Se não houver `N)`, tratar como 1 slot único.
-2. Para cada slot, **split por `|`** em tokens, trim cada um.
-3. Para cada token, classificar:
-   - `Cód. 1234` ou `Cod. 1234` → `codigo_imoview` (número).
-   - `CPF: 999.999.999-99` ou `CNPJ:` → `cpf_cnpj` (manter só dígitos via util já existente).
-   - Match de `\(\d{2}\)\s?\d{4,5}-?\d{4}` em qualquer parte → telefone(s); se múltiplos separados por vírgula no mesmo token → `telefone` = 1º, `telefone_secundario` = 2º.
-   - Match de `\S+@\S+\.\S+` → `email`.
-   - URL (`https?://`) → ignorar.
-   - Sobrando texto sem rótulo → `nome` (primeiro token não-rotulado). Limpar parênteses tipo `(VIP7 1868) Interesse ...` colocando no campo `observacoes`.
-4. Descartar slot sem `nome`.
+## Deduplicação
 
-### 4. Integração no `startImport`
-No loop de linhas, **antes** dos slots `p1/p2/p3`:
-- Se `proprietarios_raw` está mapeado, chamar `parseProprietariosCell(row[col])` e tratar cada owner retornado como um slot (mesma lógica de upsert já existente: dedup por `codigo_imoview` → `cpf_cnpj` → `telefone+nome`).
-- Se também houver colunas `p1_*` mapeadas, processar ambos (sem duplicar via mesma chave de dedup).
-- Vínculo em `cliente_imoveis` com `papel='proprietario'` continua igual.
+Antes de inserir cada linha, chamo o RPC já existente `find_duplicate_lead(_telefone, _email)`. Se retornar um lead, **pulo** (sem criar interação, já que é importação em massa, não contato novo). Contador "duplicados" no relatório final.
 
-### 5. Pré-visualização
-A tabela de preview já mostra todas as colunas — nenhuma mudança. Apenas o auto-map e a validação mudam.
+## Acesso à página
 
-### Arquivo único editado
-- `src/crm/pages/ImportarProprietarios.tsx`
+- Rota nova em `src/App.tsx`: `/crm/leads/importar` → `ImportarLeads` (com `RequireAuth`).
+- Botão **"Importar planilha"** em `src/crm/pages/Leads.tsx`, ao lado do "Novo lead".
 
-### Validação após implementar
-- Abrir `/crm/imoveis/importar-proprietarios`, subir o `.xls` enviado.
-- Confirmar: 1.140 linhas, 158 colunas detectadas, campo `Proprietarios` auto-mapeado em "Proprietários (campo único do Imoview)".
-- Rodar importação e conferir contagens (esperado ~606 proprietários únicos, alguns imóveis com 2-3 owners).
+## Arquivos
+
+- **Novo**: `src/crm/pages/ImportarLeads.tsx`
+- **Editados**: `src/App.tsx` (rota), `src/crm/pages/Leads.tsx` (botão)
+
+## O que NÃO vou fazer
+
+- Não vou criar `clientes` a partir da planilha (só `leads`). Se depois você quiser duplicar como cliente categoria "interessado", é um passo extra.
+- Não vou vincular ao corretor importado por nome (só gravo o nome em `observacoes`). Vincular exigiria uma tabela de-para que você ainda não tem.
+- Não vou alterar nada na importação de proprietários.
+
+## Validação após implementar
+
+- Abrir `/crm/leads/importar`, subir o `.xls` enviado.
+- Conferir: ~N linhas detectadas, colunas auto-mapeadas, preview correto.
+- Importar e verificar no Funil (`/crm/funil`) que aparecem distribuídos nas colunas certas conforme `Fase`/`Situacao`.
