@@ -76,6 +76,34 @@ async function fetchListing(pagina: number): Promise<Record<string, unknown>[]> 
   return [];
 }
 
+// Lista somente pessoas alteradas desde uma data (incremental).
+// Formato da data esperado pelo Imoview: dd/MM/yyyy.
+function formatDateBR(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+async function fetchListingIncremental(pagina: number, dataInicial: string): Promise<Record<string, unknown>[]> {
+  const attempts: [string, unknown, string][] = [
+    ["/Pessoa/RetornarPessoasAlteradas", { datainicial: dataInicial, numeropagina: pagina, numeroregistros: PAGE_SIZE }, "POST"],
+    ["/Cliente/RetornarClientesAlterados", { datainicial: dataInicial, numeropagina: pagina, numeroregistros: PAGE_SIZE }, "POST"],
+    ["/Proprietario/RetornarProprietariosAlterados", { datainicial: dataInicial, numeropagina: pagina, numeroregistros: PAGE_SIZE }, "POST"],
+  ];
+  for (const [path, body, method] of attempts) {
+    try {
+      const data = await imoviewFetch(path, body, method);
+      const list = asList(data);
+      if (list.length > 0 || pagina > 1) return list;
+    } catch (e) {
+      if (pagina === 1) console.warn(`[sync-clientes] incremental ${path}:`, (e as Error).message);
+    }
+  }
+  return [];
+}
+
+
+
 async function fetchDetails(codigo: number): Promise<Record<string, unknown> | null> {
   for (const path of [
     `/Pessoa/RetornarDetalhesPessoa?codigo=${codigo}`,
