@@ -1,34 +1,39 @@
-# Corrigir trava de 1000 leads no Dashboard
+# Importar proprietários dos 110 imóveis de locação faltantes
 
-## Causa
-O `Dashboard.tsx` faz `supabase.from('leads').select(...)` sem paginação. O PostgREST do Supabase retorna no máximo **1000 linhas por requisição** — por isso "Novos leads (7d)" e "Em negociação" travam em 1000, e o pipeline/funil/ranking/tendência ficam subestimados.
+## Diagnóstico da planilha
+- `imoveis-2026-06-07-170311.xls` é HTML com 110 linhas — todas `Finalidade = Aluguel`.
+- A coluna **`Proprietarios`** vem em formato pipe-delimitado:
+  `Cód. <codigo_imoview_cliente> | Nome | (DDD) telefone | email (opcional)`
+- 100% das linhas têm proprietário preenchido. Não há CPF/CNPJ.
 
-## Solução
-Substituir o fetch único por queries agregadas no banco. Nada de UI muda — só os números passam a refletir a base completa.
+## Estratégia
+Reaproveitar o pipeline existente `import-proprietarios-batch` (edge function que já faz dedupe + upsert de cliente + vínculo `cliente_imoveis` com `papel='proprietario'`).
 
-## Mudanças
+## Passos
 
-### 1. Migration: 4 RPCs agregadoras (SECURITY DEFINER)
-- `dashboard_funil_counts()` → retorna `(status text, total int)` para cada status do funil.
-- `dashboard_pipeline_total()` → `numeric` com `SUM(orcamento_max)` dos leads em aberto.
-- `dashboard_leads_por_dia(_dias int)` → `(dia date, total int)` para o gráfico de tendência.
-- `dashboard_ranking_corretores(_limit int)` → `(corretor_id uuid, nome text, total int)` dos corretores com mais leads ativos.
+1. **Script local de conversão** (Python, `/tmp/`): lê o .xls (HTML), parseia a coluna `Proprietarios` e gera o CSV no mesmo schema que a função espera:
+   `codigo_imovel, o_codigo, o_doc, o_nome, o_email, o_tel, o_tel2, o_obs`
+   - `codigo_imovel` ← `Codigo` da planilha
+   - `o_codigo` ← número após `Cód.`
+   - `o_nome` ← 2º campo
+   - `o_tel` ← 3º campo (limpo, só dígitos)
+   - `o_email` ← 4º campo se contiver `@`
+   - `o_doc`, `o_tel2`, `o_obs` ← vazios
 
-Todas com `SET search_path = public` e respeitando regras de acesso (apenas `is_crm_user(auth.uid())` pode chamar — checagem dentro da função).
+2. **Upload do CSV** para `lead-documentos/_tmp_import/staging_owners.csv` via `supabase.storage.upload` (sobrescreve).
 
-### 2. Refactor `src/crm/pages/Dashboard.tsx`
-Trocar o fetch único por chamadas paralelas:
-- **Cards**: 4 counts (`head: true, count: 'exact'`) — novos 7d, em negociação, fechamentos, perdidos. Tarefas atrasadas e total de imóveis já usam count.
-- **Pipeline**: chamar `dashboard_pipeline_total()`.
-- **Funil**: chamar `dashboard_funil_counts()`.
-- **Tendência 30d**: chamar `dashboard_leads_por_dia(30)`.
-- **Ranking**: chamar `dashboard_ranking_corretores(8)`.
-- **"Sem contato +3d"** e **"Atrasados na etapa +7d"**: já são listas curtas — adicionar os filtros direto na query (`status_funil not in (...)`, `last_contact_at < ...` / `updated_at < ...`) com `.order().limit(8)`, sem trazer todos.
+3. **Invocar a função** `import-proprietarios-batch` — ela vai:
+   - Casar `codigo_imovel` → `imoveis_proprios.codigo_imoview` (os 110 já existem no banco).
+   - Casar/criar `clientes` por `codigo_imoview` (campo `o_codigo`).
+   - Adicionar `proprietario` em `categorias`.
+   - Criar vínculo `cliente_imoveis (papel='proprietario')`.
 
-### Fora de escopo
-- Mudanças visuais nos cards/gráficos.
-- Filtros por corretor/período no dashboard (pode vir depois).
-- Otimização das outras telas (Leads, Funil) — só o Dashboard agora.
+4. **Relatório**: mostrar o JSON de retorno (clientes novos/atualizados, vínculos criados, imóveis ausentes, erros).
 
-## Resultado
-Números reais mesmo com 50k+ leads, e o dashboard carrega mais rápido (sem baixar milhares de linhas para o cliente).
+## Fora de escopo
+- Mudanças de UI ou no edge function (já está pronto).
+- Importar outros campos da planilha (foco só em proprietários).
+- Tratar duplicidades além do que a função já faz por `codigo_imoview` do cliente.
+
+## Resultado esperado
+Os 110 imóveis de locação passam a aparecer com proprietário vinculado em `/crm/imoveis/:id` e na contagem do diagnóstico anterior (110 → 0 sem proprietário).
