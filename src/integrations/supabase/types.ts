@@ -854,6 +854,9 @@ export type Database = {
           email: string | null
           finalidade: string | null
           id: string
+          imoveis_carrinho_codigos: string[]
+          imoveis_proposta_codigos: string[]
+          imoveis_visita_codigos: string[]
           imovel_interesse_codigo: string | null
           last_contact_at: string | null
           nome: string
@@ -878,6 +881,9 @@ export type Database = {
           email?: string | null
           finalidade?: string | null
           id?: string
+          imoveis_carrinho_codigos?: string[]
+          imoveis_proposta_codigos?: string[]
+          imoveis_visita_codigos?: string[]
           imovel_interesse_codigo?: string | null
           last_contact_at?: string | null
           nome: string
@@ -902,6 +908,9 @@ export type Database = {
           email?: string | null
           finalidade?: string | null
           id?: string
+          imoveis_carrinho_codigos?: string[]
+          imoveis_proposta_codigos?: string[]
+          imoveis_visita_codigos?: string[]
           imovel_interesse_codigo?: string | null
           last_contact_at?: string | null
           nome?: string

@@ -90,6 +90,9 @@ type LeadPayload = {
   tags: string[];
   observacoes: string | null;
   imovel_interesse_codigo: string | null;
+  imoveis_carrinho_codigos: string[];
+  imoveis_visita_codigos: string[];
+  imoveis_proposta_codigos: string[];
   created_at: string | null;
   last_contact_at: string | null;
 };
@@ -156,6 +159,9 @@ function rowToLead(r: Row, cols: Record<string, string | null>): LeadPayload | {
     tags,
     observacoes: obsParts.length ? obsParts.join(' | ') : null,
     imovel_interesse_codigo: codigoImovel,
+    imoveis_carrinho_codigos: (str(get('ImoveisCarrinho')) || '').match(/\d+/g) || [],
+    imoveis_visita_codigos: (str(get('ImoveisVisita')) || '').match(/\d+/g) || [],
+    imoveis_proposta_codigos: (str(get('ImoveisProposta')) || '').match(/\d+/g) || [],
     created_at: parseBrDate(get('DataHoraInclusao')),
     last_contact_at: parseBrDate(get('DataHoraUltimaInteracao')),
   };

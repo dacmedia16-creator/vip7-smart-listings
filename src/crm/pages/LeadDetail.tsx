@@ -21,6 +21,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '../hooks/useAuth';
 import { useRoles } from '../hooks/useRole';
 import { InteracaoForm, InteracaoTimeline } from '../components/InteracaoTimeline';
+import { LeadImoveisInteresseCard } from '../components/LeadImoveisInteresseCard';
 import { notifyUser, crmUrl } from '../lib/notify';
 
 export default function LeadDetail() {
@@ -195,6 +196,14 @@ export default function LeadDetail() {
             )}
           </CardContent>
         </Card>
+
+        <LeadImoveisInteresseCard
+          carrinho={lead.imoveis_carrinho_codigos}
+          visita={lead.imoveis_visita_codigos}
+          proposta={lead.imoveis_proposta_codigos}
+        />
+
+
 
         <Tabs defaultValue="historico">
           <TabsList>
