@@ -107,6 +107,8 @@ export default function ImovelForm() {
   const [corretores, setCorretores] = useState<any[]>([]);
   const [loadedRecord, setLoadedRecord] = useState<any>(null);
   const [tab, setTab] = useState('endereco');
+  const [pendingProprietarios, setPendingProprietarios] = useState<{ cliente: Cliente; percentual: number | null }[]>([]);
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
