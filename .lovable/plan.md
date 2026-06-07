@@ -1,45 +1,49 @@
-## Problema
+# Proprietários nos imóveis — sync via Imoview + card no topo
 
-A planilha do Imoview que você importou tem **uma linha por atendimento** (cliente repete + código do imóvel). Mas o importador atual:
+## Situação atual
+- 1.213 imóveis ativos, **0 vínculos** de proprietário em `cliente_imoveis`.
+- A edge function `imoview-sync-proprietarios` já existe e usa o endpoint `App_` do Imoview (precisa de `IMOVIEW_APP_EMAIL` + `IMOVIEW_APP_SENHA` válidos — mesma credencial da sync de clientes).
+- A aba "Proprietários" no `ImovelForm` já permite vincular manualmente, mas não há resumo visível no topo nem disparador da sync em massa.
 
-1. **Não tem coluna mapeada para "código do imóvel"** — só código de atendimento.
-2. **Nunca cria registros em `cliente_imoveis`** — só insere/atualiza o cliente.
-3. Só cria um lead se houver `código atendimento` + telefone, e mesmo assim sem ligar ao imóvel.
+## O que entregar
 
-Resultado atual no banco: 2.766 clientes, **0 vínculos**, **0 leads com imóvel de interesse**.
+### 1) Página admin para rodar a sync de proprietários
+Nova seção em **Importar clientes** (ou ao lado dos cards de sync que já existem) com:
+- Botão **"Sincronizar proprietários dos imóveis"** chamando `supabase.functions.invoke('imoview-sync-proprietarios')`.
+- Filtros opcionais: "Só imóveis sem proprietário" (default ON) e limite de lote.
+- Exibe progresso: total processado, vínculos criados, clientes novos, erros (top 20).
+- Bloqueia o botão se `IMOVIEW_APP_SENHA` estiver inválida (mostra link pro formulário de atualizar senha já existente).
 
-## O que vou fazer
+### 2) Ajuste fino na edge `imoview-sync-proprietarios`
+- Aceitar body `{ onlyMissing?: boolean, limit?: number, imovelIds?: string[] }`.
+- Salvar **todos** os campos do contato vindos do Imoview no `clientes` (nome, CPF/CNPJ, RG, email, telefone, telefone_secundario, endereço completo, data_nascimento, `imoview_raw`).
+- Dedup por `codigo_imoview` → fallback `cpf_cnpj` → fallback `telefone`.
+- Upsert em `cliente_imoveis` com `papel='proprietario'` e `onConflict: cliente_id,imovel_id,papel`.
+- Gravar log em `imoview_sync_log` (`mode='proprietarios'`).
 
-### 1. Frontend (`ImportarClientes.tsx`)
-- Adicionar novo campo no mapeamento: **"Código do imóvel"** (aliases: `codigo imovel`, `código imóvel`, `cod imovel`, `imovel`, `cod. imovel`).
-- Mostrar no resultado: **"Vínculos criados: N"** e **"Imóveis não encontrados: N"** (códigos que estavam na planilha mas não existem em `imoveis_proprios`).
+### 3) Card "Proprietário(s)" no topo do `ImovelForm`
+Acima das abas, novo `Card` mostrando para cada proprietário vinculado:
+- Nome + badge de % de participação (se houver).
+- Telefone principal (com botão WhatsApp) + telefone secundário.
+- Email (com `mailto:`).
+- CPF/CNPJ.
+- Link "ver cliente" → `/crm/clientes/:id`.
+- Se não houver proprietário: estado vazio com botão "Vincular proprietário" que abre a aba Proprietários.
 
-### 2. Edge function (`imoview-import-csv`)
-- Ler `mapping.codigo_imovel` em cada linha.
-- Inferir papel a partir de `Situação` / `Finalidade`:
-  - contém "loca"/"alug"/"inquil" → `locatario`
-  - contém "capta"/"propriet" → `proprietario`
-  - contém "vend"/"compr" → `comprador`
-  - fallback → `interessado`
-- Pré-carregar todos os `imoveis_proprios` cujos `codigo_imoview` aparecem no lote (1 query por batch).
-- Para cada linha com código de imóvel encontrado, fazer `upsert` em `cliente_imoveis` com `onConflict: cliente_id,imovel_id,papel` (mesmo padrão usado pela sync via API).
-- Devolver contadores extras: `vinculos_criados`, `vinculos_ignorados_sem_imovel`, `codigos_imoveis_nao_encontrados` (lista única, top 50).
-- Também preencher `imovel_interesse_codigo` no lead quando houver código de imóvel (mesmo sem código de atendimento).
+A aba "Proprietários" continua existindo para edição (adicionar/remover).
 
-### 3. Reprocessamento dos 2.766 clientes já importados
-Depois que o código estiver atualizado, você precisa **reabrir o mesmo arquivo e clicar em "Importar" novamente** — o importador vai deduplicar por `codigo_imoview`/`cpf_cnpj` (clientes existentes serão apenas **atualizados**, não duplicados) e desta vez vai criar os vínculos.
+### 4) (Opcional, baixo custo) Botão por imóvel
+Dentro do card do topo, botão **"Buscar no Imoview"** que dispara a sync só para aquele `imovel_id` (usa o mesmo endpoint com `imovelIds`).
 
-### Pré-requisito importante
+## Pré-requisito
+A sync **só funciona se o login Imoview estiver OK**. Se a última execução de `imoview-sync-clientes` falhou com 401, primeiro use o formulário de atualizar `IMOVIEW_APP_SENHA` que já está implementado, depois rode esta sync.
 
-Os vínculos só serão criados para imóveis cujo `codigo_imoview` **já exista** na tabela `imoveis_proprios`. Se a sincronização de imóveis está parada porque o login do Imoview ainda está rejeitado, muitos códigos da planilha não vão bater. O resultado vai mostrar quantos códigos não foram encontrados para você decidir se precisa rodar a sync de imóveis antes.
-
-## Banco
-
-Sem migration. Só usa `cliente_imoveis` (já existe) e `imoveis_proprios.codigo_imoview` (já indexado).
-
-## Arquivos alterados
-
-```text
-src/crm/pages/ImportarClientes.tsx          (novo campo + UI de resultado)
-supabase/functions/imoview-import-csv/index.ts  (mapeamento, pré-carga, upsert vínculos, contadores)
-```
+## Detalhes técnicos
+- **Arquivos a alterar:**
+  - `supabase/functions/imoview-sync-proprietarios/index.ts` — aceitar filtros no body, melhorar mapeamento de campos, log em `imoview_sync_log`.
+  - `src/crm/pages/ImportarClientes.tsx` — novo card "Sincronizar proprietários".
+  - `src/crm/pages/ImovelForm.tsx` — renderizar `<ProprietariosCard imovelId={id} />` antes das abas.
+  - `src/crm/components/ProprietariosCard.tsx` — novo componente readonly de resumo + botão "Buscar no Imoview".
+  - `src/crm/lib/clientes.ts` — já tem `listVinculosByImovel`; adicionar `syncProprietariosImovel(imovelId)`.
+- **Sem migração de schema** — todas as tabelas (`clientes`, `cliente_imoveis`, `imoview_sync_log`) já existem com os campos necessários.
+- **RLS:** o card lê via `listVinculosByImovel` (já coberto por `cliente_imoveis_select` + `clientes_select` para usuários CRM).
