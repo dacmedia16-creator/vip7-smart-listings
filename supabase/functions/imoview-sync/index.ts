@@ -393,11 +393,12 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const { mode = "full", sync_id, codigo, internal_cursor } = body as {
-      mode?: "full" | "incremental" | "single";
+      mode?: "full" | "incremental" | "single" | "desativados";
       sync_id?: string;
       codigo?: number;
       internal_cursor?: { finalidadeIdx: number; pagina: number };
     };
+    const isDesat = mode === "desativados";
 
     // ===== modo single =====
     if (mode === "single") {
