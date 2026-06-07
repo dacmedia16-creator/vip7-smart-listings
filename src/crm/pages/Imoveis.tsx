@@ -47,7 +47,7 @@ type Filters = {
 };
 
 const EMPTY: Filters = {
-  codigos: '', finalidade: 'todos', status: 'todos', tipo: 'todos', etiqueta: 'todos',
+  codigos: '', finalidade: 'todos', status: 'disponivel', tipo: 'todos', etiqueta: 'todos',
   cidade: '', regiao: 'todos', sub_regiao: 'todos', bairro: '',
   endereco: '', numero: '', complemento: '', local_chaves: '', identificador_chaves: '',
   preco_min: '', preco_max: '', cond_min: '', cond_max: '', area_min: '', area_max: '',

@@ -1,52 +1,21 @@
-# Corrigir filtro Condomínio / Edifício
+## Contexto
+Atualmente, ao abrir a página `/crm/imoveis`, o filtro de status vem definido como "Todas", exibindo todos os imóveis independentemente do status.
 
-## Problema
+## Objetivo
+Sempre que o usuário abrir a página de Imóveis, a listagem deve vir filtrada para mostrar **apenas imóveis com status "disponível"** por padrão.
 
-O autocomplete lista nomes vindos de 3 fontes:
-1. `imoveis_proprios.edificio`
-2. `imoveis_proprios.condominio_nome`
-3. `condominios_cache.nome`
+## Mudanças necessárias
+1. **`src/crm/pages/Imoveis.tsx`**
+   - Alterar o valor padrão do filtro `status` no objeto `EMPTY` de `'todos'` para `'disponivel'`.
+   - Verificar que o status `"disponivel"` corresponde ao valor esperado no banco de dados (já confirmado no enum `imovel_status` e na lógica de filtro existente).
+   - Garantir que o `<Select>` de "Situação" reflita corretamente o valor pré-selecionado ao montar o componente.
 
-Mas a query atual filtra apenas a coluna `edificio`:
-
-```ts
-if (f.edificio) query = query.ilike('edificio', `%${f.edificio}%`);
-if (f.tipo_condominio !== 'todos') query = query.eq('edificio', f.tipo_condominio);
-```
-
-Quando o usuário escolhe um nome que só existe em `condominio_nome` (ou veio do cache do Imoview), a listagem não filtra porque a coluna `edificio` está vazia/diferente nesses registros.
-
-Há também um detalhe de UX: ao clicar em uma opção do autocomplete o valor é definido em `filters.edificio`, mas o filtro só é aplicado quando o usuário clica em **Aplicar filtros** (padrão atual do projeto — manter).
-
-## Correção
-
-Em `src/crm/pages/Imoveis.tsx`, dentro do `useEffect` que monta a query, substituir o filtro de `edificio` por um `OR` que cubra as duas colunas reais da tabela `imoveis_proprios`:
-
-```ts
-if (f.edificio) {
-  const s = f.edificio.replace(/[,()]/g, ' ').trim();
-  query = query.or(
-    `edificio.ilike.%${s}%,condominio_nome.ilike.%${s}%`
-  );
-}
-```
-
-E remover (ou ajustar de forma equivalente) a linha redundante:
-
-```ts
-if (f.tipo_condominio !== 'todos') query = query.eq('edificio', f.tipo_condominio);
-```
-
-`tipo_condominio` não é exposto na UI atual (não há Select para ele), então a remoção é segura. Caso prefira manter por compatibilidade futura, aplicar a mesma lógica OR também para esse campo.
-
-## Verificação
-
-1. Abrir `/crm/imoveis`, abrir Filtros.
-2. Digitar no campo Condomínio/Edifício um nome que sabidamente só aparece em `condominio_nome` (ex.: vindo do Imoview), selecionar e clicar **Aplicar filtros**.
-3. Confirmar que a listagem reduz para apenas imóveis daquele condomínio.
-4. Repetir com um valor que existe em `edificio` para garantir que continua funcionando.
+## Impacto
+- O filtro de status começará selecionado em "Disponível" ao invés de "Todas".
+- A query Supabase aplicará `eq('status', 'disponivel')` automaticamente no primeiro carregamento.
+- O contador de filtros ativos (`activeCount`) já considerará esse filtro inicial.
+- O usuário ainda poderá manualmente alterar o select para "Todas" ou outro status quando desejar.
 
 ## Escopo
-
-- Arquivo único: `src/crm/pages/Imoveis.tsx`
-- Apenas a lógica do filtro na construção da query Supabase; UI e autocomplete permanecem como estão.
+- Apenas frontend, arquivo único (`src/crm/pages/Imoveis.tsx`).
+- Nenhuma mudança no banco de dados, RLS ou backend necessária.
