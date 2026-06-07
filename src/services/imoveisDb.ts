@@ -178,7 +178,8 @@ function mapRow(r: Row): ImoviewProperty {
   };
 }
 
-type Q = ReturnType<ReturnType<typeof supabase.from<'imoveis_proprios', any>>['select']>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Q = any;
 
 function applyCommonFilters(q: Q, f: ImoviewFilters): Q {
   let query = q
