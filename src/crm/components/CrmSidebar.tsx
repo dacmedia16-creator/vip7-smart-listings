@@ -10,6 +10,8 @@ import {
   Settings,
   LogOut,
   RefreshCw,
+  Building,
+
 } from 'lucide-react';
 import {
   Sidebar,
