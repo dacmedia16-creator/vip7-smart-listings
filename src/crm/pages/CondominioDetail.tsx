@@ -71,20 +71,20 @@ export default function CondominioDetail() {
           </div>
         </div>
 
-        <Card>
-          <div className="px-4 py-3 border-b border-[#E8E4D9] flex items-center justify-between">
+        <Card className="bg-white border-[#E8E4D9] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#E8E4D9] flex items-center justify-between bg-white">
             <h2 className="font-semibold text-[#0F0F12]">Imóveis vinculados</h2>
             <Badge variant="secondary" className="bg-[#FBF3DC] text-[#7A5A14]">{imoveis.length}</Badge>
           </div>
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Imóvel</TableHead>
-                <TableHead>Finalidade</TableHead>
-                <TableHead>Quartos/Suítes/Vagas</TableHead>
-                <TableHead>Área</TableHead>
-                <TableHead className="text-right">Preço</TableHead>
-                <TableHead>Status</TableHead>
+            <TableHeader className="bg-[#FAF8F3]">
+              <TableRow className="border-b border-[#E8E4D9] hover:bg-transparent">
+                <TableHead className="text-[#4A4A52]">Imóvel</TableHead>
+                <TableHead className="text-[#4A4A52]">Finalidade</TableHead>
+                <TableHead className="text-[#4A4A52]">Quartos/Suítes/Vagas</TableHead>
+                <TableHead className="text-[#4A4A52]">Área</TableHead>
+                <TableHead className="text-right text-[#4A4A52]">Preço</TableHead>
+                <TableHead className="text-[#4A4A52]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -95,7 +95,7 @@ export default function CondominioDetail() {
               ) : imoveis.map((im) => {
                 const sm = imovelStatusMeta(im.status as string);
                 return (
-                  <TableRow key={im.id} className="hover:bg-[#FAF8F3]">
+                  <TableRow key={im.id} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
                     <TableCell>
                       <Link to={`/crm/imoveis/${im.id}`} className="text-[#0F0F12] hover:text-[#7A5A14] font-medium">
                         {im.titulo}
