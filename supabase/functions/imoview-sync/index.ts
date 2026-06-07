@@ -86,10 +86,28 @@ async function fetchListing(finalidade: number, pagina: number): Promise<Record<
   return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
 }
 
+function unwrapDetail(d: unknown): Record<string, unknown> | null {
+  if (!d || typeof d !== "object") return null;
+  const r = d as Record<string, unknown>;
+  if (r.imovel && typeof r.imovel === "object") return r.imovel as Record<string, unknown>;
+  if (r.dados && typeof r.dados === "object") return r.dados as Record<string, unknown>;
+  if (r.resultado && typeof r.resultado === "object") return r.resultado as Record<string, unknown>;
+  // single-key wrapper
+  const keys = Object.keys(r);
+  if (keys.length === 1 && r[keys[0]] && typeof r[keys[0]] === "object") {
+    return r[keys[0]] as Record<string, unknown>;
+  }
+  return r;
+}
+
 async function fetchDetails(codigo: number): Promise<Record<string, unknown> | null> {
   try {
     const d = await imoviewFetch(`/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${codigo}`, undefined, "GET");
-    return d as Record<string, unknown>;
+    const unwrapped = unwrapDetail(d);
+    if (unwrapped && !unwrapped.codigo) {
+      unwrapped.codigo = codigo; // garantir
+    }
+    return unwrapped;
   } catch (e) {
     console.error(`[sync] detalhes ${codigo} falhou:`, e);
     return null;
