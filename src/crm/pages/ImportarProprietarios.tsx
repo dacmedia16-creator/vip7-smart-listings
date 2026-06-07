@@ -113,6 +113,99 @@ type Result = {
 const digits = (v: unknown) => String(v ?? '').replace(/\D/g, '');
 const str = (v: unknown) => { const s = String(v ?? '').trim(); return s || null; };
 
+type OwnerData = {
+  nome: string | null;
+  tipo_pessoa?: string | null;
+  cpf_cnpj?: string | null;
+  rg?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  telefone_secundario?: string | null;
+  data_nascimento?: string | null;
+  cep?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  codigo_imoview?: number | null;
+  percentual?: number | null;
+  observacoes?: string | null;
+};
+
+// Parse "Proprietarios" cell from Imoview Imóveis export.
+// Format examples:
+//   "Cód. 2652 | Eder Souza | (15) 98176-7268 | eder@x.com"
+//   "Cód. 3727 | Francisco | CPF: 229.216.178-89 | (15) 99752-3267 | f@x.com"
+//   "1) Cód. 4607 | Daniel | (11) 98208-2350 2) Cód. 4612 | Fernando | (19) 99195-3433"
+//   "Cód. 6430 | NIELSEN | (15) 99836-7938, (15) 99662-4798"
+export function parseProprietariosCell(input: string | null | undefined): OwnerData[] {
+  const text = String(input ?? '').trim();
+  if (!text) return [];
+
+  // Split by "N) " markers; keep delimiter as start of each slot
+  const slotParts: string[] = [];
+  const re = /(?:^|\s)(\d+)\)\s+/g;
+  const indices: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) indices.push(m.index + (m[0].length - (m[0].trimStart().length)));
+  if (indices.length === 0) {
+    slotParts.push(text);
+  } else {
+    for (let i = 0; i < indices.length; i++) {
+      const start = indices[i];
+      const end = i + 1 < indices.length ? indices[i + 1] : text.length;
+      slotParts.push(text.slice(start, end).replace(/^\s*\d+\)\s*/, '').trim());
+    }
+  }
+
+  const owners: OwnerData[] = [];
+  for (const raw of slotParts) {
+    if (!raw) continue;
+    const owner: OwnerData = { nome: null };
+    const tokens = raw.split('|').map((t) => t.trim()).filter(Boolean);
+    const obsParts: string[] = [];
+
+    for (const tok of tokens) {
+      // Código Imoview
+      const codMatch = tok.match(/^c[oó]d\.?\s*(\d+)/i);
+      if (codMatch) { owner.codigo_imoview = Number(codMatch[1]); continue; }
+      // CPF/CNPJ
+      const docMatch = tok.match(/(?:CPF|CNPJ)\s*:?\s*([\d./\- ]+)/i);
+      if (docMatch) { owner.cpf_cnpj = docMatch[1].trim(); continue; }
+      // E-mail
+      const emailMatch = tok.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+      if (emailMatch && !/^https?:/i.test(tok)) { owner.email = emailMatch[0].toLowerCase(); continue; }
+      // URL — ignore
+      if (/^https?:\/\//i.test(tok)) continue;
+      // Telefone(s)
+      const phoneMatches = tok.match(/\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4}/g);
+      if (phoneMatches && phoneMatches.length) {
+        if (!owner.telefone) owner.telefone = phoneMatches[0].trim();
+        else if (!owner.telefone_secundario) owner.telefone_secundario = phoneMatches[0].trim();
+        if (phoneMatches[1] && !owner.telefone_secundario) owner.telefone_secundario = phoneMatches[1].trim();
+        continue;
+      }
+      // Plain name (first unlabeled text token)
+      if (!owner.nome) {
+        // Extract parenthetical notes into observacoes; keep clean name
+        const notes: string[] = [];
+        const cleaned = tok.replace(/\(([^)]+)\)/g, (_full, inner) => { notes.push(String(inner).trim()); return ''; }).replace(/\s+/g, ' ').trim();
+        owner.nome = cleaned || tok;
+        if (notes.length) obsParts.push(...notes);
+      } else {
+        obsParts.push(tok);
+      }
+    }
+
+    if (obsParts.length) owner.observacoes = obsParts.join(' | ');
+    if (owner.nome) owners.push(owner);
+    if (owners.length >= 3) break;
+  }
+  return owners;
+}
+
 export default function ImportarProprietarios() {
   const { roles, loading: rolesLoading } = useRoles();
   const isAdmin = roles.includes('admin') || roles.includes('gestor');
