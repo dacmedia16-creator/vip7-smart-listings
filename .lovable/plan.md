@@ -1,128 +1,33 @@
-## Objetivo
+## Problema
 
-Criar um novo módulo **Clientes** no CRM (sidebar), importar do Imoview proprietários, compradores/interessados, locatários e contatos gerais, e mantê-los vinculados aos imóveis como no Imoview.
+A página `/crm/imoveis` (`src/crm/pages/Imoveis.tsx`) busca tudo com `select('*')` sem `.range()`. O PostgREST aplica o limite padrão de **1000 linhas**, por isso aparecem apenas 1000 imóveis — independente de quantos existam no banco.
 
-Módulo independente do Leads (Leads = funil de prospecção; Clientes = base de pessoas reais ligadas a imóveis/contratos).
+Além disso, todo filtro/busca hoje é client-side (`useMemo` sobre o array carregado), então mesmo se houvesse mais registros, filtrar por status/texto continuaria limitado ao que foi baixado.
 
-## Banco de dados
+## Solução
 
-### Tabela `clientes`
-Pessoas/contatos importados do Imoview ou cadastrados manualmente.
+Reescrever a listagem para usar paginação no servidor + contagem real:
 
-Campos principais:
-- `nome`, `cpf_cnpj`, `rg`, `email`, `telefone`, `telefone_secundario`, `data_nascimento`
-- `tipo_pessoa` (`fisica` | `juridica`)
-- `endereco`, `bairro`, `cidade`, `estado`, `cep`
-- `observacoes`
-- `categorias` (array): `proprietario`, `comprador`, `locatario`, `interessado`, `contato` — um cliente pode ter múltiplas categorias (como no Imoview)
-- `codigo_imoview` (int, único) — ID original
-- `imoview_raw` (jsonb), `imoview_sync_at`, `imoview_hash`
-- `ativo`, `created_at`, `updated_at`, `created_by`
+1. **Contagem total**
+   - `select('*', { count: 'exact', head: false })` para receber o total e exibir o número correto em "X imóveis".
 
-Índices: `codigo_imoview` (único), `cpf_cnpj`, `telefone`, `email`.
+2. **Paginação por intervalo**
+   - Estado `pagina` (default 1) e `PAGE_SIZE = 60`.
+   - `.range((pagina-1)*PAGE_SIZE, pagina*PAGE_SIZE - 1)` na query.
+   - Botões "Anterior / Próxima" + indicador "Página X de N".
 
-### Tabela `cliente_imoveis` (relação N:N com papel)
-Vincula cliente a imóvel com o papel exato (espelha o Imoview):
-- `cliente_id` → `clientes.id`
-- `imovel_id` → `imoveis_proprios.id`
-- `papel` enum: `proprietario`, `comprador`, `locatario`, `interessado`
-- `percentual` (numeric, para co-proprietários)
-- `data_inicio`, `data_fim` (para histórico de compra/locação)
-- `observacoes`
-- único `(cliente_id, imovel_id, papel)`
+3. **Filtros no servidor**
+   - `status` → `.eq('status', status)` quando ≠ `todos`.
+   - Busca `q` (debounced ~300 ms) → `.or('titulo.ilike.%q%,codigo_interno.ilike.%q%,bairro.ilike.%q%,cidade.ilike.%q%')`.
+   - Resetar `pagina = 1` quando filtros mudam.
 
-### RLS
-- SELECT: admin, gestor, corretor (`is_crm_user` + role check)
-- INSERT/UPDATE/DELETE: admin, gestor, corretor
-- Atendente: sem acesso
-- Service role: full (para edge function de sync)
+4. **UX**
+   - Skeleton/loading mantido.
+   - Mostrar `{total} imóveis` (não `filtered.length`).
+   - Mensagem clara quando não há resultados na página atual.
 
-GRANT para `authenticated` e `service_role`.
+## Escopo
 
-## Edge Function: `imoview-sync-clientes`
-
-Nova função separada (não mistura com sync de imóveis).
-
-Endpoints Imoview a testar (em ordem de fallback):
-- `/Pessoa/RetornarPessoas` (lista paginada geral)
-- `/Pessoa/RetornarPessoasAlteradas` (incremental)
-- `/Pessoa/RetornarDetalhesPessoa?codigo=...` (detalhes + imóveis vinculados)
-- `/Proprietario/RetornarProprietarios` (fallback caso só esse esteja habilitado)
-
-Fluxo:
-1. Lista todas as pessoas paginadas (cursor + auto-reinvoke, mesmo padrão de `imoview-sync`).
-2. Para cada pessoa, busca detalhes e extrai vínculos (`imoveis`, `tipo`/`categoria`).
-3. Upsert em `clientes` por `codigo_imoview`.
-4. Para cada vínculo retornado, upsert em `cliente_imoveis` casando `codigo_imoview` do imóvel com `imoveis_proprios.codigo_imoview`.
-5. Categorias derivadas: marca `proprietario` se a pessoa tem imóveis como dono, `comprador`/`locatario` se aparece em contrato finalizado, `interessado` para registros de interesse.
-6. Log em `imoview_sync_log` reaproveitado (novo `mode: 'clientes_full' | 'clientes_incremental'`).
-
-Modos: `full`, `incremental` (alterados nos últimos 7 dias), `single` (um código).
-
-## Frontend
-
-### Sidebar (`src/crm/components/CrmSidebar.tsx`)
-Novo item entre "Imóveis" e "Condomínios":
-
-```text
-- Imóveis
-- Clientes        ← novo (icon: Users / Contact)
-- Condomínios
-```
-
-Visível para roles: `admin`, `gestor`, `corretor`.
-
-### Rotas (`src/App.tsx`)
-- `/crm/clientes` → lista
-- `/crm/clientes/novo` → form
-- `/crm/clientes/:id` → detalhe
-- `/crm/clientes/:id/editar` → form
-
-### Páginas
-
-**`Clientes.tsx` (lista)**
-- Tabela com: nome, categorias (badges), telefone, email, cidade, # imóveis vinculados, atualizado em
-- Filtros: busca (nome/CPF/email/telefone), categoria (multi), cidade, origem (Imoview/manual)
-- Paginação cliente-side, ordenação
-
-**`ClienteDetail.tsx`**
-- Dados pessoais
-- Aba "Imóveis vinculados": lista por papel (Propriedades, Como comprador, Como locatário, Interesses)
-  - Cada linha clicável → `/crm/imoveis/:id`
-- Aba "Atividades" (futuras interações ligadas ao cliente)
-- Botão "Re-sincronizar do Imoview" (se `codigo_imoview` setado)
-
-**`ClienteForm.tsx`**
-- Cadastro manual com mesmas seções; categorias como toggles
-- Seleção de imóveis vinculados com escolha de papel
-
-### Página de Imóvel (`ImovelDetail.tsx`)
-Adicionar seção "Pessoas vinculadas":
-- Proprietário(s) com link para `/crm/clientes/:id`
-- Comprador/Locatário se houver
-- Lista de interessados
-
-### Sincronização (`SincronizacaoImoview.tsx`)
-Adicionar segundo card "Sincronização de Clientes":
-- Botão "Sincronização completa de clientes"
-- Botão "Incremental (últimos 7 dias)"
-- Histórico filtrado pelos novos `mode` clientes
-
-### Hook/lib (`src/crm/lib/clientes.ts`)
-- `listClientes(filters)`, `getCliente(id)`, `upsertCliente(data)`, `linkImovel(clienteId, imovelId, papel)`, `unlinkImovel(id)`, `triggerSyncClientes(mode)`
-
-## Segurança
-
-- Telefone/email/CPF são dados sensíveis: tabela protegida por RLS exigindo `is_crm_user` + role em (admin, gestor, corretor).
-- Atendente bloqueado.
-- Sem leitura anônima.
-
-## Entrega em fases
-
-1. **Migration** (tabelas + RLS + enum `cliente_papel`).
-2. **Edge function** `imoview-sync-clientes` com fallback de endpoints.
-3. **Sidebar + rotas + páginas** (lista, detalhe, form).
-4. **Vínculo na página de imóvel** (seção "Pessoas vinculadas").
-5. **Card no painel de sincronização** + primeira execução completa.
-
-Sem alterações no site público, no módulo Leads ou no schema atual de `imoveis_proprios`.
+- Alterar somente `src/crm/pages/Imoveis.tsx`.
+- Nenhuma mudança em schema, RLS, edge function ou no site público.
+- Nenhuma mudança em outros módulos do CRM.
