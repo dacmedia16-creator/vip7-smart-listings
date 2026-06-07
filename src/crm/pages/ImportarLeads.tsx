@@ -90,6 +90,9 @@ type LeadPayload = {
   tags: string[];
   observacoes: string | null;
   imovel_interesse_codigo: string | null;
+  imoveis_carrinho_codigos: string[];
+  imoveis_visita_codigos: string[];
+  imoveis_proposta_codigos: string[];
   created_at: string | null;
   last_contact_at: string | null;
 };
