@@ -1,45 +1,39 @@
-# Filtros avançados em CRM → Imóveis
+## Problema
 
-Replicar o painel de filtros da imagem em `/crm/imoveis`, consultando `imoveis_proprios` no Supabase (campos já existem no schema).
+A página `/crm/imoveis` mostra "0 imóveis" mesmo com 1.213 registros no banco.
 
-## Painel colapsável "Filtros" com 4 seções
+Na request real para o backend aparece:
+```
+preco=gte.0&preco=lte.0&condominio=gte.0&condominio=lte.0&area=gte.0&area=lte.0
+```
 
-### Identificação
-- **Códigos** (input texto, múltiplos separados por vírgula → `codigo_interno.in.()` ou `codigo_imoview.in.()`)
-- **Finalidade** (`venda` / `locacao` / `temporada`)
-- **Situação** (mapeia para `status`: disponível, sob_proposta, vendido, alugado, inativo, etc.)
-- **Tipo de imóvel** (multi-select carregado de `distinct tipo`)
-- **Etiquetas** (multi-select, busca em array `etiquetas`)
-- **Pontuação** (placeholder/desabilitado — não há campo na base; mantemos visual mas oculto até existir)
+Ou seja, o sistema está filtrando por preço/condomínio/área **iguais a zero**, o que nunca casa com nenhum imóvel.
 
-### Localização
-- **Cidade** (multi-input)
-- **Regiões / Sub-regiões** (`regiao`, `sub_regiao` — selects dependentes carregados de distinct)
-- **Bairro** (multi-input)
-- **Endereço / Nº / Complemento** (inputs `ilike`)
-- **Local chaves** / **Identificador chaves** (`local_chaves`, `identificador_chaves`)
+## Causa
 
-### Características
-- **Valor imóvel** (de/até → `preco`)
-- **Valor condomínio** (de/até → `condominio`)
-- **Área interna m²** (de/até → `area`)
-- **Quartos / Suítes / Vagas** (selects 1+/2+/3+/4+)
-- **Edifício** (`edificio` ilike)
-- **Tipo condomínio** (select de distinct)
-- **Imóvel ocupado** (Todos / Sim / Não → `imovel_ocupado`)
+Em `src/crm/pages/Imoveis.tsx`, a função:
 
-## Implementação
+```ts
+const numOrNull = (s: string) => {
+  const n = Number(s.replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+```
 
-- Arquivo único: `src/crm/pages/Imoveis.tsx`.
-- Estado consolidado em um objeto `filters` + botão **"Aplicar filtros"** e **"Limpar"** (sem auto-fetch, conforme padrão do projeto).
-- Persistência leve via querystring (para preservar ao navegar).
-- Query Supabase combinando `.eq`, `.in`, `.gte/.lte`, `.ilike`, `.contains` (para arrays).
-- Opções dinâmicas (Tipo, Região, Sub-região, Tipo condomínio, Etiquetas) carregadas em paralelo com um único `select` de colunas + deduplicação no cliente (uma vez na montagem).
-- Layout em `Card` com header colapsável (`ChevronDown`), seções separadas por divisores, grid responsivo 1→2→4 colunas igual à referência.
-- Mantém a busca rápida atual (input "q") no topo, fora do painel.
+Quando o campo está vazio (`""`), `Number("")` retorna `0` (não `NaN`), então o código aplica `gte 0` e `lte 0` em `preco`, `condominio` e `area`, restringindo o resultado a registros com valor exatamente 0.
 
-## Sem migração
-Todos os campos já existem em `imoveis_proprios` (status, finalidade, tipo, regiao, sub_regiao, bairro, cidade, endereco, numero, complemento, local_chaves, identificador_chaves, preco, condominio, area, quartos, suites, vagas, edificio, imovel_ocupado, etiquetas, codigo_interno, codigo_imoview).
+## Correção
 
-## Arquivo afetado
-- `src/crm/pages/Imoveis.tsx` (refactor do bloco de filtros + lógica de query)
+Arquivo único: `src/crm/pages/Imoveis.tsx`
+
+1. Ajustar `numOrNull` para tratar string vazia / espaços como `null`:
+   ```ts
+   const numOrNull = (s: string) => {
+     const t = (s ?? '').trim();
+     if (!t) return null;
+     const n = Number(t.replace(',', '.'));
+     return Number.isFinite(n) ? n : null;
+   };
+   ```
+
+Isso resolve as 6 condições (`preco_min/max`, `cond_min/max`, `area_min/max`) e os imóveis voltam a aparecer normalmente. Nenhuma outra mudança de lógica ou UI é necessária.
