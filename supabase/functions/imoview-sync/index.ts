@@ -327,10 +327,16 @@ async function syncOne(
   raw: Record<string, unknown>,
   stats: { inserted: number; updated: number; unchanged: number; photos: number; errors: number },
   syncId: string | null,
+  forceInativo = false,
 ) {
   try {
     const mapped = mapToRow(raw);
     if (!mapped.codigo) return;
+
+    if (forceInativo) {
+      mapped.payload.status = "inativo";
+      mapped.payload.ativo = false;
+    }
 
     const hash = await sha256Hex(JSON.stringify(mapped.payload));
 
@@ -342,14 +348,14 @@ async function syncOne(
 
     if (existing && existing.imoview_hash === hash) {
       stats.unchanged++;
-      await sb.from("imoveis_proprios").update({ imoview_sync_at: new Date().toISOString(), ativo: true }).eq("id", existing.id);
+      await sb.from("imoveis_proprios").update({
+        imoview_sync_at: new Date().toISOString(),
+        ...(forceInativo ? { ativo: false, status: "inativo" } : { ativo: true }),
+      }).eq("id", existing.id);
       if (syncId) await persistStats(sb, syncId, { unchanged: 1 });
       return;
     }
 
-    // Usar URLs ORIGINAIS do Imoview no campo `fotos` para popular o catálogo rápido.
-    // O espelhamento para o bucket `imoveis-fotos` fica como otimização futura (job dedicado),
-    // evitando estourar o timeout da edge function (20+ fotos × upload por imóvel).
     const fotosOrigem = mapped.fotosUrls.length > 0
       ? mapped.fotosUrls
       : ((existing?.fotos as string[] | undefined) || []);
