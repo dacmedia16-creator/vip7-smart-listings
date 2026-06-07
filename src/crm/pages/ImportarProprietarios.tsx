@@ -121,8 +121,6 @@ export default function ImportarProprietarios() {
 
   const preview = useMemo(() => rows.slice(0, 10), [rows]);
 
-  if (rolesLoading) return null;
-  if (!isAdmin) return <Navigate to="/crm" replace />;
 
   const handleFile = async (file: File) => {
     setFileName(file.name);
@@ -362,6 +360,10 @@ export default function ImportarProprietarios() {
     // não dá pra calcular antes de carregar imóveis; só mostra contagem total
     return { total: codigosNaPlanilha.length, unicos: new Set(codigosNaPlanilha).size };
   }, [codigosNaPlanilha]);
+
+  if (rolesLoading) return null;
+  if (!isAdmin) return <Navigate to="/crm" replace />;
+
 
   return (
     <CrmLayout>
