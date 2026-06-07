@@ -138,7 +138,10 @@ export default function Imoveis() {
         query = query.or(ors.join(','));
       }
 
-      if (f.finalidade !== 'todos') query = query.eq('finalidade', f.finalidade);
+      if (f.finalidade !== 'todos') {
+        const finalidadeDb = f.finalidade === 'locacao' ? 'aluguel' : f.finalidade;
+        query = query.eq('finalidade', finalidadeDb);
+      }
       if (f.status !== 'todos') query = query.eq('status', f.status as any);
       if (f.tipo !== 'todos') query = query.eq('tipo', f.tipo);
       if (f.etiqueta !== 'todos') query = query.contains('etiquetas', [f.etiqueta]);
@@ -253,7 +256,7 @@ export default function Imoveis() {
                   <SelectContent>
                     <SelectItem value="todos">Todas</SelectItem>
                     <SelectItem value="venda">Venda</SelectItem>
-                    <SelectItem value="locacao">Locação</SelectItem>
+                    <SelectItem value="aluguel">Locação</SelectItem>
                     <SelectItem value="temporada">Temporada</SelectItem>
                   </SelectContent>
                 </Select>
