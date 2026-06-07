@@ -135,10 +135,47 @@ export async function triggerSyncClientes(mode: 'full' | 'incremental' | 'single
   return data;
 }
 
-export async function triggerSyncProprietarios(mode: 'full' | 'incremental' | 'single', opts?: { codigoImovel?: number; hours?: number }) {
+export async function triggerSyncProprietarios(
+  mode: 'full' | 'incremental' | 'single',
+  opts?: { codigoImovel?: number; hours?: number; onlyMissing?: boolean; limit?: number; imovelIds?: string[] },
+) {
   const { data, error } = await supabase.functions.invoke('imoview-sync-proprietarios', {
-    body: { mode, codigoImovel: opts?.codigoImovel, hours: opts?.hours },
+    body: {
+      mode,
+      codigoImovel: opts?.codigoImovel,
+      hours: opts?.hours,
+      onlyMissing: opts?.onlyMissing,
+      limit: opts?.limit,
+      imovelIds: opts?.imovelIds,
+    },
   });
   if (error) throw error;
   return data;
+}
+
+export type ProprietarioVinculo = {
+  id: string;
+  papel: string;
+  percentual: number | null;
+  cliente: {
+    id: string;
+    nome: string;
+    email: string | null;
+    telefone: string | null;
+    telefone_secundario: string | null;
+    cpf_cnpj: string | null;
+  } | null;
+};
+
+export async function listProprietariosByImovel(imovelId: string): Promise<ProprietarioVinculo[]> {
+  const { data, error } = await supabase
+    .from('cliente_imoveis')
+    .select('id, papel, percentual, clientes:cliente_id(id, nome, email, telefone, telefone_secundario, cpf_cnpj)')
+    .eq('imovel_id', imovelId)
+    .eq('papel', 'proprietario');
+  if (error) throw error;
+  return ((data || []) as unknown as Array<{
+    id: string; papel: string; percentual: number | null;
+    clientes: ProprietarioVinculo['cliente'];
+  }>).map((r) => ({ id: r.id, papel: r.papel, percentual: r.percentual, cliente: r.clientes }));
 }
