@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CLIENTE_CATEGORIAS, CLIENTE_PAPEIS, deleteCliente, getCliente, listVinculosByCliente, removeVinculo, triggerSyncClientes, type Cliente, type ClientePapel } from '../lib/clientes';
 import { toast } from 'sonner';
 import { ArrowLeft, Edit, RefreshCw, Trash2, ExternalLink, Building2 } from 'lucide-react';
+import { AddImovelInteresseDialog } from '../components/AddImovelInteresseDialog';
 
 type Vinculo = {
   id: string;
@@ -123,8 +124,9 @@ export default function ClienteDetail() {
         )}
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
             <CardTitle className="text-base flex items-center gap-2"><Building2 className="h-4 w-4" /> Imóveis vinculados ({vinculos.length})</CardTitle>
+            <AddImovelInteresseDialog clienteId={id!} onAdded={load} />
           </CardHeader>
           <CardContent className="space-y-6">
             {vinculos.length === 0 && <div className="text-sm text-[#7A7A80]">Nenhum imóvel vinculado.</div>}

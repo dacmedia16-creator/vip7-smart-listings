@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, Phone, Mail } from 'lucide-react';
 import { CLIENTE_PAPEIS, listVinculosByImovel } from '../lib/clientes';
+import { AddInteressadoDialog } from './AddInteressadoDialog';
 
 type Row = {
   id: string;
@@ -22,12 +23,15 @@ export function PessoasVinculadasCard({ imovelId }: { imovelId: string }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
     listVinculosByImovel(imovelId)
       .then((d) => setRows(d as unknown as Row[]))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [imovelId]);
+
+  useEffect(() => { load(); }, [load]);
 
   const papelLabel = (p: string) => CLIENTE_PAPEIS.find((x) => x.value === p)?.label || p;
 
@@ -64,6 +68,7 @@ export function PessoasVinculadasCard({ imovelId }: { imovelId: string }) {
           ))}
         </div>
       )}
+      <div className="mt-3"><AddInteressadoDialog imovelId={imovelId} onAdded={load} /></div>
     </Card>
   );
 }
