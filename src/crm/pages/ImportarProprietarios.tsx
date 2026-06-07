@@ -584,10 +584,10 @@ export default function ImportarProprietarios() {
         {headers.length > 0 && (
           <>
             <Card>
-              <CardHeader><CardTitle className="text-base">2. Mapeamento de colunas</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">2. Confirme as colunas detectadas</CardTitle></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {FIELDS.map((f) => (
+                  {[IMOVEL_FIELD, PROPRIETARIOS_RAW_FIELD].map((f) => (
                     <div key={f.key} className="space-y-1">
                       <Label className="text-xs">
                         {f.label} {f.required && <span className="text-red-600">*</span>}
@@ -602,6 +602,9 @@ export default function ImportarProprietarios() {
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-[#7A7A80] mt-3">
+                  Nome, telefone, e-mail, CPF e código Imoview de cada proprietário são extraídos automaticamente da coluna "Proprietários".
+                </p>
               </CardContent>
             </Card>
 
