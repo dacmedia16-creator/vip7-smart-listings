@@ -361,6 +361,10 @@ export default function ImportarProprietarios() {
     return { total: codigosNaPlanilha.length, unicos: new Set(codigosNaPlanilha).size };
   }, [codigosNaPlanilha]);
 
+  if (rolesLoading) return null;
+  if (!isAdmin) return <Navigate to="/crm" replace />;
+
+
   return (
     <CrmLayout>
       <div className="space-y-6">
