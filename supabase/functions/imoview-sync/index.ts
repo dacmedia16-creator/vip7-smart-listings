@@ -216,7 +216,7 @@ function mapToRow(raw: Record<string, unknown>): Mapped {
       video_url: typeof raw.urlvideo === "string" && raw.urlvideo.trim() ? raw.urlvideo.trim() : null,
       caracteristicas,
       ativo: true,
-      status: "disponivel",
+      status: mapStatus(raw),
       data_atualizacao_origem: parseDate(raw.datahoraultimaalteracao) || parseDate(raw.datahoracadastro),
       imoview_raw: raw,
     },
