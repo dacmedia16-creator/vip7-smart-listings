@@ -61,7 +61,6 @@ function mapOrigem(midia: string): LeadOrigem {
   if (m.includes('contato') || m.includes('formulario')) return 'site_contato';
   if (m.includes('instagram') || m.includes('facebook') || m.includes('tiktok') || m.includes('rede')) return 'rede_social';
   if (m.includes('indica')) return 'indicacao';
-  // Portais imobiliários (cliqueimudei, vivareal, zap, olx, imovelweb, chaves, etc.)
   if (m.match(/clique|viva|zap|olx|imovel|chaves|loft|quintoa|cred|portal/)) return 'portal';
   return 'importado';
 }
@@ -103,7 +102,6 @@ function rowToLead(r: Row, cols: Record<string, string | null>): LeadPayload | {
   if (!nome) return { skip: 'sem nome' };
   if (!telefoneDig || telefoneDig.length < 8) return { skip: 'telefone inválido' };
 
-  // Perfil text
   const perfilParts: string[] = [];
   const q = str(get('PerfilQuartos')); if (q) perfilParts.push(`${q} quartos`);
   const b = str(get('PerfilBanhos')); if (b) perfilParts.push(`${b} banhos`);
@@ -114,7 +112,6 @@ function rowToLead(r: Row, cols: Record<string, string | null>): LeadPayload | {
   if (aDe || aAte) perfilParts.push(`Área: ${aDe ?? '?'}–${aAte ?? '?'} m²`);
   const perfil_busca = perfilParts.length ? perfilParts.join(' · ') : null;
 
-  // Observações consolidadas
   const obsParts: string[] = [];
   const corretor = str(get('Corretor')); if (corretor) obsParts.push(`Corretor original: ${corretor}`);
   const equipe = str(get('Equipe')); if (equipe) obsParts.push(`Equipe: ${equipe}`);
@@ -131,11 +128,9 @@ function rowToLead(r: Row, cols: Record<string, string | null>): LeadPayload | {
   const valor = str(get('Valor')); if (valor) obsParts.push(`Valor: ${valor}`);
   const indic = str(get('Indicacao')); if (indic) obsParts.push(`Indicação: ${indic}`);
 
-  // Tags
   const etiquetas = str(get('Etiquetas'));
   const tags = etiquetas ? etiquetas.split(/[,;]/).map((s) => s.trim()).filter(Boolean).slice(0, 20) : [];
 
-  // PerfilTipos → primeiro
   const tipos = str(get('PerfilTipos'));
   const tipo_imovel = tipos ? tipos.split(/[,;|/]/)[0].trim() : null;
 
@@ -170,6 +165,8 @@ type Result = {
   inseridos: number;
   duplicados: number;
   ignorados: number;
+  clientesNovos: number;
+  clientesAtualizados: number;
   erros: { linha: number; motivo: string }[];
 };
 
@@ -193,11 +190,63 @@ function autoMap(headers: string[]): Record<string, string | null> {
   return result;
 }
 
+type FileInfo = { name: string; rows: number };
+
+async function parseFile(file: File): Promise<{ headers: string[]; rows: Row[] } | null> {
+  const ext = file.name.toLowerCase().split('.').pop();
+  if (ext === 'csv' || ext === 'txt') {
+    let text = await file.text();
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    const firstLine = text.split(/\r?\n/)[0] ?? '';
+    const delim = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ';' : ',';
+    const parsed = Papa.parse<Row>(text, { header: true, skipEmptyLines: true, delimiter: delim });
+    const data = parsed.data.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
+    const headers = (parsed.meta.fields ?? []).map((h) => h.replace(/^\ufeff/, ''));
+    return { headers, rows: data };
+  }
+  if (ext === 'xlsx' || ext === 'xls') {
+    const buf = await file.arrayBuffer();
+    const head = new TextDecoder('utf-8').decode(new Uint8Array(buf, 0, Math.min(buf.byteLength, 256))).trimStart().toLowerCase();
+    const looksLikeHtml = head.startsWith('<!doctype') || head.startsWith('<html') || head.startsWith('<table') || head.startsWith('<div') || head.startsWith('<?xml');
+    if (looksLikeHtml) {
+      const text = new TextDecoder('utf-8').decode(new Uint8Array(buf));
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      const table = doc.querySelector('table');
+      if (!table) return null;
+      const trs = Array.from(table.querySelectorAll('tr'));
+      if (!trs.length) return null;
+      const headerCells = Array.from(trs[0].querySelectorAll('th,td')).map((c) => (c.textContent ?? '').trim());
+      const headers = headerCells.map((h, i) => h || `Coluna ${i + 1}`);
+      const rows: Row[] = [];
+      for (let i = 1; i < trs.length; i++) {
+        const cells = Array.from(trs[i].querySelectorAll('th,td'));
+        if (!cells.length) continue;
+        const row: Row = {};
+        let hasAny = false;
+        for (let j = 0; j < headers.length; j++) {
+          const val = ((cells[j]?.textContent) ?? '').replace(/\u00a0/g, ' ').trim();
+          row[headers[j]] = val;
+          if (val) hasAny = true;
+        }
+        if (hasAny) rows.push(row);
+      }
+      return { headers, rows };
+    }
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json<Row>(ws, { defval: '', raw: false });
+    const hdrSet = new Set<string>();
+    for (let i = 0; i < Math.min(rows.length, 50); i++) for (const k of Object.keys(rows[i] || {})) hdrSet.add(k);
+    return { headers: Array.from(hdrSet), rows };
+  }
+  return null;
+}
+
 export default function ImportarLeads() {
   const { roles, loading: rolesLoading } = useRoles();
   const isAdmin = roles.includes('admin') || roles.includes('gestor');
 
-  const [fileName, setFileName] = useState('');
+  const [fileInfos, setFileInfos] = useState<FileInfo[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [mapping, setMapping] = useState<Record<string, string | null>>({});
@@ -209,64 +258,94 @@ export default function ImportarLeads() {
   const mappedCount = useMemo(() => Object.values(mapping).filter(Boolean).length, [mapping]);
   const canImport = !!mapping.ClienteNome && !!mapping.ClienteTelefone && rows.length > 0;
 
-  const handleFile = async (file: File) => {
-    setFileName(file.name);
+  const handleFiles = async (files: FileList) => {
     setResult(null);
     setRows([]);
     setHeaders([]);
     setMapping({});
-    const ext = file.name.toLowerCase().split('.').pop();
-    try {
-      if (ext === 'csv' || ext === 'txt') {
-        let text = await file.text();
-        if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-        const firstLine = text.split(/\r?\n/)[0] ?? '';
-        const delim = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ';' : ',';
-        const parsed = Papa.parse<Row>(text, { header: true, skipEmptyLines: true, delimiter: delim });
-        const data = parsed.data.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
-        const hdrs = (parsed.meta.fields ?? []).map((h) => h.replace(/^\ufeff/, ''));
-        setHeaders(hdrs); setRows(data); setMapping(autoMap(hdrs));
-        toast.success(`${file.name}: ${data.length} linhas`);
-      } else if (ext === 'xlsx' || ext === 'xls') {
-        const buf = await file.arrayBuffer();
-        const head = new TextDecoder('utf-8').decode(new Uint8Array(buf, 0, Math.min(buf.byteLength, 256))).trimStart().toLowerCase();
-        const looksLikeHtml = head.startsWith('<!doctype') || head.startsWith('<html') || head.startsWith('<table') || head.startsWith('<div') || head.startsWith('<?xml');
-        if (looksLikeHtml) {
-          const text = new TextDecoder('utf-8').decode(new Uint8Array(buf));
-          const doc = new DOMParser().parseFromString(text, 'text/html');
-          const table = doc.querySelector('table');
-          if (!table) { toast.error('Arquivo HTML sem <table>.'); return; }
-          const trs = Array.from(table.querySelectorAll('tr'));
-          if (!trs.length) { toast.error('Tabela vazia.'); return; }
-          const headerCells = Array.from(trs[0].querySelectorAll('th,td')).map((c) => (c.textContent ?? '').trim());
-          const hdrs = headerCells.map((h, i) => h || `Coluna ${i + 1}`);
-          const json: Row[] = [];
-          for (let i = 1; i < trs.length; i++) {
-            const cells = Array.from(trs[i].querySelectorAll('th,td'));
-            if (!cells.length) continue;
-            const row: Row = {};
-            let hasAny = false;
-            for (let j = 0; j < hdrs.length; j++) {
-              const val = ((cells[j]?.textContent) ?? '').replace(/\u00a0/g, ' ').trim();
-              row[hdrs[j]] = val;
-              if (val) hasAny = true;
-            }
-            if (hasAny) json.push(row);
-          }
-          setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
-          toast.success(`${file.name}: ${json.length} linhas (HTML)`);
-        } else {
-          const wb = XLSX.read(buf, { type: 'array' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json<Row>(ws, { defval: '', raw: false });
-          const hdrSet = new Set<string>();
-          for (let i = 0; i < Math.min(json.length, 50); i++) for (const k of Object.keys(json[i] || {})) hdrSet.add(k);
-          const hdrs = Array.from(hdrSet);
-          setHeaders(hdrs); setRows(json); setMapping(autoMap(hdrs));
-          toast.success(`${file.name}: ${json.length} linhas`);
+    setFileInfos([]);
+
+    const allRows: Row[] = [];
+    const allHeaderSet = new Set<string>();
+    const infos: FileInfo[] = [];
+    const seen = new Set<string>(); // dedup key inside batch
+
+    for (const file of Array.from(files)) {
+      try {
+        const parsed = await parseFile(file);
+        if (!parsed) { toast.error(`${file.name}: formato não reconhecido`); continue; }
+        parsed.headers.forEach((h) => allHeaderSet.add(h));
+
+        // Find tel/email col for batch dedup, using auto-map on this file's headers
+        const localMap = autoMap(parsed.headers);
+        const telCol = localMap.ClienteTelefone;
+        const emCol = localMap.ClienteEmail;
+
+        let added = 0;
+        for (const r of parsed.rows) {
+          const tel = telCol ? digits(r[telCol]) : '';
+          const em = emCol ? String(r[emCol] ?? '').trim().toLowerCase() : '';
+          const key = tel || em;
+          if (key && seen.has(key)) continue;
+          if (key) seen.add(key);
+          allRows.push(r);
+          added++;
         }
-      } else { toast.error('Use CSV ou XLSX.'); }
-    } catch (e) { toast.error('Falha: ' + (e as Error).message); }
+        infos.push({ name: file.name, rows: added });
+      } catch (e) {
+        toast.error(`${file.name}: ${(e as Error).message}`);
+      }
+    }
+
+    const hdrs = Array.from(allHeaderSet);
+    setHeaders(hdrs);
+    setRows(allRows);
+    setMapping(autoMap(hdrs));
+    setFileInfos(infos);
+    toast.success(`${infos.length} arquivo(s): ${allRows.length} linhas únicas`);
+  };
+
+  const upsertClienteComprador = async (
+    lead: LeadPayload,
+  ): Promise<'novo' | 'atualizado' | 'noop' | 'erro'> => {
+    try {
+      const orParts: string[] = [`telefone.eq.${lead.telefone}`];
+      if (lead.email) orParts.push(`email.eq.${lead.email}`);
+      const { data: existing } = await supabase
+        .from('clientes')
+        .select('id, categorias, email, telefone, cidade, observacoes')
+        .or(orParts.join(','))
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        const cats = new Set<string>((existing.categorias as string[] | null) ?? []);
+        const before = cats.size;
+        cats.add('comprador');
+        if (cats.size === before) return 'noop';
+        const patch: Record<string, unknown> = { categorias: Array.from(cats) };
+        if (!existing.email && lead.email) patch.email = lead.email;
+        if (!existing.cidade && lead.cidade_interesse) patch.cidade = lead.cidade_interesse;
+        if (!existing.observacoes && lead.observacoes) patch.observacoes = lead.observacoes;
+        const { error } = await supabase.from('clientes').update(patch).eq('id', existing.id);
+        return error ? 'erro' : 'atualizado';
+      }
+
+      const { error } = await supabase.from('clientes').insert({
+        nome: lead.nome,
+        telefone: lead.telefone,
+        email: lead.email,
+        tipo_pessoa: 'fisica',
+        origem: 'lead_import',
+        categorias: ['comprador'],
+        cidade: lead.cidade_interesse,
+        observacoes: lead.observacoes,
+        ativo: true,
+      } as never);
+      return error ? 'erro' : 'novo';
+    } catch {
+      return 'erro';
+    }
   };
 
   const startImport = async () => {
@@ -275,7 +354,7 @@ export default function ImportarLeads() {
     setResult(null);
     setProgress({ done: 0, total: rows.length });
 
-    const agg: Result = { inseridos: 0, duplicados: 0, ignorados: 0, erros: [] };
+    const agg: Result = { inseridos: 0, duplicados: 0, ignorados: 0, clientesNovos: 0, clientesAtualizados: 0, erros: [] };
 
     try {
       for (let i = 0; i < rows.length; i++) {
@@ -284,12 +363,18 @@ export default function ImportarLeads() {
           const built = rowToLead(rows[i], mapping);
           if ('skip' in built) { agg.ignorados++; continue; }
 
-          // Dedup via RPC
           const { data: dup } = await supabase.rpc('find_duplicate_lead', {
             _telefone: built.telefone,
             _email: built.email,
           });
-          if (dup) { agg.duplicados++; continue; }
+          if (dup) {
+            agg.duplicados++;
+            // mesmo se duplicado, garante categoria comprador no cliente
+            const cliRes = await upsertClienteComprador(built);
+            if (cliRes === 'novo') agg.clientesNovos++;
+            else if (cliRes === 'atualizado') agg.clientesAtualizados++;
+            continue;
+          }
 
           const insertPayload: Record<string, unknown> = {
             nome: built.nome,
@@ -316,6 +401,9 @@ export default function ImportarLeads() {
             agg.erros.push({ linha: linhaNum, motivo: error.message });
           } else {
             agg.inseridos++;
+            const cliRes = await upsertClienteComprador(built);
+            if (cliRes === 'novo') agg.clientesNovos++;
+            else if (cliRes === 'atualizado') agg.clientesAtualizados++;
           }
         } catch (e) {
           agg.erros.push({ linha: linhaNum, motivo: (e as Error).message });
@@ -324,7 +412,7 @@ export default function ImportarLeads() {
       }
       setProgress({ done: rows.length, total: rows.length });
       setResult(agg);
-      toast.success(`Importação concluída: ${agg.inseridos} novos, ${agg.duplicados} duplicados`);
+      toast.success(`Importação concluída: ${agg.inseridos} leads, ${agg.clientesNovos} clientes novos`);
     } catch (e) {
       toast.error('Erro na importação: ' + (e as Error).message);
     } finally {
@@ -341,6 +429,12 @@ export default function ImportarLeads() {
   }
   if (!isAdmin) return <Navigate to="/crm/sem-acesso" replace />;
 
+  const summaryLabel = fileInfos.length === 0
+    ? 'Clique para escolher arquivos'
+    : fileInfos.length === 1
+      ? fileInfos[0].name
+      : `${fileInfos.length} arquivos selecionados`;
+
   return (
     <CrmLayout title="Importar Leads">
       <div className="space-y-4 max-w-5xl">
@@ -350,30 +444,41 @@ export default function ImportarLeads() {
               <ArrowLeft className="h-4 w-4 mr-1" /> Voltar para Leads
             </Link>
             <h2 className="text-2xl font-semibold text-[#0F0F12] mt-1">Importar planilha de Leads</h2>
-            <p className="text-sm text-[#2A2A30]">Aceita o export "Atendimentos" do Imoview (.xls HTML), XLSX e CSV.</p>
+            <p className="text-sm text-[#2A2A30]">
+              Aceita o export "Atendimentos" do Imoview (.xls HTML), XLSX e CSV. Você pode selecionar várias páginas de uma vez —
+              cada lead também é cadastrado em Clientes com a categoria <strong>Comprador</strong>.
+            </p>
           </div>
         </div>
 
         <Card className="border-[#E8E4D9]">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Upload className="h-4 w-4" /> 1. Selecionar arquivo
+              <Upload className="h-4 w-4" /> 1. Selecionar arquivo(s)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <label className="flex items-center gap-3 border-2 border-dashed border-[#E8D9A8] rounded-lg p-6 cursor-pointer hover:bg-[#FBF3DC]/40 transition-colors">
               <FileSpreadsheet className="h-8 w-8 text-[#C9A24C]" />
               <div className="flex-1">
-                <p className="font-medium text-[#0F0F12]">{fileName || 'Clique para escolher um arquivo'}</p>
-                <p className="text-xs text-[#7A7A80]">.xls, .xlsx ou .csv</p>
+                <p className="font-medium text-[#0F0F12]">{summaryLabel}</p>
+                <p className="text-xs text-[#7A7A80]">.xls, .xlsx ou .csv — selecione todas as páginas exportadas</p>
               </div>
               <input
                 type="file"
                 accept=".csv,.txt,.xls,.xlsx"
+                multiple
                 className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                onChange={(e) => { const fs = e.target.files; if (fs && fs.length) handleFiles(fs); }}
               />
             </label>
+            {fileInfos.length > 0 && (
+              <ul className="mt-3 text-xs text-[#4A4A52] space-y-0.5">
+                {fileInfos.map((f, i) => (
+                  <li key={i}>• {f.name} — <strong>{f.rows}</strong> linhas</li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 
@@ -385,14 +490,13 @@ export default function ImportarLeads() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <Stat label="Linhas detectadas" value={rows.length} />
+                  <Stat label="Linhas únicas" value={rows.length} />
                   <Stat label="Colunas reconhecidas" value={`${mappedCount} / ${EXPECTED_COLS.length}`} />
                   <Stat label="Nome" value={mapping.ClienteNome ? '✓' : '—'} highlight={!mapping.ClienteNome} />
                   <Stat label="Telefone" value={mapping.ClienteTelefone ? '✓' : '—'} highlight={!mapping.ClienteTelefone} />
                 </div>
                 <p className="text-xs text-[#4A4A52]">
-                  Os demais campos (e-mail, fase, orçamento, perfil, etiquetas, data de criação, etc.) são detectados e classificados automaticamente.
-                  Duplicados (mesmo telefone/e-mail em 30 dias) são ignorados.
+                  Duplicados entre arquivos (mesmo telefone/e-mail) já foram unificados. Duplicados contra a base existente (últimos 30 dias) são ignorados na inserção do lead, mas a categoria <strong>Comprador</strong> é adicionada ao cliente correspondente.
                 </p>
               </CardContent>
             </Card>
@@ -467,8 +571,10 @@ export default function ImportarLeads() {
                 {result && (
                   <div className="rounded border border-[#E8E4D9] p-3 bg-[#F5F0E4]/60 text-sm space-y-1">
                     <p><strong className="text-emerald-700">{result.inseridos}</strong> leads inseridos</p>
-                    <p><strong className="text-amber-700">{result.duplicados}</strong> duplicados (já existiam)</p>
+                    <p><strong className="text-amber-700">{result.duplicados}</strong> leads duplicados (já existiam)</p>
                     <p><strong className="text-[#7A7A80]">{result.ignorados}</strong> ignorados (sem nome ou telefone inválido)</p>
+                    <p><strong className="text-emerald-700">{result.clientesNovos}</strong> clientes novos (Comprador)</p>
+                    <p><strong className="text-sky-700">{result.clientesAtualizados}</strong> clientes existentes marcados como Comprador</p>
                     {result.erros.length > 0 && (
                       <details className="mt-2">
                         <summary className="cursor-pointer text-rose-700"><strong>{result.erros.length}</strong> erros</summary>
