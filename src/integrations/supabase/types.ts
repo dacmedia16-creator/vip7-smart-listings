@@ -1150,6 +1150,29 @@ export type Database = {
     Functions: {
       can_manage_clientes: { Args: { _user_id: string }; Returns: boolean }
       count_admins: { Args: never; Returns: number }
+      dashboard_funil_counts: {
+        Args: never
+        Returns: {
+          status: string
+          total: number
+        }[]
+      }
+      dashboard_leads_por_dia: {
+        Args: { _dias?: number }
+        Returns: {
+          dia: string
+          total: number
+        }[]
+      }
+      dashboard_pipeline_total: { Args: never; Returns: number }
+      dashboard_ranking_corretores: {
+        Args: { _limit?: number }
+        Returns: {
+          corretor_id: string
+          nome: string
+          total: number
+        }[]
+      }
       distribuir_lead: { Args: { _lead_id: string }; Returns: string }
       find_duplicate_lead: {
         Args: { _email: string; _telefone: string }
