@@ -1,59 +1,128 @@
 ## Objetivo
-Importar do Imoview também imóveis **vendidos, alugados, sob proposta e inativos**, mantendo-os visíveis apenas no CRM (não no site público).
 
-## Estratégia
+Criar um novo módulo **Clientes** no CRM (sidebar), importar do Imoview proprietários, compradores/interessados, locatários e contatos gerais, e mantê-los vinculados aos imóveis como no Imoview.
 
-### 1. Listagem de "todos os imóveis"
-A API atual usa `RetornarImoveisDisponiveis` (só ativos). O Imoview expõe `RetornarImoveis` (lista geral, sem filtro de disponibilidade) com paginação. Vamos adicionar uma segunda passagem usando esse endpoint para capturar os demais.
+Módulo independente do Leads (Leads = funil de prospecção; Clientes = base de pessoas reais ligadas a imóveis/contratos).
+
+## Banco de dados
+
+### Tabela `clientes`
+Pessoas/contatos importados do Imoview ou cadastrados manualmente.
+
+Campos principais:
+- `nome`, `cpf_cnpj`, `rg`, `email`, `telefone`, `telefone_secundario`, `data_nascimento`
+- `tipo_pessoa` (`fisica` | `juridica`)
+- `endereco`, `bairro`, `cidade`, `estado`, `cep`
+- `observacoes`
+- `categorias` (array): `proprietario`, `comprador`, `locatario`, `interessado`, `contato` — um cliente pode ter múltiplas categorias (como no Imoview)
+- `codigo_imoview` (int, único) — ID original
+- `imoview_raw` (jsonb), `imoview_sync_at`, `imoview_hash`
+- `ativo`, `created_at`, `updated_at`, `created_by`
+
+Índices: `codigo_imoview` (único), `cpf_cnpj`, `telefone`, `email`.
+
+### Tabela `cliente_imoveis` (relação N:N com papel)
+Vincula cliente a imóvel com o papel exato (espelha o Imoview):
+- `cliente_id` → `clientes.id`
+- `imovel_id` → `imoveis_proprios.id`
+- `papel` enum: `proprietario`, `comprador`, `locatario`, `interessado`
+- `percentual` (numeric, para co-proprietários)
+- `data_inicio`, `data_fim` (para histórico de compra/locação)
+- `observacoes`
+- único `(cliente_id, imovel_id, papel)`
+
+### RLS
+- SELECT: admin, gestor, corretor (`is_crm_user` + role check)
+- INSERT/UPDATE/DELETE: admin, gestor, corretor
+- Atendente: sem acesso
+- Service role: full (para edge function de sync)
+
+GRANT para `authenticated` e `service_role`.
+
+## Edge Function: `imoview-sync-clientes`
+
+Nova função separada (não mistura com sync de imóveis).
+
+Endpoints Imoview a testar (em ordem de fallback):
+- `/Pessoa/RetornarPessoas` (lista paginada geral)
+- `/Pessoa/RetornarPessoasAlteradas` (incremental)
+- `/Pessoa/RetornarDetalhesPessoa?codigo=...` (detalhes + imóveis vinculados)
+- `/Proprietario/RetornarProprietarios` (fallback caso só esse esteja habilitado)
+
+Fluxo:
+1. Lista todas as pessoas paginadas (cursor + auto-reinvoke, mesmo padrão de `imoview-sync`).
+2. Para cada pessoa, busca detalhes e extrai vínculos (`imoveis`, `tipo`/`categoria`).
+3. Upsert em `clientes` por `codigo_imoview`.
+4. Para cada vínculo retornado, upsert em `cliente_imoveis` casando `codigo_imoview` do imóvel com `imoveis_proprios.codigo_imoview`.
+5. Categorias derivadas: marca `proprietario` se a pessoa tem imóveis como dono, `comprador`/`locatario` se aparece em contrato finalizado, `interessado` para registros de interesse.
+6. Log em `imoview_sync_log` reaproveitado (novo `mode: 'clientes_full' | 'clientes_incremental'`).
+
+Modos: `full`, `incremental` (alterados nos últimos 7 dias), `single` (um código).
+
+## Frontend
+
+### Sidebar (`src/crm/components/CrmSidebar.tsx`)
+Novo item entre "Imóveis" e "Condomínios":
 
 ```text
-fase 1 — RetornarImoveisDisponiveis   → status disponivel/sob_proposta
-fase 2 — RetornarImoveis (todos)      → marca vendido/alugado/inativo
+- Imóveis
+- Clientes        ← novo (icon: Users / Contact)
+- Condomínios
 ```
 
-Caso `RetornarImoveis` não esteja habilitado para a conta, fallback: usar `RetornarImoveisAlterados` (últimos 365 dias) que já entrega o campo `situacao` para inferência.
+Visível para roles: `admin`, `gestor`, `corretor`.
 
-### 2. Detalhes
-Trocar `RetornarDetalhesImovelDisponivel` por `RetornarDetalhesImovel` (sem o "Disponivel"). Esse endpoint retorna o registro independente do status, e inclui o campo `situacao`/`statusimovel`.
+### Rotas (`src/App.tsx`)
+- `/crm/clientes` → lista
+- `/crm/clientes/novo` → form
+- `/crm/clientes/:id` → detalhe
+- `/crm/clientes/:id/editar` → form
 
-### 3. Mapeamento de status
-Em `mapToRow`, deixar de cravar `status: 'disponivel'` e derivar de `raw.situacao` / `raw.statusimovel`:
+### Páginas
 
-```text
-"Disponível" / "Ativo"        → disponivel
-"Sob proposta" / "Reservado"  → sob_proposta
-"Vendido"                     → vendido
-"Alugado"                     → alugado
-"Inativo" / "Suspenso" / "Bloqueado" / outros → inativo
-```
+**`Clientes.tsx` (lista)**
+- Tabela com: nome, categorias (badges), telefone, email, cidade, # imóveis vinculados, atualizado em
+- Filtros: busca (nome/CPF/email/telefone), categoria (multi), cidade, origem (Imoview/manual)
+- Paginação cliente-side, ordenação
 
-`ativo` continua `true` (o flag `ativo=false` permanece reservado para "sumiu da API").
+**`ClienteDetail.tsx`**
+- Dados pessoais
+- Aba "Imóveis vinculados": lista por papel (Propriedades, Como comprador, Como locatário, Interesses)
+  - Cada linha clicável → `/crm/imoveis/:id`
+- Aba "Atividades" (futuras interações ligadas ao cliente)
+- Botão "Re-sincronizar do Imoview" (se `codigo_imoview` setado)
 
-### 4. Política RLS — manter site público intacto
-A policy `imoveis_public_read` já filtra por `status IN ('disponivel','sob_proposta')`, então vendidos/alugados/inativos **não aparecem** no site público automaticamente. Nenhuma mudança de RLS necessária.
+**`ClienteForm.tsx`**
+- Cadastro manual com mesmas seções; categorias como toggles
+- Seleção de imóveis vinculados com escolha de papel
 
-A policy CRM `imoveis_crm_read_all` permite que admin/gestor/corretor vejam todos.
+### Página de Imóvel (`ImovelDetail.tsx`)
+Adicionar seção "Pessoas vinculadas":
+- Proprietário(s) com link para `/crm/clientes/:id`
+- Comprador/Locatário se houver
+- Lista de interessados
 
-### 5. UI no CRM
-Listagem `/crm/imoveis` já tem filtro por status. Garantir que o filtro mostra todas as opções (`IMOVEL_STATUS`) — verificar o `Select` em `Imoveis.tsx`.
+### Sincronização (`SincronizacaoImoview.tsx`)
+Adicionar segundo card "Sincronização de Clientes":
+- Botão "Sincronização completa de clientes"
+- Botão "Incremental (últimos 7 dias)"
+- Histórico filtrado pelos novos `mode` clientes
 
-### 6. Página de Sincronização
-Adicionar ao painel `SincronizacaoImoview` o contador por status após o sync, para visibilidade.
+### Hook/lib (`src/crm/lib/clientes.ts`)
+- `listClientes(filters)`, `getCliente(id)`, `upsertCliente(data)`, `linkImovel(clienteId, imovelId, papel)`, `unlinkImovel(id)`, `triggerSyncClientes(mode)`
 
-## Mudanças técnicas
+## Segurança
 
-- `supabase/functions/imoview-sync/index.ts`
-  - Nova função `fetchListingAll(finalidade, pagina)` chamando `/Imovel/RetornarImoveis` com fallback para `RetornarImoveisDisponiveis`.
-  - Loop de sync passa a iterar `RetornarImoveis` para cobrir todos os status.
-  - `fetchDetails` → usar `RetornarDetalhesImovel` (com fallback ao `Disponivel`).
-  - `mapToRow`: derivar `status` de `raw.situacao || raw.statusimovel`.
-  - Remover o "burying" forçado em `ativo=true` apenas quando a situação for inativa — manter `ativo=true`, e usar `status='inativo'`.
+- Telefone/email/CPF são dados sensíveis: tabela protegida por RLS exigindo `is_crm_user` + role em (admin, gestor, corretor).
+- Atendente bloqueado.
+- Sem leitura anônima.
 
-- `src/crm/pages/SincronizacaoImoview.tsx`
-  - (Opcional) exibir contagens por status do último log.
+## Entrega em fases
 
-Sem mudanças em: site público, hooks de filtro, RLS, schema.
+1. **Migration** (tabelas + RLS + enum `cliente_papel`).
+2. **Edge function** `imoview-sync-clientes` com fallback de endpoints.
+3. **Sidebar + rotas + páginas** (lista, detalhe, form).
+4. **Vínculo na página de imóvel** (seção "Pessoas vinculadas").
+5. **Card no painel de sincronização** + primeira execução completa.
 
-## Entrega
-1. Patch da edge function `imoview-sync` com novos endpoints e mapeamento de status.
-2. Botão "Sincronizar tudo" continua o mesmo — agora cobre todo o catálogo.
+Sem alterações no site público, no módulo Leads ou no schema atual de `imoveis_proprios`.

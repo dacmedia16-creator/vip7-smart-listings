@@ -70,6 +70,150 @@ export type Database = {
         }
         Relationships: []
       }
+      cliente_imoveis: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          id: string
+          imovel_id: string
+          observacoes: string | null
+          papel: Database["public"]["Enums"]["cliente_papel"]
+          percentual: number | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          imovel_id: string
+          observacoes?: string | null
+          papel: Database["public"]["Enums"]["cliente_papel"]
+          percentual?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          imovel_id?: string
+          observacoes?: string | null
+          papel?: Database["public"]["Enums"]["cliente_papel"]
+          percentual?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_imoveis_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_imoveis_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_proprios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          ativo: boolean
+          bairro: string | null
+          categorias: string[]
+          cep: string | null
+          cidade: string | null
+          codigo_imoview: number | null
+          complemento: string | null
+          cpf_cnpj: string | null
+          created_at: string
+          created_by: string | null
+          data_nascimento: string | null
+          email: string | null
+          endereco: string | null
+          estado: string | null
+          id: string
+          imoview_hash: string | null
+          imoview_raw: Json | null
+          imoview_sync_at: string | null
+          nome: string
+          numero: string | null
+          observacoes: string | null
+          origem: string
+          rg: string | null
+          telefone: string | null
+          telefone_secundario: string | null
+          tipo_pessoa: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          bairro?: string | null
+          categorias?: string[]
+          cep?: string | null
+          cidade?: string | null
+          codigo_imoview?: number | null
+          complemento?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          imoview_hash?: string | null
+          imoview_raw?: Json | null
+          imoview_sync_at?: string | null
+          nome: string
+          numero?: string | null
+          observacoes?: string | null
+          origem?: string
+          rg?: string | null
+          telefone?: string | null
+          telefone_secundario?: string | null
+          tipo_pessoa?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          bairro?: string | null
+          categorias?: string[]
+          cep?: string | null
+          cidade?: string | null
+          codigo_imoview?: number | null
+          complemento?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          imoview_hash?: string | null
+          imoview_raw?: Json | null
+          imoview_sync_at?: string | null
+          nome?: string
+          numero?: string | null
+          observacoes?: string | null
+          origem?: string
+          rg?: string | null
+          telefone?: string | null
+          telefone_secundario?: string | null
+          tipo_pessoa?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       condominios_cache: {
         Row: {
           cidade: string | null
@@ -1004,6 +1148,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_clientes: { Args: { _user_id: string }; Returns: boolean }
       count_admins: { Args: never; Returns: number }
       distribuir_lead: { Args: { _lead_id: string }; Returns: string }
       find_duplicate_lead: {
@@ -1023,6 +1168,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor" | "corretor" | "atendente"
+      cliente_papel: "proprietario" | "comprador" | "locatario" | "interessado"
       distribuicao_tipo:
         | "rodizio"
         | "especialidade"
@@ -1189,6 +1335,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor", "corretor", "atendente"],
+      cliente_papel: ["proprietario", "comprador", "locatario", "interessado"],
       distribuicao_tipo: [
         "rodizio",
         "especialidade",

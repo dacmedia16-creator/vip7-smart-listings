@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useRoles } from '../hooks/useRole';
 import { imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
+import { PessoasVinculadasCard } from '../components/PessoasVinculadasCard';
 
 export default function ImovelDetail() {
   const { id } = useParams();
@@ -152,8 +153,11 @@ export default function ImovelDetail() {
               <p className="text-sm text-muted-foreground">Nenhum corretor atribuído.</p>
             )}
           </Card>
+
+          <PessoasVinculadasCard imovelId={imovel.id} />
         </div>
       </div>
+
     </CrmLayout>
   );
 }
