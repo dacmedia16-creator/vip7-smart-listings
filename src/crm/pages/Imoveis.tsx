@@ -212,11 +212,18 @@ export default function Imoveis() {
           <h1 className="text-2xl font-bold">Imóveis Próprios</h1>
           <p className="text-sm text-muted-foreground">{total.toLocaleString('pt-BR')} imóveis</p>
         </div>
-        {canCreate && (
-          <Button asChild>
-            <Link to="/crm/imoveis/novo"><Plus className="h-4 w-4 mr-2" />Novo Imóvel</Link>
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {isManager && (
+            <Button asChild variant="outline">
+              <Link to="/crm/imoveis/importar-proprietarios">Importar proprietários</Link>
+            </Button>
+          )}
+          {canCreate && (
+            <Button asChild>
+              <Link to="/crm/imoveis/novo"><Plus className="h-4 w-4 mr-2" />Novo Imóvel</Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="p-4 mb-4 flex flex-wrap gap-3">
