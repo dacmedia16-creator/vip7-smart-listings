@@ -56,7 +56,7 @@ export default function Imoveis() {
         .range(from, to);
 
       if (status !== 'todos') {
-        query = query.eq('status', status);
+        query = query.eq('status', status as any);
       }
 
       if (qDebounced.trim()) {
