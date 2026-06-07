@@ -40,6 +40,7 @@ import CrmCondominioDetail from "./crm/pages/CondominioDetail";
 import CrmClientes from "./crm/pages/Clientes";
 import CrmClienteForm from "./crm/pages/ClienteForm";
 import CrmClienteDetail from "./crm/pages/ClienteDetail";
+import CrmImportarClientes from "./crm/pages/ImportarClientes";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -84,6 +85,7 @@ const App = () => (
                 <Route path="/crm/condominios/:codigo" element={<RequireAuth><CrmCondominioDetail /></RequireAuth>} />
                 <Route path="/crm/clientes" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmClientes /></RequireAuth>} />
                 <Route path="/crm/clientes/novo" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmClienteForm /></RequireAuth>} />
+                <Route path="/crm/clientes/importar" element={<RequireAuth roles={['admin','gestor']}><CrmImportarClientes /></RequireAuth>} />
                 <Route path="/crm/clientes/:id" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmClienteDetail /></RequireAuth>} />
                 <Route path="/crm/clientes/:id/editar" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmClienteForm /></RequireAuth>} />
                 <Route path="/crm/tarefas" element={<RequireAuth><CrmTarefas /></RequireAuth>} />
