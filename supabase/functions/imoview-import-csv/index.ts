@@ -1,6 +1,5 @@
 // Import manual de clientes via planilha (CSV/XLSX exportada do Imoview).
-// Recebe { rows: Array<Record<string,string>>, mapping: Record<string, string|null> }
-// onde `mapping[campoCRM] = nomeDaColunaNaPlanilha`.
+// Recebe { rows, mapping, batchIndex?, totalBatches? } — chamado em lotes pelo frontend.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -16,6 +15,8 @@ const corsHeaders = {
 const onlyDigits = (s: unknown) => String(s ?? "").replace(/\D/g, "");
 const norm = (s: unknown) => String(s ?? "").trim();
 const lower = (s: unknown) => norm(s).toLowerCase();
+const stripAccents = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 function get(row: Record<string, unknown>, col: string | null | undefined): string {
   if (!col) return "";
@@ -30,12 +31,32 @@ function parseCategorias(v: string): string[] {
 
 function parseDate(v: string): string | null {
   if (!v) return null;
-  // dd/mm/yyyy → yyyy-mm-dd; ou já ISO
-  const br = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const br = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
   if (br) return `${br[3]}-${br[2]}-${br[1]}`;
   const iso = v.match(/^\d{4}-\d{2}-\d{2}/);
   if (iso) return v.slice(0, 10);
   return null;
+}
+
+function normalizeFinalidade(v: string): string | null {
+  const x = stripAccents(v);
+  if (!x) return null;
+  if (x.includes("loca") || x.includes("alug")) return "locacao";
+  if (x.includes("vend")) return "venda";
+  if (x.includes("temp")) return "temporada";
+  return null;
+}
+
+function mapStatusFunil(situacao: string, fase: string): string {
+  const s = stripAccents(situacao);
+  const f = stripAccents(fase);
+  const all = `${s} ${f}`;
+  if (all.includes("perd") || all.includes("cancel") || all.includes("descart")) return "perdido";
+  if (all.includes("fech") || all.includes("ganho") || all.includes("conclu") || all.includes("vendido")) return "fechamento";
+  if (all.includes("propost") || all.includes("negoci")) return "proposta";
+  if (all.includes("visit")) return "visita";
+  if (all.includes("qualif") || all.includes("atend") || all.includes("andamento")) return "qualificacao";
+  return "novo";
 }
 
 type Mapping = Record<string, string | null>;
@@ -78,7 +99,6 @@ function buildCliente(row: Record<string, unknown>, mapping: Mapping, userId: st
     categorias,
     codigo_imoview,
     origem: "imoview_csv",
-    imoview_raw: row as unknown,
     imoview_sync_at: new Date().toISOString(),
     ativo: true,
     created_by: userId,
@@ -103,15 +123,23 @@ serve(async (req) => {
       });
     }
 
-    const { rows, mapping } = (await req.json()) as { rows: Record<string, unknown>[]; mapping: Mapping };
+    const body = (await req.json()) as {
+      rows: Record<string, unknown>[];
+      mapping: Mapping;
+      batchIndex?: number;
+      rowOffset?: number;
+    };
+    const { rows, mapping } = body;
+    const rowOffset = body.rowOffset ?? 0;
+
     if (!Array.isArray(rows) || !mapping || !mapping.nome) {
       return new Response(JSON.stringify({ error: "Payload inválido: requer rows[] e mapping.nome" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (rows.length > 10000) {
-      return new Response(JSON.stringify({ error: "Limite de 10.000 linhas por upload" }), {
+    if (rows.length > 1000) {
+      return new Response(JSON.stringify({ error: "Lote excede 1000 linhas" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -119,20 +147,15 @@ serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Log inicial
-    const { data: logRow } = await admin
-      .from("imoview_sync_log")
-      .insert({ mode: "csv_manual", status: "running", triggered_by: userId, total: rows.length })
-      .select("id")
-      .single();
-    const logId = (logRow as { id: string } | null)?.id;
-
     let inseridos = 0,
       atualizados = 0,
-      ignorados = 0;
+      ignorados = 0,
+      leads_inseridos = 0,
+      leads_atualizados = 0;
+    const corretores_nao_encontrados = new Set<string>();
     const erros: { linha: number; motivo: string }[] = [];
 
-    // Pré-carrega códigos imoview já existentes para distinguir insert/update rapidamente
+    // Pré-carrega códigos imoview e CPFs existentes
     const codigos = rows
       .map((r) => onlyDigits(get(r, mapping.codigo_imoview)))
       .filter(Boolean)
@@ -157,67 +180,133 @@ serve(async (req) => {
       }
     }
 
-    // Processa em chunks
-    const CHUNK = 200;
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      const slice = rows.slice(i, i + CHUNK);
-      for (let j = 0; j < slice.length; j++) {
-        const idx = i + j;
-        const row = slice[j];
-        const built = buildCliente(row, mapping, userId);
-        if ("error" in built) {
+    // Pré-carrega profiles para resolver corretor por nome
+    const corretorByName = new Map<string, string>();
+    if (mapping.corretor_nome) {
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, nome")
+        .eq("ativo", true);
+      for (const p of (profiles as { id: string; nome: string }[]) ?? []) {
+        corretorByName.set(stripAccents(p.nome), p.id);
+      }
+    }
+
+    // Pré-carrega leads existentes por codigo_atendimento (guardado em imovel_interesse_codigo)
+    const codigosAtend = rows
+      .map((r) => norm(get(r, mapping.codigo_atendimento)))
+      .filter(Boolean);
+    const existingLeadByCodAtend = new Map<string, string>();
+    if (codigosAtend.length) {
+      const { data } = await admin
+        .from("leads")
+        .select("id, imovel_interesse_codigo")
+        .in("imovel_interesse_codigo", codigosAtend);
+      for (const r of (data as { id: string; imovel_interesse_codigo: string }[]) ?? []) {
+        if (r.imovel_interesse_codigo) existingLeadByCodAtend.set(r.imovel_interesse_codigo, r.id);
+      }
+    }
+
+    for (let j = 0; j < rows.length; j++) {
+      const idx = rowOffset + j;
+      const row = rows[j];
+      const built = buildCliente(row, mapping, userId);
+      if ("error" in built) {
+        ignorados++;
+        erros.push({ linha: idx + 2, motivo: built.error });
+        continue;
+      }
+      const c = built.cliente;
+      let clienteId: string | undefined;
+      if (c.codigo_imoview && existingByCodigo.has(c.codigo_imoview)) {
+        clienteId = existingByCodigo.get(c.codigo_imoview);
+      } else if (c.cpf_cnpj && existingByDoc.has(c.cpf_cnpj)) {
+        clienteId = existingByDoc.get(c.cpf_cnpj);
+      }
+
+      if (clienteId) {
+        const { error } = await admin.from("clientes").update(c).eq("id", clienteId);
+        if (error) {
           ignorados++;
-          erros.push({ linha: idx + 2, motivo: built.error });
+          erros.push({ linha: idx + 2, motivo: `update cliente: ${error.message}` });
           continue;
         }
-        const c = built.cliente;
-        let existingId: string | undefined;
-        if (c.codigo_imoview && existingByCodigo.has(c.codigo_imoview)) {
-          existingId = existingByCodigo.get(c.codigo_imoview);
-        } else if (c.cpf_cnpj && existingByDoc.has(c.cpf_cnpj)) {
-          existingId = existingByDoc.get(c.cpf_cnpj);
+        atualizados++;
+      } else {
+        const { data, error } = await admin.from("clientes").insert(c).select("id").single();
+        if (error) {
+          ignorados++;
+          erros.push({ linha: idx + 2, motivo: `insert cliente: ${error.message}` });
+          continue;
+        }
+        inseridos++;
+        clienteId = (data as { id: string }).id;
+        if (c.codigo_imoview) existingByCodigo.set(c.codigo_imoview, clienteId!);
+        if (c.cpf_cnpj) existingByDoc.set(c.cpf_cnpj, clienteId!);
+      }
+
+      // Lead opcional (quando há código de atendimento)
+      const codAtend = norm(get(row, mapping.codigo_atendimento));
+      if (codAtend && c.telefone) {
+        const corretorNome = norm(get(row, mapping.corretor_nome));
+        let corretor_id: string | null = null;
+        if (corretorNome) {
+          const k = stripAccents(corretorNome);
+          corretor_id = corretorByName.get(k) ?? null;
+          if (!corretor_id) {
+            // tenta match parcial
+            for (const [n, id] of corretorByName) {
+              if (n.includes(k) || k.includes(n)) { corretor_id = id; break; }
+            }
+          }
+          if (!corretor_id) corretores_nao_encontrados.add(corretorNome);
         }
 
-        if (existingId) {
-          const { error } = await admin.from("clientes").update(c).eq("id", existingId);
-          if (error) {
-            ignorados++;
-            erros.push({ linha: idx + 2, motivo: `update: ${error.message}` });
-          } else {
-            atualizados++;
-          }
+        const situacao = norm(get(row, mapping.situacao));
+        const fase = norm(get(row, mapping.fase_atendimento));
+        const finalidade = normalizeFinalidade(get(row, mapping.finalidade));
+        const status_funil = mapStatusFunil(situacao, fase);
+
+        const lead = {
+          nome: c.nome,
+          email: c.email,
+          telefone: c.telefone,
+          finalidade,
+          status_funil,
+          corretor_id,
+          origem: "manual" as const,
+          imovel_interesse_codigo: codAtend,
+          observacoes: `[Imoview #${codAtend}] ${situacao || "-"} · ${fase || "-"}`,
+          created_by: userId,
+        };
+
+        const existingLeadId = existingLeadByCodAtend.get(codAtend);
+        if (existingLeadId) {
+          const { error } = await admin.from("leads").update(lead).eq("id", existingLeadId);
+          if (error) erros.push({ linha: idx + 2, motivo: `update lead: ${error.message}` });
+          else leads_atualizados++;
         } else {
-          const { data, error } = await admin.from("clientes").insert(c).select("id").single();
-          if (error) {
-            ignorados++;
-            erros.push({ linha: idx + 2, motivo: `insert: ${error.message}` });
-          } else {
-            inseridos++;
-            const newId = (data as { id: string }).id;
-            if (c.codigo_imoview) existingByCodigo.set(c.codigo_imoview, newId);
-            if (c.cpf_cnpj) existingByDoc.set(c.cpf_cnpj, newId);
+          const { data, error } = await admin.from("leads").insert(lead).select("id").single();
+          if (error) erros.push({ linha: idx + 2, motivo: `insert lead: ${error.message}` });
+          else {
+            leads_inseridos++;
+            existingLeadByCodAtend.set(codAtend, (data as { id: string }).id);
           }
         }
       }
     }
 
-    if (logId) {
-      await admin
-        .from("imoview_sync_log")
-        .update({
-          status: erros.length === 0 ? "ok" : "partial",
-          finished_at: new Date().toISOString(),
-          total: rows.length,
-          inserted: inseridos,
-          updated: atualizados,
-          errors_count: erros.length,
-          error_details: erros.length ? { erros: erros.slice(0, 200) } : null,
-        })
-        .eq("id", logId);
-    }
-
     return new Response(
-      JSON.stringify({ ok: true, inseridos, atualizados, ignorados, erros, sync_id: logId }),
+      JSON.stringify({
+        ok: true,
+        inseridos,
+        atualizados,
+        ignorados,
+        leads_inseridos,
+        leads_atualizados,
+        corretores_nao_encontrados: Array.from(corretores_nao_encontrados),
+        erros,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useRoles } from '../hooks/useRole';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,9 +36,15 @@ const CRM_FIELDS: { key: string; label: string; aliases: string[]; required?: bo
   { key: 'categorias', label: 'Categorias', aliases: ['categoria', 'categorias', 'tipo de cliente', 'perfil'] },
   { key: 'codigo_imoview', label: 'Código Imoview', aliases: ['código', 'codigo', 'código imoview', 'codigo imoview', 'id', 'código do cliente'] },
   { key: 'observacoes', label: 'Observações', aliases: ['observações', 'observacoes', 'obs', 'notas'] },
+  // Atendimento → vira lead se houver código de atendimento
+  { key: 'finalidade', label: 'Finalidade (venda/locação)', aliases: ['finalidade'] },
+  { key: 'codigo_atendimento', label: 'Código atendimento', aliases: ['codigo atendimento', 'código atendimento', 'cod atendimento', 'atendimento'] },
+  { key: 'situacao', label: 'Situação', aliases: ['situacao', 'situação', 'status'] },
+  { key: 'fase_atendimento', label: 'Fase atendimento', aliases: ['fase', 'fase atendimento', 'fase do atendimento', 'etapa'] },
+  { key: 'corretor_nome', label: 'Corretor', aliases: ['corretor', 'responsavel', 'responsável', 'consultor'] },
 ];
 
-const normHeader = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+const normHeader = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\ufeff/, '').trim();
 
 function autoMap(headers: string[]): Record<string, string | null> {
   const result: Record<string, string | null> = {};
@@ -49,7 +56,6 @@ function autoMap(headers: string[]): Record<string, string | null> {
       if (m) { found = m; break; }
     }
     if (!found) {
-      // fallback: contains
       for (const [n, orig] of normToOriginal) {
         if (f.aliases.some((a) => n.includes(normHeader(a)))) { found = orig; break; }
       }
@@ -58,6 +64,18 @@ function autoMap(headers: string[]): Record<string, string | null> {
   }
   return result;
 }
+
+type ResultAgg = {
+  inseridos: number;
+  atualizados: number;
+  ignorados: number;
+  leads_inseridos: number;
+  leads_atualizados: number;
+  corretores_nao_encontrados: string[];
+  erros: { linha: number; motivo: string }[];
+};
+
+const BATCH_SIZE = 300;
 
 export default function ImportarClientes() {
   const { roles, loading: rolesLoading } = useRoles();
@@ -68,7 +86,8 @@ export default function ImportarClientes() {
   const [rows, setRows] = useState<Row[]>([]);
   const [mapping, setMapping] = useState<Record<string, string | null>>({});
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ inseridos: number; atualizados: number; ignorados: number; erros: { linha: number; motivo: string }[] } | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [result, setResult] = useState<ResultAgg | null>(null);
 
   const preview = useMemo(() => rows.slice(0, 10), [rows]);
 
@@ -78,31 +97,43 @@ export default function ImportarClientes() {
   const handleFile = async (file: File) => {
     setFileName(file.name);
     setResult(null);
+    setRows([]);
+    setHeaders([]);
     const ext = file.name.toLowerCase().split('.').pop();
     try {
       if (ext === 'csv' || ext === 'txt') {
-        const text = await file.text();
-        const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
+        let text = await file.text();
+        if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+        // detecta separador
+        const firstLine = text.split(/\r?\n/)[0] ?? '';
+        const delim = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ';' : ',';
+        const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true, delimiter: delim });
         const data = parsed.data.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
-        const hdrs = parsed.meta.fields ?? [];
+        const hdrs = (parsed.meta.fields ?? []).map((h) => h.replace(/^\ufeff/, ''));
         setHeaders(hdrs);
         setRows(data);
         setMapping(autoMap(hdrs));
+        toast.success(`${file.name}: ${data.length} linhas`);
       } else if (ext === 'xlsx' || ext === 'xls') {
         const buf = await file.arrayBuffer();
         const wb = XLSX.read(buf, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
+        // união dos cabeçalhos olhando todas as linhas
         const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false });
-        const hdrs = json.length ? Object.keys(json[0]) : [];
+        const hdrSet = new Set<string>();
+        for (let i = 0; i < Math.min(json.length, 50); i++) {
+          for (const k of Object.keys(json[i] || {})) hdrSet.add(k);
+        }
+        const hdrs = Array.from(hdrSet);
         setHeaders(hdrs);
         setRows(json);
         setMapping(autoMap(hdrs));
+        toast.success(`${file.name}: ${json.length} linhas`);
       } else {
         toast.error('Formato não suportado. Use CSV ou XLSX.');
-        return;
       }
-      toast.success(`${file.name}: ${rows.length || '...'} linhas`);
     } catch (e) {
+      console.error(e);
       toast.error('Falha ao ler arquivo: ' + (e as Error).message);
     }
   };
@@ -111,21 +142,60 @@ export default function ImportarClientes() {
     setMapping((m) => ({ ...m, [field]: col === '__none__' ? null : col }));
   };
 
+  // Reduz cada linha apenas às colunas usadas no mapping
+  const compactRow = (row: Row, usedCols: string[]): Row => {
+    const out: Row = {};
+    for (const c of usedCols) out[c] = row[c];
+    return out;
+  };
+
   const startImport = async () => {
     if (!mapping.nome) { toast.error('Mapeie ao menos o campo Nome'); return; }
     if (!rows.length) { toast.error('Nenhuma linha para importar'); return; }
+
     setImporting(true);
     setResult(null);
+
+    const usedCols = Array.from(new Set(Object.values(mapping).filter((v): v is string => !!v)));
+    const total = rows.length;
+    setProgress({ done: 0, total });
+
+    const agg: ResultAgg = {
+      inseridos: 0, atualizados: 0, ignorados: 0,
+      leads_inseridos: 0, leads_atualizados: 0,
+      corretores_nao_encontrados: [], erros: [],
+    };
+    const corretoresSet = new Set<string>();
+
     try {
-      const { data, error } = await supabase.functions.invoke('imoview-import-csv', {
-        body: { rows, mapping },
-      });
-      if (error) throw error;
-      const r = data as { inseridos: number; atualizados: number; ignorados: number; erros: { linha: number; motivo: string }[] };
-      setResult(r);
-      toast.success(`Importação concluída: ${r.inseridos} novos, ${r.atualizados} atualizados, ${r.ignorados} ignorados`);
+      for (let offset = 0; offset < total; offset += BATCH_SIZE) {
+        const slice = rows.slice(offset, offset + BATCH_SIZE).map((r) => compactRow(r, usedCols));
+        const { data, error } = await supabase.functions.invoke('imoview-import-csv', {
+          body: { rows: slice, mapping, rowOffset: offset },
+        });
+        if (error) {
+          // tenta extrair mensagem detalhada
+          const ctx = (error as { context?: Response }).context;
+          let detail = error.message;
+          try { if (ctx) detail = await ctx.text(); } catch { /* ignore */ }
+          throw new Error(detail || 'Erro no edge function');
+        }
+        const r = data as ResultAgg;
+        agg.inseridos += r.inseridos || 0;
+        agg.atualizados += r.atualizados || 0;
+        agg.ignorados += r.ignorados || 0;
+        agg.leads_inseridos += r.leads_inseridos || 0;
+        agg.leads_atualizados += r.leads_atualizados || 0;
+        for (const n of r.corretores_nao_encontrados || []) corretoresSet.add(n);
+        if (r.erros?.length) agg.erros.push(...r.erros);
+        setProgress({ done: Math.min(offset + slice.length, total), total });
+      }
+      agg.corretores_nao_encontrados = Array.from(corretoresSet);
+      setResult(agg);
+      toast.success(`OK: ${agg.inseridos} novos, ${agg.atualizados} atualizados, ${agg.leads_inseridos + agg.leads_atualizados} leads`);
     } catch (e) {
-      toast.error((e as Error).message);
+      console.error(e);
+      toast.error('Falha: ' + (e as Error).message);
     } finally {
       setImporting(false);
     }
@@ -141,6 +211,8 @@ export default function ImportarClientes() {
     a.click(); URL.revokeObjectURL(url);
   };
 
+  const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
+
   return (
     <CrmLayout>
       <div className="space-y-6">
@@ -151,7 +223,7 @@ export default function ImportarClientes() {
         </div>
         <div>
           <h1 className="text-2xl font-semibold text-[#0F0F12]">Importar clientes (CSV/Excel)</h1>
-          <p className="text-sm text-[#4A4A52]">Suba uma planilha exportada do Imoview. Os clientes serão inseridos ou atualizados (por código Imoview ou CPF/CNPJ).</p>
+          <p className="text-sm text-[#4A4A52]">Suba uma planilha exportada do Imoview. Clientes são inseridos/atualizados; se houver código de atendimento, um lead é criado/atualizado.</p>
         </div>
 
         <Card>
@@ -229,31 +301,46 @@ export default function ImportarClientes() {
               </CardContent>
             </Card>
 
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={startImport}
-                disabled={importing || !mapping.nome}
-                className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
-              >
-                {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                Importar {rows.length} clientes
-              </Button>
-              {result && result.erros.length > 0 && (
-                <Button variant="outline" onClick={downloadErrors}>
-                  <Download className="h-4 w-4 mr-2" /> Baixar relatório de erros ({result.erros.length})
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={startImport}
+                  disabled={importing || !mapping.nome}
+                  className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+                >
+                  {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                  Importar {rows.length} linhas
                 </Button>
+                {result && result.erros.length > 0 && (
+                  <Button variant="outline" onClick={downloadErrors}>
+                    <Download className="h-4 w-4 mr-2" /> Baixar erros ({result.erros.length})
+                  </Button>
+                )}
+              </div>
+              {importing && (
+                <div className="space-y-1">
+                  <Progress value={pct} />
+                  <div className="text-xs text-[#4A4A52]">{progress.done} / {progress.total} ({pct}%)</div>
+                </div>
               )}
             </div>
 
             {result && (
               <Card>
                 <CardHeader><CardTitle className="text-base">Resultado</CardTitle></CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex gap-4 flex-wrap">
-                    <Badge className="bg-green-100 text-green-800 border-0">Inseridos: {result.inseridos}</Badge>
-                    <Badge className="bg-blue-100 text-blue-800 border-0">Atualizados: {result.atualizados}</Badge>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge className="bg-green-100 text-green-800 border-0">Clientes novos: {result.inseridos}</Badge>
+                    <Badge className="bg-blue-100 text-blue-800 border-0">Clientes atualizados: {result.atualizados}</Badge>
                     <Badge className="bg-amber-100 text-amber-800 border-0">Ignorados: {result.ignorados}</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-0">Leads novos: {result.leads_inseridos}</Badge>
+                    <Badge className="bg-cyan-100 text-cyan-800 border-0">Leads atualizados: {result.leads_atualizados}</Badge>
                   </div>
+                  {result.corretores_nao_encontrados.length > 0 && (
+                    <div className="text-xs text-[#4A4A52]">
+                      <span className="font-medium">Corretores não encontrados:</span> {result.corretores_nao_encontrados.join(', ')}
+                    </div>
+                  )}
                   {result.erros.length > 0 && (
                     <div className="max-h-64 overflow-y-auto border border-[#E8E4D9] rounded p-2 text-xs">
                       {result.erros.slice(0, 50).map((e, i) => (
