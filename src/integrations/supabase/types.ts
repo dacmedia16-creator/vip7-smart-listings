@@ -135,139 +135,349 @@ export type Database = {
       }
       imoveis_proprios: {
         Row: {
+          aceita_financiamento: boolean
           aceita_permuta: boolean
+          andar: string | null
+          ano_construcao: number | null
           area: number | null
+          area_externa: number | null
           area_total: number | null
           ativo: boolean
           bairro: string | null
           banheiros: number | null
           caracteristicas: string[] | null
+          cartorio: string | null
           cep: string | null
+          cib: string | null
           cidade: string | null
+          codigo_auxiliar: string | null
           codigo_condominio_imoview: number | null
           codigo_imoview: number | null
           codigo_interno: string | null
+          coef_aproveitamento: number | null
+          comissao_venda_pct: number | null
+          complemento: string | null
           condominio: number | null
           condominio_nome: string | null
+          confront_dir: string | null
+          confront_esq: string | null
+          confront_frente: string | null
+          confront_fundo: string | null
+          construtora: string | null
           corretor_id: string | null
           created_at: string
           data_atualizacao_origem: string | null
           descricao: string | null
+          descricao_avaliacao: string | null
           destaque: boolean
+          destinacao: string | null
           documentos: Json | null
+          edificio: string | null
+          elevadores: number | null
           endereco: string | null
           estado: string | null
+          etiquetas: string[] | null
+          exclusivo: boolean
           finalidade: string
+          folha_cartorio: string | null
           fotos: string[] | null
+          horario_visita: string | null
           id: string
+          identificador_chaves: string | null
+          identificador_imovel: string | null
+          imovel_alugado: boolean
+          imovel_ocupado: boolean
           imoview_hash: string | null
           imoview_raw: Json | null
           imoview_sync_at: string | null
           iptu: number | null
+          iptu_anual: number | null
+          iptu_mensal: number | null
           latitude: number | null
+          livro_cartorio: string | null
+          local_chaves: string | null
           longitude: number | null
+          m_direito: number | null
+          m_esquerdo: number | null
+          m_frente: number | null
+          m_fundo: number | null
+          matricula: string | null
+          melhor_acesso: string | null
+          meta_description: string | null
+          na_planta: boolean
+          notas_privadas: string | null
+          num_andares: number | null
+          num_chaves: number | null
+          num_controles: number | null
+          num_torres: number | null
+          numero: string | null
+          observacoes_internas: string | null
           origem: string
+          permite_animais: boolean
+          piso_acabamento: string | null
+          placa_faixa: string | null
+          ponto_referencia: string | null
+          posicao_imovel: string | null
           preco: number
           quartos: number | null
+          regiao: string | null
+          rentabilidade_pct: number | null
+          salas: number | null
+          segundo_bairro: string | null
+          segundo_tipo: string | null
           status: Database["public"]["Enums"]["imovel_status"]
+          sub_regiao: string | null
           suites: number | null
           tipo: string
+          tipo_complemento: string | null
+          tipo_medida: string | null
+          tipo_vaga: string | null
           titulo: string
+          titulo_anuncio: string | null
+          torre_bloco: string | null
+          total_unidades: number | null
           tour_360_url: string | null
+          unidades_por_andar: number | null
           updated_at: string
           vagas: number | null
+          valor_anterior: number | null
+          valor_avaliacao: number | null
           valor_m2: number | null
+          valor_sob_consulta: boolean
+          varandas: number | null
+          venc_autorizacao_venda: string | null
           video_url: string | null
+          zona_uso: string | null
         }
         Insert: {
+          aceita_financiamento?: boolean
           aceita_permuta?: boolean
+          andar?: string | null
+          ano_construcao?: number | null
           area?: number | null
+          area_externa?: number | null
           area_total?: number | null
           ativo?: boolean
           bairro?: string | null
           banheiros?: number | null
           caracteristicas?: string[] | null
+          cartorio?: string | null
           cep?: string | null
+          cib?: string | null
           cidade?: string | null
+          codigo_auxiliar?: string | null
           codigo_condominio_imoview?: number | null
           codigo_imoview?: number | null
           codigo_interno?: string | null
+          coef_aproveitamento?: number | null
+          comissao_venda_pct?: number | null
+          complemento?: string | null
           condominio?: number | null
           condominio_nome?: string | null
+          confront_dir?: string | null
+          confront_esq?: string | null
+          confront_frente?: string | null
+          confront_fundo?: string | null
+          construtora?: string | null
           corretor_id?: string | null
           created_at?: string
           data_atualizacao_origem?: string | null
           descricao?: string | null
+          descricao_avaliacao?: string | null
           destaque?: boolean
+          destinacao?: string | null
           documentos?: Json | null
+          edificio?: string | null
+          elevadores?: number | null
           endereco?: string | null
           estado?: string | null
+          etiquetas?: string[] | null
+          exclusivo?: boolean
           finalidade?: string
+          folha_cartorio?: string | null
           fotos?: string[] | null
+          horario_visita?: string | null
           id?: string
+          identificador_chaves?: string | null
+          identificador_imovel?: string | null
+          imovel_alugado?: boolean
+          imovel_ocupado?: boolean
           imoview_hash?: string | null
           imoview_raw?: Json | null
           imoview_sync_at?: string | null
           iptu?: number | null
+          iptu_anual?: number | null
+          iptu_mensal?: number | null
           latitude?: number | null
+          livro_cartorio?: string | null
+          local_chaves?: string | null
           longitude?: number | null
+          m_direito?: number | null
+          m_esquerdo?: number | null
+          m_frente?: number | null
+          m_fundo?: number | null
+          matricula?: string | null
+          melhor_acesso?: string | null
+          meta_description?: string | null
+          na_planta?: boolean
+          notas_privadas?: string | null
+          num_andares?: number | null
+          num_chaves?: number | null
+          num_controles?: number | null
+          num_torres?: number | null
+          numero?: string | null
+          observacoes_internas?: string | null
           origem?: string
+          permite_animais?: boolean
+          piso_acabamento?: string | null
+          placa_faixa?: string | null
+          ponto_referencia?: string | null
+          posicao_imovel?: string | null
           preco: number
           quartos?: number | null
+          regiao?: string | null
+          rentabilidade_pct?: number | null
+          salas?: number | null
+          segundo_bairro?: string | null
+          segundo_tipo?: string | null
           status?: Database["public"]["Enums"]["imovel_status"]
+          sub_regiao?: string | null
           suites?: number | null
           tipo: string
+          tipo_complemento?: string | null
+          tipo_medida?: string | null
+          tipo_vaga?: string | null
           titulo: string
+          titulo_anuncio?: string | null
+          torre_bloco?: string | null
+          total_unidades?: number | null
           tour_360_url?: string | null
+          unidades_por_andar?: number | null
           updated_at?: string
           vagas?: number | null
+          valor_anterior?: number | null
+          valor_avaliacao?: number | null
           valor_m2?: number | null
+          valor_sob_consulta?: boolean
+          varandas?: number | null
+          venc_autorizacao_venda?: string | null
           video_url?: string | null
+          zona_uso?: string | null
         }
         Update: {
+          aceita_financiamento?: boolean
           aceita_permuta?: boolean
+          andar?: string | null
+          ano_construcao?: number | null
           area?: number | null
+          area_externa?: number | null
           area_total?: number | null
           ativo?: boolean
           bairro?: string | null
           banheiros?: number | null
           caracteristicas?: string[] | null
+          cartorio?: string | null
           cep?: string | null
+          cib?: string | null
           cidade?: string | null
+          codigo_auxiliar?: string | null
           codigo_condominio_imoview?: number | null
           codigo_imoview?: number | null
           codigo_interno?: string | null
+          coef_aproveitamento?: number | null
+          comissao_venda_pct?: number | null
+          complemento?: string | null
           condominio?: number | null
           condominio_nome?: string | null
+          confront_dir?: string | null
+          confront_esq?: string | null
+          confront_frente?: string | null
+          confront_fundo?: string | null
+          construtora?: string | null
           corretor_id?: string | null
           created_at?: string
           data_atualizacao_origem?: string | null
           descricao?: string | null
+          descricao_avaliacao?: string | null
           destaque?: boolean
+          destinacao?: string | null
           documentos?: Json | null
+          edificio?: string | null
+          elevadores?: number | null
           endereco?: string | null
           estado?: string | null
+          etiquetas?: string[] | null
+          exclusivo?: boolean
           finalidade?: string
+          folha_cartorio?: string | null
           fotos?: string[] | null
+          horario_visita?: string | null
           id?: string
+          identificador_chaves?: string | null
+          identificador_imovel?: string | null
+          imovel_alugado?: boolean
+          imovel_ocupado?: boolean
           imoview_hash?: string | null
           imoview_raw?: Json | null
           imoview_sync_at?: string | null
           iptu?: number | null
+          iptu_anual?: number | null
+          iptu_mensal?: number | null
           latitude?: number | null
+          livro_cartorio?: string | null
+          local_chaves?: string | null
           longitude?: number | null
+          m_direito?: number | null
+          m_esquerdo?: number | null
+          m_frente?: number | null
+          m_fundo?: number | null
+          matricula?: string | null
+          melhor_acesso?: string | null
+          meta_description?: string | null
+          na_planta?: boolean
+          notas_privadas?: string | null
+          num_andares?: number | null
+          num_chaves?: number | null
+          num_controles?: number | null
+          num_torres?: number | null
+          numero?: string | null
+          observacoes_internas?: string | null
           origem?: string
+          permite_animais?: boolean
+          piso_acabamento?: string | null
+          placa_faixa?: string | null
+          ponto_referencia?: string | null
+          posicao_imovel?: string | null
           preco?: number
           quartos?: number | null
+          regiao?: string | null
+          rentabilidade_pct?: number | null
+          salas?: number | null
+          segundo_bairro?: string | null
+          segundo_tipo?: string | null
           status?: Database["public"]["Enums"]["imovel_status"]
+          sub_regiao?: string | null
           suites?: number | null
           tipo?: string
+          tipo_complemento?: string | null
+          tipo_medida?: string | null
+          tipo_vaga?: string | null
           titulo?: string
+          titulo_anuncio?: string | null
+          torre_bloco?: string | null
+          total_unidades?: number | null
           tour_360_url?: string | null
+          unidades_por_andar?: number | null
           updated_at?: string
           vagas?: number | null
+          valor_anterior?: number | null
+          valor_avaliacao?: number | null
           valor_m2?: number | null
+          valor_sob_consulta?: boolean
+          varandas?: number | null
+          venc_autorizacao_venda?: string | null
           video_url?: string | null
+          zona_uso?: string | null
         }
         Relationships: [
           {
