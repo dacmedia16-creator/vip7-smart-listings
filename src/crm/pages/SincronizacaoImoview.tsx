@@ -161,6 +161,44 @@ export default function SincronizacaoImoview() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><Home className="h-4 w-4" /> Sincronização de Proprietários</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-[#4A4A52]">Busca no Imoview os proprietários de cada imóvel já importado e cria os vínculos em "Pessoas vinculadas".</p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={async () => {
+                  if (!confirm('Buscar proprietários de TODOS os imóveis com código Imoview? Pode levar vários minutos.')) return;
+                  setLoading(true);
+                  try { await triggerSyncProprietarios('full'); toast.success('Sincronização de proprietários iniciada'); fetchLogs(); }
+                  catch (e) { toast.error((e as Error).message); }
+                  finally { setLoading(false); }
+                }}
+                disabled={loading || !!running}
+                className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+              >
+                <Download className="h-4 w-4 mr-2" /> Sincronização completa de proprietários
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setLoading(true);
+                  try { await triggerSyncProprietarios('incremental', { hours: 24 }); toast.success('Incremental de proprietários iniciada'); fetchLogs(); }
+                  catch (e) { toast.error((e as Error).message); }
+                  finally { setLoading(false); }
+                }}
+                disabled={loading || !!running}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" /> Incremental proprietários (24h)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+
+
 
 
         <Card>
