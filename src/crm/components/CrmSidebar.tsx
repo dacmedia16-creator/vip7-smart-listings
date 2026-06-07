@@ -35,6 +35,7 @@ const items = [
   { title: 'Leads', url: '/crm/leads', icon: Users, roles: ['admin', 'gestor', 'corretor', 'atendente'] },
   { title: 'Funil', url: '/crm/funil', icon: KanbanSquare, roles: ['admin', 'gestor', 'corretor'] },
   { title: 'Imóveis', url: '/crm/imoveis', icon: Building2, roles: ['admin', 'gestor', 'corretor'] },
+  { title: 'Condomínios', url: '/crm/condominios', icon: Building, roles: ['admin', 'gestor', 'corretor'] },
   { title: 'Tarefas', url: '/crm/tarefas', icon: CheckSquare, roles: ['admin', 'gestor', 'corretor', 'atendente'] },
   { title: 'Agenda', url: '/crm/agenda', icon: Calendar, roles: ['admin', 'gestor', 'corretor'] },
   { title: 'Relatórios', url: '/crm/relatorios', icon: BarChart3, roles: ['admin', 'gestor'] },
