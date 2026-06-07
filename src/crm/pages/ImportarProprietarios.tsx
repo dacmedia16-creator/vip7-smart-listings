@@ -63,13 +63,13 @@ function aliasesForSlot(base: string[], slot: number): string[] {
 }
 
 function allFields(): FieldDef[] {
-  const fields: FieldDef[] = [IMOVEL_FIELD];
+  const fields: FieldDef[] = [IMOVEL_FIELD, PROPRIETARIOS_RAW_FIELD];
   for (const slot of SLOTS) {
     for (const f of PROP_FIELDS_BASE) {
       fields.push({
         key: `p${slot}_${f.key}`,
         label: `${slot === 1 ? 'Proprietário' : `Proprietário ${slot}`} — ${f.label}`,
-        required: slot === 1 && f.required,
+        required: false,
         aliases: aliasesForSlot(f.aliases, slot),
       });
     }
