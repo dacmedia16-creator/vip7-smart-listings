@@ -26,6 +26,7 @@ import {
 } from '../lib/imoveis';
 import { CaracteristicasToggleGrid } from '../components/CaracteristicasToggleGrid';
 import { ProprietariosSection } from '../components/ProprietariosSection';
+import { ProprietariosCard } from '../components/ProprietariosCard';
 import { addVinculo, type Cliente } from '../lib/clientes';
 
 const num = z.coerce.number().optional().nullable();
