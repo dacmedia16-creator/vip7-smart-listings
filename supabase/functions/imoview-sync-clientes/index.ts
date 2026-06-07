@@ -76,6 +76,34 @@ async function fetchListing(pagina: number): Promise<Record<string, unknown>[]> 
   return [];
 }
 
+// Lista somente pessoas alteradas desde uma data (incremental).
+// Formato da data esperado pelo Imoview: dd/MM/yyyy.
+function formatDateBR(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+async function fetchListingIncremental(pagina: number, dataInicial: string): Promise<Record<string, unknown>[]> {
+  const attempts: [string, unknown, string][] = [
+    ["/Pessoa/RetornarPessoasAlteradas", { datainicial: dataInicial, numeropagina: pagina, numeroregistros: PAGE_SIZE }, "POST"],
+    ["/Cliente/RetornarClientesAlterados", { datainicial: dataInicial, numeropagina: pagina, numeroregistros: PAGE_SIZE }, "POST"],
+    ["/Proprietario/RetornarProprietariosAlterados", { datainicial: dataInicial, numeropagina: pagina, numeroregistros: PAGE_SIZE }, "POST"],
+  ];
+  for (const [path, body, method] of attempts) {
+    try {
+      const data = await imoviewFetch(path, body, method);
+      const list = asList(data);
+      if (list.length > 0 || pagina > 1) return list;
+    } catch (e) {
+      if (pagina === 1) console.warn(`[sync-clientes] incremental ${path}:`, (e as Error).message);
+    }
+  }
+  return [];
+}
+
+
+
 async function fetchDetails(codigo: number): Promise<Record<string, unknown> | null> {
   for (const path of [
     `/Pessoa/RetornarDetalhesPessoa?codigo=${codigo}`,
@@ -273,11 +301,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { mode = "full", sync_id, codigo, internal_cursor } = body as {
+    const { mode = "full", sync_id, codigo, internal_cursor, days } = body as {
       mode?: "full" | "incremental" | "single";
       sync_id?: string;
       codigo?: number;
-      internal_cursor?: { pagina: number };
+      days?: number;
+      internal_cursor?: { pagina: number; dataInicial?: string };
     };
 
     if (mode === "single") {
@@ -292,6 +321,32 @@ serve(async (req) => {
     let activeSyncId = sync_id;
     let cursor = internal_cursor;
 
+    // Resolver dataInicial para incremental
+    let dataInicial = cursor?.dataInicial;
+    if (mode === "incremental" && !dataInicial) {
+      // Janela padrão: últimos N dias (default 7). Para auto-cron use o último log OK do mesmo modo.
+      const windowDays = Math.max(1, Math.min(90, days ?? 0)) || null;
+      if (windowDays) {
+        const d = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+        dataInicial = formatDateBR(d);
+      } else {
+        // Sem 'days' explícito: usa o started_at do último sync de clientes concluído (ok/partial).
+        const { data: lastOk } = await sb
+          .from("imoview_sync_log")
+          .select("started_at")
+          .in("mode", ["clientes_full", "clientes_incremental"])
+          .in("status", ["ok", "partial"])
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const fallback = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const since = lastOk?.started_at ? new Date(lastOk.started_at as string) : fallback;
+        // Pequena sobreposição (1h) para não perder alterações borderline
+        since.setHours(since.getHours() - 1);
+        dataInicial = formatDateBR(since);
+      }
+    }
+
     if (!activeSyncId) {
       const auth = req.headers.get("Authorization") || "";
       let userId: string | null = null;
@@ -302,14 +357,18 @@ serve(async (req) => {
       }
 
       const logMode = mode === "incremental" ? "clientes_incremental" : "clientes_full";
+      const initialCursor = mode === "incremental"
+        ? { pagina: 1, dataInicial }
+        : { pagina: 1 };
+
       const { data: log, error } = await sb
         .from("imoview_sync_log")
-        .insert({ status: "running", mode: logMode, triggered_by: userId, cursor: { pagina: 1 } })
+        .insert({ status: "running", mode: logMode, triggered_by: userId, cursor: initialCursor })
         .select("id")
         .single();
       if (error) throw error;
       activeSyncId = (log as { id: string }).id;
-      cursor = { pagina: 1 };
+      cursor = initialCursor;
 
       const selfUrl = `${SUPABASE_URL}/functions/v1/imoview-sync-clientes`;
       (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil(
@@ -319,7 +378,7 @@ serve(async (req) => {
           body: JSON.stringify({ mode, sync_id: activeSyncId, internal_cursor: cursor }),
         }).then((r) => r.text()).catch((e) => console.error("[sync-clientes] self-invoke:", e)),
       );
-      return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, status: "running" }), {
+      return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, status: "running", dataInicial }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -330,8 +389,10 @@ serve(async (req) => {
     let done = false;
 
     while (pagesProcessed < PAGES_PER_CHUNK) {
-      const lista = await fetchListing(pagina);
-      console.log(`[sync-clientes] pag=${pagina} -> ${lista.length}`);
+      const lista = mode === "incremental" && dataInicial
+        ? await fetchListingIncremental(pagina, dataInicial)
+        : await fetchListing(pagina);
+      console.log(`[sync-clientes] mode=${mode} pag=${pagina} dataInicial=${dataInicial ?? "-"} -> ${lista.length}`);
 
       if (lista.length === 0) { done = true; break; }
 
@@ -352,7 +413,8 @@ serve(async (req) => {
       pagina++;
     }
 
-    const update: Record<string, unknown> = { cursor: { pagina }, updated_at: new Date().toISOString() };
+    const nextCursor = mode === "incremental" ? { pagina, dataInicial } : { pagina };
+    const update: Record<string, unknown> = { cursor: nextCursor, updated_at: new Date().toISOString() };
     if (done) {
       const { data: log } = await sb.from("imoview_sync_log").select("errors_count").eq("id", activeSyncId).single();
       update.status = ((log as { errors_count?: number })?.errors_count || 0) > 0 ? "partial" : "ok";
@@ -366,12 +428,12 @@ serve(async (req) => {
         fetch(selfUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-          body: JSON.stringify({ mode, sync_id: activeSyncId, internal_cursor: { pagina } }),
+          body: JSON.stringify({ mode, sync_id: activeSyncId, internal_cursor: nextCursor }),
         }).then((r) => r.text()).catch((e) => console.error("[sync-clientes] self-invoke chunk:", e)),
       );
     }
 
-    return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, done, stats, cursor: { pagina } }), {
+    return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, done, stats, cursor: nextCursor }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

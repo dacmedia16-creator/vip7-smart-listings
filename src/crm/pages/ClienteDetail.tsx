@@ -53,7 +53,7 @@ export default function ClienteDetail() {
     if (!cliente?.codigo_imoview) return;
     setResyncing(true);
     try {
-      await triggerSyncClientes('single', cliente.codigo_imoview);
+      await triggerSyncClientes('single', { codigo: cliente.codigo_imoview });
       toast.success('Re-sincronizado');
       await load();
     } catch (e) { toast.error((e as Error).message); }

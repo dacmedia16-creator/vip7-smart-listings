@@ -127,8 +127,10 @@ export async function removeVinculo(id: string) {
   if (error) throw error;
 }
 
-export async function triggerSyncClientes(mode: 'full' | 'incremental' | 'single', codigo?: number) {
-  const { data, error } = await supabase.functions.invoke('imoview-sync-clientes', { body: { mode, codigo } });
+export async function triggerSyncClientes(mode: 'full' | 'incremental' | 'single', opts?: { codigo?: number; days?: number }) {
+  const { data, error } = await supabase.functions.invoke('imoview-sync-clientes', {
+    body: { mode, codigo: opts?.codigo, days: opts?.days },
+  });
   if (error) throw error;
   return data;
 }
