@@ -58,6 +58,17 @@ const normFinalidade = (raw: unknown): "venda" | "aluguel" => {
   return "venda";
 };
 
+// Mapeia situação/statusimovel do Imoview para o enum local imovel_status
+const mapStatus = (raw: Record<string, unknown>): "disponivel" | "sob_proposta" | "vendido" | "alugado" | "inativo" => {
+  const s = String(raw.situacao ?? raw.statusimovel ?? raw.status ?? "").toLowerCase().trim();
+  if (!s) return "disponivel";
+  if (s.includes("vend")) return "vendido";
+  if (s.includes("alug") || s.includes("loca")) return "alugado";
+  if (s.includes("propost") || s.includes("reserv")) return "sob_proposta";
+  if (s.includes("inativ") || s.includes("suspens") || s.includes("bloque") || s.includes("desativ") || s.includes("indispon")) return "inativo";
+  return "disponivel";
+};
+
 async function sha256Hex(s: string): Promise<string> {
   const data = new TextEncoder().encode(s);
   const buf = await crypto.subtle.digest("SHA-256", data);
@@ -80,10 +91,19 @@ async function imoviewFetch(path: string, body?: unknown, method = "POST"): Prom
 }
 
 async function fetchListing(finalidade: number, pagina: number): Promise<Record<string, unknown>[]> {
-  const data = await imoviewFetch("/Imovel/RetornarImoveisDisponiveis", {
-    finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
-  });
-  return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+  // Tenta o endpoint geral (todos os status); se a conta não tiver acesso, cai para "Disponiveis".
+  try {
+    const data = await imoviewFetch("/Imovel/RetornarImoveis", {
+      finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+  } catch (e) {
+    if (pagina === 1) console.warn(`[sync] RetornarImoveis indisponível, usando RetornarImoveisDisponiveis. Motivo:`, (e as Error).message);
+    const data = await imoviewFetch("/Imovel/RetornarImoveisDisponiveis", {
+      finalidade, numeropagina: pagina, numeroregistros: PAGE_SIZE,
+    });
+    return Array.isArray(data) ? data : ((data as Record<string, unknown>)?.lista as Record<string, unknown>[]) || [];
+  }
 }
 
 function unwrapDetail(d: unknown): Record<string, unknown> | null {
@@ -92,7 +112,6 @@ function unwrapDetail(d: unknown): Record<string, unknown> | null {
   if (r.imovel && typeof r.imovel === "object") return r.imovel as Record<string, unknown>;
   if (r.dados && typeof r.dados === "object") return r.dados as Record<string, unknown>;
   if (r.resultado && typeof r.resultado === "object") return r.resultado as Record<string, unknown>;
-  // single-key wrapper
   const keys = Object.keys(r);
   if (keys.length === 1 && r[keys[0]] && typeof r[keys[0]] === "object") {
     return r[keys[0]] as Record<string, unknown>;
@@ -101,17 +120,21 @@ function unwrapDetail(d: unknown): Record<string, unknown> | null {
 }
 
 async function fetchDetails(codigo: number): Promise<Record<string, unknown> | null> {
-  try {
-    const d = await imoviewFetch(`/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${codigo}`, undefined, "GET");
-    const unwrapped = unwrapDetail(d);
-    if (unwrapped && !unwrapped.codigo) {
-      unwrapped.codigo = codigo; // garantir
+  // Endpoint geral primeiro (cobre vendido/alugado/inativo); fallback ao de "Disponivel".
+  for (const path of [
+    `/Imovel/RetornarDetalhesImovel?codigoimovel=${codigo}`,
+    `/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${codigo}`,
+  ]) {
+    try {
+      const d = await imoviewFetch(path, undefined, "GET");
+      const unwrapped = unwrapDetail(d);
+      if (unwrapped && !unwrapped.codigo) unwrapped.codigo = codigo;
+      if (unwrapped) return unwrapped;
+    } catch (e) {
+      console.warn(`[sync] ${path} falhou:`, (e as Error).message);
     }
-    return unwrapped;
-  } catch (e) {
-    console.error(`[sync] detalhes ${codigo} falhou:`, e);
-    return null;
   }
+  return null;
 }
 
 // ---------- mapeamento ----------
@@ -193,7 +216,7 @@ function mapToRow(raw: Record<string, unknown>): Mapped {
       video_url: typeof raw.urlvideo === "string" && raw.urlvideo.trim() ? raw.urlvideo.trim() : null,
       caracteristicas,
       ativo: true,
-      status: "disponivel",
+      status: mapStatus(raw),
       data_atualizacao_origem: parseDate(raw.datahoraultimaalteracao) || parseDate(raw.datahoracadastro),
       imoview_raw: raw,
     },
