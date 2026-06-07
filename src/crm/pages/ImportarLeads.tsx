@@ -159,6 +159,9 @@ function rowToLead(r: Row, cols: Record<string, string | null>): LeadPayload | {
     tags,
     observacoes: obsParts.length ? obsParts.join(' | ') : null,
     imovel_interesse_codigo: codigoImovel,
+    imoveis_carrinho_codigos: (str(get('ImoveisCarrinho')) || '').match(/\d+/g) || [],
+    imoveis_visita_codigos: (str(get('ImoveisVisita')) || '').match(/\d+/g) || [],
+    imoveis_proposta_codigos: (str(get('ImoveisProposta')) || '').match(/\d+/g) || [],
     created_at: parseBrDate(get('DataHoraInclusao')),
     last_contact_at: parseBrDate(get('DataHoraUltimaInteracao')),
   };
