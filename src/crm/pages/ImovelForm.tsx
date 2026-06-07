@@ -177,8 +177,13 @@ export default function ImovelForm() {
         const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('imoveis_proprios').insert(payload);
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id').single();
         if (error) throw error;
+        const newId = (ins as { id: string }).id;
+        for (const p of pendingProprietarios) {
+          try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
+          catch (e) { console.error('vinculo proprietario falhou', e); }
+        }
       }
       toast({ title: 'Imóvel salvo' });
       navigate('/crm/imoveis');
