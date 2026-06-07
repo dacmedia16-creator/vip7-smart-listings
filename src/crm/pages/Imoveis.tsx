@@ -86,24 +86,35 @@ export default function Imoveis() {
   // Carrega opções uma vez
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from('imoveis_proprios')
-        .select('tipo,regiao,sub_regiao,edificio,etiquetas')
-        .limit(5000);
+      const [imoveisRes, condRes] = await Promise.all([
+        supabase
+          .from('imoveis_proprios')
+          .select('tipo,regiao,sub_regiao,edificio,condominio_nome,etiquetas')
+          .limit(5000),
+        supabase
+          .from('condominios_cache')
+          .select('nome')
+          .order('nome', { ascending: true })
+          .limit(10000),
+      ]);
       const tipos = new Set<string>(), regioes = new Set<string>(),
         subRegioes = new Set<string>(), tiposCond = new Set<string>(), etiquetas = new Set<string>();
-      for (const r of (data as any[]) ?? []) {
+      for (const r of (imoveisRes.data as any[]) ?? []) {
         if (r.tipo) tipos.add(r.tipo);
         if (r.regiao) regioes.add(r.regiao);
         if (r.sub_regiao) subRegioes.add(r.sub_regiao);
         if (r.edificio) tiposCond.add(r.edificio);
+        if (r.condominio_nome) tiposCond.add(r.condominio_nome);
         if (Array.isArray(r.etiquetas)) for (const e of r.etiquetas) if (e) etiquetas.add(e);
+      }
+      for (const c of (condRes.data as any[]) ?? []) {
+        if (c.nome) tiposCond.add(String(c.nome).trim());
       }
       setOpts({
         tipos: [...tipos].sort(),
         regioes: [...regioes].sort(),
         subRegioes: [...subRegioes].sort(),
-        tiposCond: [...tiposCond].sort(),
+        tiposCond: [...tiposCond].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR')),
         etiquetas: [...etiquetas].sort(),
       });
     })();
