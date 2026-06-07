@@ -1,57 +1,64 @@
-## Plano: Importação manual de clientes (CSV/Excel do Imoview)
+# Importação de clientes — correções e novos campos
 
-Como o login automático na API do Imoview continua sendo rejeitado (401 em `App_ValidarAcesso`), vamos viabilizar a carga de clientes via **upload manual de um arquivo CSV/XLSX** exportado do painel Imoview.
+## 1. Corrigir o erro no upload
 
-### 1. Tela de upload no CRM
-- Nova seção em **/crm/sincronizacao-imoview** (ou nova rota `/crm/clientes/importar`):
-  - Botão "Selecionar arquivo" (.csv, .xlsx)
-  - Pré-visualização das primeiras 10 linhas com mapeamento automático de colunas
-  - Mapeamento manual editável (combo "coluna do arquivo → campo do CRM")
-  - Botões "Validar" e "Importar"
+Causas prováveis (a planilha do Imoview costuma ser grande e com separador `;`):
 
-### 2. Mapeamento de campos
-Campos da tabela `clientes` que serão preenchidos (auto-detecção por nome de cabeçalho, case-insensitive):
+- **Payload grande demais** — hoje mandamos todas as linhas + `imoview_raw` (linha inteira) em **uma única chamada** ao edge function. Acima de ~3–5k linhas isso estoura o limite de 6 MB e a função retorna 413/500 silenciosamente.
+- **Toast genérico** — `toast.error((e as Error).message)` mostra "Failed to send a request to the Edge Function", sem detalhe.
+- **CSV com `;`** — Papaparse acerta na maioria, mas em alguns exports do Imoview o cabeçalho vem em UTF‑8 BOM e quebra o auto‑map.
+- **Headers do XLSX** vêm só do `Object.keys(json[0])` — se a primeira linha tiver células vazias, perde colunas.
 
-| Campo CRM | Cabeçalhos aceitos |
+### O que vou fazer
+- Enviar em **lotes de 300 linhas** a partir do frontend, com barra de progresso (`X / Total`), agregando o resultado.
+- No payload, mandar **apenas as colunas mapeadas** (não a linha inteira) — reduz drasticamente o tamanho.
+- Logar o erro real do edge function (status + body) no toast e no console.
+- Aceitar BOM e detectar `;` explicitamente no Papaparse.
+- Para XLSX: ler com `header: 1` e montar a união dos cabeçalhos das primeiras 50 linhas.
+- No edge function: aumentar o limite por chamada para 500 e tirar a checagem rígida de 10k (passa a ser somatório dos lotes).
+
+## 2. Novos campos da planilha
+
+Mapeamento (aliases automáticos):
+
+| Coluna planilha | Campo CRM |
 |---|---|
-| `nome` | Nome, Nome Completo, Razão Social |
-| `tipo_pessoa` | Tipo, Pessoa (Física/Jurídica) |
-| `cpf_cnpj` | CPF, CNPJ, CPF/CNPJ, Documento |
-| `email` | Email, E-mail |
-| `telefone` | Telefone, Celular, Telefone 1 |
-| `telefone_secundario` | Telefone 2, Telefone Secundário |
-| `data_nascimento` | Nascimento, Data de Nascimento |
-| `endereco`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `cep` | Endereço, Nº, Complemento, Bairro, Cidade, UF, CEP |
-| `categorias` | Categoria, Tipo de Cliente (split por vírgula/`;`) |
-| `codigo_imoview` | Código, Código Imoview, ID |
-| `observacoes` | Observações, Obs |
+| Finalidade | `finalidade` (venda/locacao) |
+| Código atendimento | `codigo_atendimento` |
+| Situação | `situacao` |
+| Fase atendimento | `fase_atendimento` |
+| Corretor | `corretor_nome` |
 
-### 3. Edge function `imoview-import-csv`
-- Recebe `{ rows: [...], mapping: {...} }`
-- Para cada linha:
-  - Normaliza CPF/CNPJ (só dígitos), telefone, email (lower), CEP
-  - Define `tipo_pessoa` automaticamente pelo tamanho do documento (11=fisica, 14=juridica)
-  - `origem = 'imoview_csv'`
-  - **Upsert** por `codigo_imoview` (se presente) ou por `cpf_cnpj`, ou por `(nome+telefone)` como fallback
-  - Guarda payload original em `imoview_raw`
-- Retorna `{ inseridos, atualizados, ignorados, erros: [{linha, motivo}] }`
-- Registra resumo em `imoview_sync_log` com `tipo = 'csv_manual'`
+### Comportamento híbrido (escolhido pelo usuário)
 
-### 4. Validações/UX
-- Limite de 10.000 linhas por upload (chunks de 500 server-side)
-- Barra de progresso em tempo real
-- Download de relatório de erros (CSV) ao final
-- Avisos: linhas duplicadas, documentos inválidos, e-mails malformados
+Para cada linha:
 
-### 5. Detalhes técnicos
-- Parse CSV: `papaparse` (delimitador auto, encoding UTF-8/Latin-1)
-- Parse XLSX: `xlsx` (SheetJS)
-- Ambos no client; só os JSON normalizados sobem para a edge function
-- Sem dependência da API Imoview — funciona offline da integração
+1. **Sempre** faz upsert do **cliente** (como hoje, por `codigo_imoview` ou `cpf_cnpj`).
+2. **Se houver `Código atendimento`** → cria/atualiza um **lead** vinculado:
+   - `nome`, `email`, `telefone` ← do cliente.
+   - `finalidade` ← normalizado (`venda` / `locacao`).
+   - `corretor_id` ← busca em `profiles` por **nome** (case/acento‑insensitive). Se não achar, fica `NULL` e registra aviso no relatório.
+   - `status_funil` ← derivado de `Situação` + `Fase atendimento` via tabela de‑para:
+     - "Em andamento / Qualificação" → `qualificacao`
+     - "Em andamento / Visita" → `visita`
+     - "Em andamento / Proposta / Negociação" → `proposta`
+     - "Concluído / Fechado / Ganho" → `fechamento`
+     - "Perdido / Cancelado" → `perdido`
+     - default → `novo`
+   - `origem` → `manual` (enum existente).
+   - `observacoes` ← prefixadas com `[Imoview #<codigo_atendimento>] <Situação> · <Fase>`.
+   - **Dedup do lead**: por `imovel_interesse_codigo = codigo_atendimento` (usamos esse campo para guardar o código do atendimento) + telefone do cliente. Se já existir, faz `UPDATE`; senão `INSERT`.
 
-### 6. O que NÃO faz nesta etapa
-- Não importa vínculo cliente-imóvel (`cliente_imoveis`) — pode ser fase 2 quando você exportar a planilha de proprietários/inquilinos.
-- Não toca em `imoview-sync-clientes` (mantemos para quando o login da API for resolvido).
+### Tabela `leads` — sem migração necessária
+Todos os campos já existem (`finalidade`, `corretor_id`, `status_funil`, `imovel_interesse_codigo`, `observacoes`, `origem`).
 
-### Próximo passo prático
-Antes de eu implementar, me envie **um arquivo de exemplo** (CSV ou XLSX) exportado do painel Imoview — basta arrastar aqui na conversa. Assim eu ajusto o mapeamento automático aos cabeçalhos reais do seu export e evito retrabalho.
+## 3. Arquivos afetados
+
+- `src/crm/pages/ImportarClientes.tsx` — novos campos no `CRM_FIELDS`, envio em lotes com progresso, mensagens de erro melhores, leitura mais robusta de CSV/XLSX.
+- `supabase/functions/imoview-import-csv/index.ts` — aceitar `batch`/`batchIndex`, construir e upsertar lead quando houver `codigo_atendimento`, resolver corretor por nome, retornar contagens de leads (`leads_inseridos`, `leads_atualizados`, `corretores_nao_encontrados`).
+
+## 4. Resultado final na tela
+Cards de resumo passam a mostrar:
+- Clientes: inseridos / atualizados / ignorados
+- Leads: inseridos / atualizados / sem corretor encontrado
+- Botão de baixar CSV de erros (mantido)
