@@ -77,6 +77,8 @@ const App = () => (
                 <Route path="/crm/imoveis/novo" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />
                 <Route path="/crm/imoveis/:id" element={<RequireAuth><CrmImovelDetail /></RequireAuth>} />
                 <Route path="/crm/imoveis/:id/editar" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />
+                <Route path="/crm/condominios" element={<RequireAuth><CrmCondominios /></RequireAuth>} />
+                <Route path="/crm/condominios/:codigo" element={<RequireAuth><CrmCondominioDetail /></RequireAuth>} />
                 <Route path="/crm/tarefas" element={<RequireAuth><CrmTarefas /></RequireAuth>} />
                 <Route path="/crm/agenda" element={<RequireAuth><CrmAgenda /></RequireAuth>} />
                 <Route path="/crm/relatorios" element={<RequireAuth><CrmRelatorios /></RequireAuth>} />
