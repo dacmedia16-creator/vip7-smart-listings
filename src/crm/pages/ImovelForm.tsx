@@ -517,7 +517,7 @@ export default function ImovelForm() {
             </TabsContent>
 
             {/* RELACIONAMENTOS */}
-            <TabsContent value="relacionamentos">
+            <TabsContent value="relacionamentos" className="space-y-4">
               <Card className="p-6 space-y-4">
                 <h2 className="font-semibold">Relacionamentos</h2>
                 {isManager && (
@@ -545,6 +545,8 @@ export default function ImovelForm() {
                   )} />
                 </div>
               </Card>
+
+              <ProprietariosSection imovelId={id ?? null} onPendingChange={setPendingProprietarios} />
             </TabsContent>
 
             {/* ANOTAÇÕES */}
