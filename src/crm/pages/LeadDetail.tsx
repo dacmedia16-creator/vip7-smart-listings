@@ -21,6 +21,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '../hooks/useAuth';
 import { useRoles } from '../hooks/useRole';
 import { InteracaoForm, InteracaoTimeline } from '../components/InteracaoTimeline';
+import { LeadImoveisInteresseCard } from '../components/LeadImoveisInteresseCard';
 import { notifyUser, crmUrl } from '../lib/notify';
 
 export default function LeadDetail() {
