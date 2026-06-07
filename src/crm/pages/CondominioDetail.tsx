@@ -95,18 +95,18 @@ export default function CondominioDetail() {
               ) : imoveis.map((im) => {
                 const sm = imovelStatusMeta(im.status as string);
                 return (
-                  <TableRow key={im.id} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
+                  <TableRow key={im.id} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3] even:bg-[#FBFAF5]">
                     <TableCell>
                       <Link to={`/crm/imoveis/${im.id}`} className="text-[#0F0F12] hover:text-[#7A5A14] font-medium">
                         {im.titulo}
                       </Link>
                       <div className="text-xs text-[#4A4A52]">{im.tipo} • {im.bairro}, {im.cidade}</div>
                     </TableCell>
-                    <TableCell className="capitalize text-sm">{im.finalidade}</TableCell>
-                    <TableCell className="text-sm">{im.quartos ?? 0}/{im.suites ?? 0}/{im.vagas ?? 0}</TableCell>
-                    <TableCell className="text-sm">{im.area ? `${im.area} m²` : '—'}</TableCell>
-                    <TableCell className="text-right font-medium">{fmtMoney(im.preco as number)}</TableCell>
-                    <TableCell><Badge className={sm.color}>{sm.label}</Badge></TableCell>
+                    <TableCell className="capitalize text-sm text-[#2A2A30] font-medium">{im.finalidade}</TableCell>
+                    <TableCell className="text-sm text-[#2A2A30] font-medium">{im.quartos ?? 0}/{im.suites ?? 0}/{im.vagas ?? 0}</TableCell>
+                    <TableCell className="text-sm text-[#2A2A30] font-medium">{im.area ? `${im.area} m²` : '—'}</TableCell>
+                    <TableCell className="text-right font-semibold text-[#0F0F12]">{fmtMoney(im.preco as number)}</TableCell>
+                    <TableCell><Badge className={`${sm.color} border border-current/20`}>{sm.label}</Badge></TableCell>
                   </TableRow>
                 );
               })}
