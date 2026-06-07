@@ -243,12 +243,15 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { mode = "full", sync_id, codigoImovel, internal_cursor, hours = 24 } = body as {
+    const { mode = "full", sync_id, codigoImovel, internal_cursor, hours = 24, onlyMissing, limit, imovelIds } = body as {
       mode?: "full" | "incremental" | "single";
       sync_id?: string;
       codigoImovel?: number;
       internal_cursor?: { offset: number; ids: string[]; codigos: number[] };
       hours?: number;
+      onlyMissing?: boolean;
+      limit?: number;
+      imovelIds?: string[];
     };
 
     // ===== single =====
@@ -282,10 +285,27 @@ serve(async (req) => {
         const since = new Date(Date.now() - hours * 3600_000).toISOString();
         q = q.gte("imoview_sync_at", since);
       }
+      if (Array.isArray(imovelIds) && imovelIds.length > 0) {
+        q = q.in("id", imovelIds);
+      }
       const { data: targets, error: tErr } = await q;
       if (tErr) throw tErr;
-      const ids = (targets || []).map((t) => (t as { id: string }).id);
-      const codigos = (targets || []).map((t) => (t as { codigo_imoview: number }).codigo_imoview);
+      let filtered = (targets || []) as { id: string; codigo_imoview: number }[];
+
+      if (onlyMissing) {
+        const { data: existingLinks } = await sb
+          .from("cliente_imoveis")
+          .select("imovel_id")
+          .eq("papel", "proprietario");
+        const withProp = new Set(((existingLinks || []) as { imovel_id: string }[]).map((r) => r.imovel_id));
+        filtered = filtered.filter((t) => !withProp.has(t.id));
+      }
+      if (typeof limit === "number" && limit > 0) {
+        filtered = filtered.slice(0, limit);
+      }
+
+      const ids = filtered.map((t) => t.id);
+      const codigos = filtered.map((t) => t.codigo_imoview);
 
       const { data: log, error } = await sb
         .from("imoview_sync_log")
