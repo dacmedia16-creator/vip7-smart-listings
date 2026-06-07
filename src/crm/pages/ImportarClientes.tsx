@@ -167,9 +167,12 @@ export default function ImportarClientes() {
     const agg: ResultAgg = {
       inseridos: 0, atualizados: 0, ignorados: 0,
       leads_inseridos: 0, leads_atualizados: 0,
+      vinculos_criados: 0, vinculos_ignorados_sem_imovel: 0,
+      codigos_imoveis_nao_encontrados: [],
       corretores_nao_encontrados: [], erros: [],
     };
     const corretoresSet = new Set<string>();
+    const codigosImoveisNaoEncSet = new Set<number>();
 
     try {
       for (let offset = 0; offset < total; offset += BATCH_SIZE) {
