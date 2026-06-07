@@ -186,8 +186,13 @@ export default function Imoveis() {
       if (f.suites !== 'todos') query = query.gte('suites', parseInt(f.suites, 10));
       if (f.vagas !== 'todos') query = query.gte('vagas', parseInt(f.vagas, 10));
 
-      if (f.edificio) query = query.ilike('edificio', `%${f.edificio}%`);
-      if (f.tipo_condominio !== 'todos') query = query.eq('edificio', f.tipo_condominio);
+      if (f.edificio) {
+        const s = f.edificio.replace(/[,()]/g, ' ').trim();
+        query = query.or(`edificio.ilike.%${s}%,condominio_nome.ilike.%${s}%`);
+      }
+      if (f.tipo_condominio !== 'todos') {
+        query = query.or(`edificio.eq.${f.tipo_condominio},condominio_nome.eq.${f.tipo_condominio}`);
+      }
       if (f.imovel_ocupado === 'sim') query = query.eq('imovel_ocupado', true);
       else if (f.imovel_ocupado === 'nao') query = query.eq('imovel_ocupado', false);
 

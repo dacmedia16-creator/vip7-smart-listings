@@ -1,39 +1,52 @@
-# Importar proprietários dos 110 imóveis de locação faltantes
+# Corrigir filtro Condomínio / Edifício
 
-## Diagnóstico da planilha
-- `imoveis-2026-06-07-170311.xls` é HTML com 110 linhas — todas `Finalidade = Aluguel`.
-- A coluna **`Proprietarios`** vem em formato pipe-delimitado:
-  `Cód. <codigo_imoview_cliente> | Nome | (DDD) telefone | email (opcional)`
-- 100% das linhas têm proprietário preenchido. Não há CPF/CNPJ.
+## Problema
 
-## Estratégia
-Reaproveitar o pipeline existente `import-proprietarios-batch` (edge function que já faz dedupe + upsert de cliente + vínculo `cliente_imoveis` com `papel='proprietario'`).
+O autocomplete lista nomes vindos de 3 fontes:
+1. `imoveis_proprios.edificio`
+2. `imoveis_proprios.condominio_nome`
+3. `condominios_cache.nome`
 
-## Passos
+Mas a query atual filtra apenas a coluna `edificio`:
 
-1. **Script local de conversão** (Python, `/tmp/`): lê o .xls (HTML), parseia a coluna `Proprietarios` e gera o CSV no mesmo schema que a função espera:
-   `codigo_imovel, o_codigo, o_doc, o_nome, o_email, o_tel, o_tel2, o_obs`
-   - `codigo_imovel` ← `Codigo` da planilha
-   - `o_codigo` ← número após `Cód.`
-   - `o_nome` ← 2º campo
-   - `o_tel` ← 3º campo (limpo, só dígitos)
-   - `o_email` ← 4º campo se contiver `@`
-   - `o_doc`, `o_tel2`, `o_obs` ← vazios
+```ts
+if (f.edificio) query = query.ilike('edificio', `%${f.edificio}%`);
+if (f.tipo_condominio !== 'todos') query = query.eq('edificio', f.tipo_condominio);
+```
 
-2. **Upload do CSV** para `lead-documentos/_tmp_import/staging_owners.csv` via `supabase.storage.upload` (sobrescreve).
+Quando o usuário escolhe um nome que só existe em `condominio_nome` (ou veio do cache do Imoview), a listagem não filtra porque a coluna `edificio` está vazia/diferente nesses registros.
 
-3. **Invocar a função** `import-proprietarios-batch` — ela vai:
-   - Casar `codigo_imovel` → `imoveis_proprios.codigo_imoview` (os 110 já existem no banco).
-   - Casar/criar `clientes` por `codigo_imoview` (campo `o_codigo`).
-   - Adicionar `proprietario` em `categorias`.
-   - Criar vínculo `cliente_imoveis (papel='proprietario')`.
+Há também um detalhe de UX: ao clicar em uma opção do autocomplete o valor é definido em `filters.edificio`, mas o filtro só é aplicado quando o usuário clica em **Aplicar filtros** (padrão atual do projeto — manter).
 
-4. **Relatório**: mostrar o JSON de retorno (clientes novos/atualizados, vínculos criados, imóveis ausentes, erros).
+## Correção
 
-## Fora de escopo
-- Mudanças de UI ou no edge function (já está pronto).
-- Importar outros campos da planilha (foco só em proprietários).
-- Tratar duplicidades além do que a função já faz por `codigo_imoview` do cliente.
+Em `src/crm/pages/Imoveis.tsx`, dentro do `useEffect` que monta a query, substituir o filtro de `edificio` por um `OR` que cubra as duas colunas reais da tabela `imoveis_proprios`:
 
-## Resultado esperado
-Os 110 imóveis de locação passam a aparecer com proprietário vinculado em `/crm/imoveis/:id` e na contagem do diagnóstico anterior (110 → 0 sem proprietário).
+```ts
+if (f.edificio) {
+  const s = f.edificio.replace(/[,()]/g, ' ').trim();
+  query = query.or(
+    `edificio.ilike.%${s}%,condominio_nome.ilike.%${s}%`
+  );
+}
+```
+
+E remover (ou ajustar de forma equivalente) a linha redundante:
+
+```ts
+if (f.tipo_condominio !== 'todos') query = query.eq('edificio', f.tipo_condominio);
+```
+
+`tipo_condominio` não é exposto na UI atual (não há Select para ele), então a remoção é segura. Caso prefira manter por compatibilidade futura, aplicar a mesma lógica OR também para esse campo.
+
+## Verificação
+
+1. Abrir `/crm/imoveis`, abrir Filtros.
+2. Digitar no campo Condomínio/Edifício um nome que sabidamente só aparece em `condominio_nome` (ex.: vindo do Imoview), selecionar e clicar **Aplicar filtros**.
+3. Confirmar que a listagem reduz para apenas imóveis daquele condomínio.
+4. Repetir com um valor que existe em `edificio` para garantir que continua funcionando.
+
+## Escopo
+
+- Arquivo único: `src/crm/pages/Imoveis.tsx`
+- Apenas a lógica do filtro na construção da query Supabase; UI e autocomplete permanecem como estão.
