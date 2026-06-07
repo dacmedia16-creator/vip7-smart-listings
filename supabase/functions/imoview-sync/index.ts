@@ -346,7 +346,7 @@ serve(async (req) => {
       const detail = await fetchDetails(codigo);
       if (!detail) return new Response(JSON.stringify({ error: "não encontrado" }), { status: 404, headers: corsHeaders });
       const stats = { inserted: 0, updated: 0, unchanged: 0, photos: 0, errors: 0 };
-      await syncOne(sb, detail, stats);
+      await syncOne(sb, detail, stats, null);
       return new Response(JSON.stringify({ ok: true, stats }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
