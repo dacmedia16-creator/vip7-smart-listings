@@ -52,8 +52,9 @@ export default function SincronizacaoImoview() {
   if (rolesLoading) return null;
   if (!isAdmin) return <Navigate to="/crm" replace />;
 
-  const trigger = async (mode: 'full' | 'incremental' | 'single', codigo?: number) => {
+  const trigger = async (mode: 'full' | 'incremental' | 'single' | 'desativados', codigo?: number) => {
     if (mode === 'full' && !confirm('Sincronização completa pode levar vários minutos e consumir bastante da API Imoview. Continuar?')) return;
+    if (mode === 'desativados' && !confirm('Importar imóveis desativados/inativos do Imoview? Eles entrarão com status Inativo (não aparecem no site público).')) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('imoview-sync', {
