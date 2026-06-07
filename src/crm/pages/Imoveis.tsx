@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -14,6 +15,47 @@ import { useAuth } from '../hooks/useAuth';
 import { useRoles } from '../hooks/useRole';
 
 const PAGE_SIZE = 60;
+
+type Filters = {
+  codigos: string;
+  finalidade: string;
+  status: string;
+  tipo: string;
+  etiqueta: string;
+  cidade: string;
+  regiao: string;
+  sub_regiao: string;
+  bairro: string;
+  endereco: string;
+  numero: string;
+  complemento: string;
+  local_chaves: string;
+  identificador_chaves: string;
+  preco_min: string;
+  preco_max: string;
+  cond_min: string;
+  cond_max: string;
+  area_min: string;
+  area_max: string;
+  quartos: string;
+  suites: string;
+  vagas: string;
+  edificio: string;
+  tipo_condominio: string;
+  imovel_ocupado: string;
+};
+
+const EMPTY: Filters = {
+  codigos: '', finalidade: 'todos', status: 'todos', tipo: 'todos', etiqueta: 'todos',
+  cidade: '', regiao: 'todos', sub_regiao: 'todos', bairro: '',
+  endereco: '', numero: '', complemento: '', local_chaves: '', identificador_chaves: '',
+  preco_min: '', preco_max: '', cond_min: '', cond_max: '', area_min: '', area_max: '',
+  quartos: 'todos', suites: 'todos', vagas: 'todos',
+  edificio: '', tipo_condominio: 'todos', imovel_ocupado: 'todos',
+};
+
+const splitList = (s: string) => s.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+const numOrNull = (s: string) => { const n = Number(s.replace(',', '.')); return Number.isFinite(n) ? n : null; };
 
 export default function Imoveis() {
   const { user } = useAuth();
@@ -25,23 +67,52 @@ export default function Imoveis() {
   const [searchParams] = useSearchParams();
   const [q, setQ] = useState(searchParams.get('q') ?? '');
   const [qDebounced, setQDebounced] = useState(q);
-  const [status, setStatus] = useState('todos');
   const [pagina, setPagina] = useState(1);
+  const [open, setOpen] = useState(false);
+  const [filters, setFilters] = useState<Filters>(EMPTY);
+  const [applied, setApplied] = useState<Filters>(EMPTY);
 
-  useEffect(() => {
-    setQ(searchParams.get('q') ?? '');
-  }, [searchParams]);
+  // Options carregados dinamicamente
+  const [opts, setOpts] = useState<{
+    tipos: string[]; regioes: string[]; subRegioes: string[];
+    tiposCond: string[]; etiquetas: string[];
+  }>({ tipos: [], regioes: [], subRegioes: [], tiposCond: [], etiquetas: [] });
 
-  // Debounce search input
-  useEffect(() => {
-    const t = setTimeout(() => setQDebounced(q), 300);
-    return () => clearTimeout(t);
-  }, [q]);
+  useEffect(() => { setQ(searchParams.get('q') ?? ''); }, [searchParams]);
+  useEffect(() => { const t = setTimeout(() => setQDebounced(q), 300); return () => clearTimeout(t); }, [q]);
+  useEffect(() => { setPagina(1); }, [qDebounced, applied]);
 
-  // Reset page when filters change
+  // Carrega opções uma vez
   useEffect(() => {
-    setPagina(1);
-  }, [qDebounced, status]);
+    (async () => {
+      const { data } = await supabase
+        .from('imoveis_proprios')
+        .select('tipo,regiao,sub_regiao,edificio,etiquetas')
+        .limit(5000);
+      const tipos = new Set<string>(), regioes = new Set<string>(),
+        subRegioes = new Set<string>(), tiposCond = new Set<string>(), etiquetas = new Set<string>();
+      for (const r of (data as any[]) ?? []) {
+        if (r.tipo) tipos.add(r.tipo);
+        if (r.regiao) regioes.add(r.regiao);
+        if (r.sub_regiao) subRegioes.add(r.sub_regiao);
+        if (r.edificio) tiposCond.add(r.edificio);
+        if (Array.isArray(r.etiquetas)) for (const e of r.etiquetas) if (e) etiquetas.add(e);
+      }
+      setOpts({
+        tipos: [...tipos].sort(),
+        regioes: [...regioes].sort(),
+        subRegioes: [...subRegioes].sort(),
+        tiposCond: [...tiposCond].sort(),
+        etiquetas: [...etiquetas].sort(),
+      });
+    })();
+  }, []);
+
+  // Sub-regiões dependentes da região (filtro local)
+  const subRegioesFiltradas = useMemo(() => {
+    if (filters.regiao === 'todos') return opts.subRegioes;
+    return opts.subRegioes; // sem mapeamento na base; mantém todas
+  }, [filters.regiao, opts.subRegioes]);
 
   useEffect(() => {
     (async () => {
@@ -55,9 +126,55 @@ export default function Imoveis() {
         .order('created_at', { ascending: false })
         .range(from, to);
 
-      if (status !== 'todos') {
-        query = query.eq('status', status as any);
+      const f = applied;
+
+      // Códigos (interno OU imoview)
+      const codigos = splitList(f.codigos);
+      if (codigos.length) {
+        const codNums = codigos.map((c) => Number(c.replace(/\D/g, ''))).filter((n) => Number.isFinite(n) && n > 0);
+        const ors: string[] = [];
+        ors.push(`codigo_interno.in.(${codigos.map((c) => `"${c}"`).join(',')})`);
+        if (codNums.length) ors.push(`codigo_imoview.in.(${codNums.join(',')})`);
+        query = query.or(ors.join(','));
       }
+
+      if (f.finalidade !== 'todos') query = query.eq('finalidade', f.finalidade);
+      if (f.status !== 'todos') query = query.eq('status', f.status as any);
+      if (f.tipo !== 'todos') query = query.eq('tipo', f.tipo);
+      if (f.etiqueta !== 'todos') query = query.contains('etiquetas', [f.etiqueta]);
+
+      const cidades = splitList(f.cidade);
+      if (cidades.length === 1) query = query.ilike('cidade', `%${cidades[0]}%`);
+      else if (cidades.length > 1) query = query.in('cidade', cidades);
+
+      if (f.regiao !== 'todos') query = query.eq('regiao', f.regiao);
+      if (f.sub_regiao !== 'todos') query = query.eq('sub_regiao', f.sub_regiao);
+
+      const bairros = splitList(f.bairro);
+      if (bairros.length === 1) query = query.ilike('bairro', `%${bairros[0]}%`);
+      else if (bairros.length > 1) query = query.in('bairro', bairros);
+
+      if (f.endereco) query = query.ilike('endereco', `%${f.endereco}%`);
+      if (f.numero) query = query.ilike('numero', `%${f.numero}%`);
+      if (f.complemento) query = query.ilike('complemento', `%${f.complemento}%`);
+      if (f.local_chaves) query = query.ilike('local_chaves', `%${f.local_chaves}%`);
+      if (f.identificador_chaves) query = query.ilike('identificador_chaves', `%${f.identificador_chaves}%`);
+
+      const precoMin = numOrNull(f.preco_min); if (precoMin != null) query = query.gte('preco', precoMin);
+      const precoMax = numOrNull(f.preco_max); if (precoMax != null) query = query.lte('preco', precoMax);
+      const condMin = numOrNull(f.cond_min); if (condMin != null) query = query.gte('condominio', condMin);
+      const condMax = numOrNull(f.cond_max); if (condMax != null) query = query.lte('condominio', condMax);
+      const areaMin = numOrNull(f.area_min); if (areaMin != null) query = query.gte('area', areaMin);
+      const areaMax = numOrNull(f.area_max); if (areaMax != null) query = query.lte('area', areaMax);
+
+      if (f.quartos !== 'todos') query = query.gte('quartos', parseInt(f.quartos, 10));
+      if (f.suites !== 'todos') query = query.gte('suites', parseInt(f.suites, 10));
+      if (f.vagas !== 'todos') query = query.gte('vagas', parseInt(f.vagas, 10));
+
+      if (f.edificio) query = query.ilike('edificio', `%${f.edificio}%`);
+      if (f.tipo_condominio !== 'todos') query = query.eq('edificio', f.tipo_condominio);
+      if (f.imovel_ocupado === 'sim') query = query.eq('imovel_ocupado', true);
+      else if (f.imovel_ocupado === 'nao') query = query.eq('imovel_ocupado', false);
 
       if (qDebounced.trim()) {
         const s = qDebounced.trim().replace(/[,()]/g, ' ');
@@ -71,9 +188,22 @@ export default function Imoveis() {
       setTotal(count ?? 0);
       setLoading(false);
     })();
-  }, [pagina, qDebounced, status]);
+  }, [pagina, qDebounced, applied]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const update = (k: keyof Filters, v: string) => setFilters((s) => ({ ...s, [k]: v }));
+  const apply = () => setApplied(filters);
+  const clear = () => { setFilters(EMPTY); setApplied(EMPTY); };
+
+  const activeCount = useMemo(() => {
+    let n = 0;
+    for (const [k, v] of Object.entries(applied) as [keyof Filters, string][]) {
+      if (v && v !== 'todos' && v !== EMPTY[k]) n++;
+    }
+    return n;
+  }, [applied]);
+
+  const N = (label: string) => <Label className="text-xs text-muted-foreground">{label}</Label>;
 
   return (
     <CrmLayout>
@@ -89,19 +219,169 @@ export default function Imoveis() {
         )}
       </div>
 
-      <Card className="p-4 mb-6 flex flex-wrap gap-3">
+      <Card className="p-4 mb-4 flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar por título, código, bairro..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-10" />
         </div>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos status</SelectItem>
-            {IMOVEL_STATUS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Button variant="outline" onClick={() => setOpen((o) => !o)}>
+          Filtros {activeCount > 0 && <Badge className="ml-2 bg-primary text-primary-foreground">{activeCount}</Badge>}
+          {open ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+        </Button>
+        {activeCount > 0 && (
+          <Button variant="ghost" onClick={clear}><X className="h-4 w-4 mr-1" /> Limpar</Button>
+        )}
       </Card>
+
+      {open && (
+        <Card className="p-4 mb-6 space-y-6">
+          {/* Identificação */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">Identificação</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>{N('Códigos (separe por vírgula)')}<Input value={filters.codigos} onChange={(e) => update('codigos', e.target.value)} placeholder="Ex.: 996, 3835" /></div>
+              <div>{N('Finalidade')}
+                <Select value={filters.finalidade} onValueChange={(v) => update('finalidade', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    <SelectItem value="venda">Venda</SelectItem>
+                    <SelectItem value="locacao">Locação</SelectItem>
+                    <SelectItem value="temporada">Temporada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Situação')}
+                <Select value={filters.status} onValueChange={(v) => update('status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    {IMOVEL_STATUS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Tipo de imóvel')}
+                <Select value={filters.tipo} onValueChange={(v) => update('tipo', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {opts.tipos.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Etiquetas')}
+                <Select value={filters.etiqueta} onValueChange={(v) => update('etiqueta', v)}>
+                  <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    {opts.etiquetas.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+
+          {/* Localização */}
+          <section className="space-y-3 border-t pt-4">
+            <h3 className="text-sm font-semibold text-muted-foreground">Localização</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="lg:col-span-2">{N('Cidade(s)')}<Input value={filters.cidade} onChange={(e) => update('cidade', e.target.value)} placeholder="Sorocaba, Itu..." /></div>
+              <div>{N('Região')}
+                <Select value={filters.regiao} onValueChange={(v) => update('regiao', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    {opts.regioes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Sub-região')}
+                <Select value={filters.sub_regiao} onValueChange={(v) => update('sub_regiao', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    {subRegioesFiltradas.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="lg:col-span-2">{N('Bairro(s)')}<Input value={filters.bairro} onChange={(e) => update('bairro', e.target.value)} placeholder="Centro, Jardim..." /></div>
+              <div className="lg:col-span-2">{N('Endereço')}<Input value={filters.endereco} onChange={(e) => update('endereco', e.target.value)} /></div>
+              <div>{N('Nº')}<Input value={filters.numero} onChange={(e) => update('numero', e.target.value)} /></div>
+              <div>{N('Complemento')}<Input value={filters.complemento} onChange={(e) => update('complemento', e.target.value)} /></div>
+              <div>{N('Local chaves')}<Input value={filters.local_chaves} onChange={(e) => update('local_chaves', e.target.value)} /></div>
+              <div>{N('Identificador chaves')}<Input value={filters.identificador_chaves} onChange={(e) => update('identificador_chaves', e.target.value)} /></div>
+            </div>
+          </section>
+
+          {/* Características */}
+          <section className="space-y-3 border-t pt-4">
+            <h3 className="text-sm font-semibold text-muted-foreground">Características</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>{N('Valor imóvel (R$)')}
+                <div className="flex gap-2">
+                  <Input value={filters.preco_min} onChange={(e) => update('preco_min', e.target.value)} placeholder="De" />
+                  <Input value={filters.preco_max} onChange={(e) => update('preco_max', e.target.value)} placeholder="até" />
+                </div>
+              </div>
+              <div>{N('Condomínio (R$)')}
+                <div className="flex gap-2">
+                  <Input value={filters.cond_min} onChange={(e) => update('cond_min', e.target.value)} placeholder="De" />
+                  <Input value={filters.cond_max} onChange={(e) => update('cond_max', e.target.value)} placeholder="até" />
+                </div>
+              </div>
+              <div>{N('Área interna (m²)')}
+                <div className="flex gap-2">
+                  <Input value={filters.area_min} onChange={(e) => update('area_min', e.target.value)} placeholder="De" />
+                  <Input value={filters.area_max} onChange={(e) => update('area_max', e.target.value)} placeholder="até" />
+                </div>
+              </div>
+              <div>{N('Quartos')}
+                <Select value={filters.quartos} onValueChange={(v) => update('quartos', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {[1,2,3,4,5].map((n) => <SelectItem key={n} value={String(n)}>{n}+</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Suítes')}
+                <Select value={filters.suites} onValueChange={(v) => update('suites', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    {[1,2,3,4,5].map((n) => <SelectItem key={n} value={String(n)}>{n}+</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Vagas')}
+                <Select value={filters.vagas} onValueChange={(v) => update('vagas', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas</SelectItem>
+                    {[1,2,3,4,5].map((n) => <SelectItem key={n} value={String(n)}>{n}+</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Edifício')}<Input value={filters.edificio} onChange={(e) => update('edificio', e.target.value)} /></div>
+              <div>{N('Imóvel ocupado')}
+                <Select value={filters.imovel_ocupado} onValueChange={(v) => update('imovel_ocupado', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+
+          <div className="flex gap-2 pt-2 border-t">
+            <Button onClick={apply}>Aplicar filtros</Button>
+            <Button variant="outline" onClick={clear}>Limpar</Button>
+          </div>
+        </Card>
+      )}
 
       {loading ? (
         <p className="text-muted-foreground">Carregando...</p>
@@ -145,20 +425,10 @@ export default function Imoveis() {
               Página {pagina} de {totalPaginas} · mostrando {rows.length} de {total.toLocaleString('pt-BR')}
             </p>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                disabled={pagina <= 1}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPagina((p) => Math.max(1, p - 1))} disabled={pagina <= 1}>
                 <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                disabled={pagina >= totalPaginas}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))} disabled={pagina >= totalPaginas}>
                 Próxima <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
