@@ -1,54 +1,58 @@
-## Problema
+# Conectar ao fluxo `App_*` do Imoview
 
-A IA do WhatsApp ignora o contexto novo da mensagem do cliente e repete os filtros da primeira busca (casa em Alphaville), mesmo quando o cliente pede explicitamente "apartamento no Campolim" e depois corrige com "eu disse apartamento".
+Objetivo desta etapa: **apenas estabelecer a conexão autenticada** via `/Usuario/App_ValidarAcesso` e validar que conseguimos chamar endpoints `App_*`. Nada de importação de clientes ainda — isso fica para a próxima etapa, depois que confirmarmos que o login funciona.
 
-Causa raiz (confirmada nos logs):
-- A saudação inicial usa o `imovel_interesse_codigo` do lead (casa em Alphaville) e fica gravada no histórico `ia_conversas`.
-- A persona atual tem apenas 1 linha genérica, sem regra obrigando a IA a reextrair filtros a cada nova mensagem.
-- O modelo (`gemini-3-flash-preview`, temperature 0.4) reusa os argumentos da tool call anterior em vez de reconsiderar.
+## O que vai ser feito
 
-## O que vou fazer
+### 1. Cadastrar credenciais como secrets
+Vou pedir dois secrets novos:
+- `IMOVIEW_USER_EMAIL` — email do usuário Imoview que será usado como "service account"
+- `IMOVIEW_USER_PASSWORD` — senha desse usuário
 
-### 1. Reescrever a persona (system prompt) em `app_config.ia_whatsapp_persona`
+(A `IMOVIEW_API_KEY` que já temos continua sendo usada como header `chave` em **todas** as chamadas.)
 
-Nova persona com regras explícitas:
-- Tom acolhedor, pt-BR, 2-3 linhas
-- **Sempre extraia tipo / finalidade / bairro / quartos / preço da ÚLTIMA mensagem do cliente**
-- **Se o cliente trocar de tipo (casa↔apartamento) ou bairro, descarte os filtros anteriores e refaça a busca**
-- Se o cliente corrigir ("eu disse X"), peça desculpa curta e refaça
-- Nunca invente imóvel — sempre use `buscar_imoveis`
-- Inclua preço, bairro, código e link `https://vipsevenimoveis.com.br/imovel/{codigo}` para cada opção
-- Quando faltar info essencial (cidade/finalidade), pergunte 1 coisa por vez
-- Quando o cliente pedir visita ou falar com humano → chame `pedir_handoff`
+### 2. Helper compartilhado de autenticação
+Criar `supabase/functions/_shared/imoview-auth.ts` com:
+- Função `getCodigoAcesso()` que:
+  - Chama `POST https://api.imoview.com.br/Usuario/App_ValidarAcesso` com header `chave` + body `{ email, senha }`
+  - Extrai o `codigoacesso` retornado
+  - **Cacheia em memória** dentro da função (com TTL, ex.: 50 min) para não fazer login a cada request
+  - Retorna o `codigoacesso` pronto para uso
 
-### 2. Reforçar a instrução por mensagem
+- Função `imoviewAppFetch(path, options)` que monta a chamada com os dois headers obrigatórios:
+  - `chave: <IMOVIEW_API_KEY>`
+  - `codigoacesso: <resultado do login>`
 
-Em `ia-whatsapp-inbound/index.ts` (linha ~274), adicionar uma segunda mensagem `system` logo antes da última mensagem do usuário no array enviado ao modelo:
+### 3. Edge function de teste: `imoview-auth-test`
+Pequena função que:
+- Tenta autenticar via `getCodigoAcesso()`
+- Faz uma chamada de smoke test em um endpoint `App_*` leve (ex.: `App_RetornarPessoas` com `pagina=1, registrosPorPagina=1`) só para confirmar que o `codigoacesso` é aceito
+- Retorna `{ ok: true, sample: {...} }` ou o erro detalhado
 
-```
-Mensagem ATUAL do cliente: "<userMessage>"
-Reextraia os filtros desta mensagem. Se conflitar com buscas anteriores, ignore o contexto antigo.
-```
+### 4. Botão "Testar conexão Imoview (App)" no CRM
+Em `/crm/configuracoes`, adicionar um pequeno card com:
+- Botão **Testar conexão**
+- Resultado (✅ autenticado / ❌ erro + mensagem)
+- Texto indicando que as credenciais ficam guardadas como secrets
 
-Isso "ancora" o modelo na mensagem nova mesmo com histórico longo.
+## Validação
 
-### 3. Baixar temperature para 0.2
+1. Cadastrar os 2 secrets
+2. Clicar em "Testar conexão" no CRM
+3. Esperar: ✅ verde com 1 registro de exemplo retornado
+4. Conferir nos logs da edge function que o `codigoacesso` foi obtido e reutilizado em chamadas subsequentes (sem refazer login)
 
-Em `ia-whatsapp-inbound/index.ts` linha 291: `temperature: 0.4` → `0.2`. Menos criatividade = menos reuso de args antigos.
+## O que NÃO entra nesta etapa
 
-### 4. Manter o modelo atual
+- Importação em massa de clientes
+- Vinculação de proprietários aos imóveis
+- Sincronização agendada
+- Mudanças em `clientes` / `cliente_imoveis`
 
-Não vou trocar de modelo agora — primeiro testamos persona + reforço de contexto + temperature. Se ainda falhar, aí migramos para `google/gemini-2.5-pro` (mais raciocínio, mais caro).
+Esses passos viram um plano separado depois que a conexão estiver confirmada funcionando.
 
-## Como validar
+## Detalhes técnicos
 
-1. Limpar o histórico do lead de teste (`ia_conversas` do Denis) para começar do zero.
-2. Você manda: "oi" → IA cumprimenta
-3. Você manda: "quero apartamento 3 suítes no Campolim" → tool deve receber `tipo=apartamento, bairro=Campolim`
-4. Você manda: "na verdade quero casa" → tool deve receber `tipo=casa, bairro=Campolim`
-5. Confirmar nos logs do edge function que os `args` da tool batem com a última mensagem.
-
-## Arquivos tocados
-
-- `app_config` (UPDATE da row `ia_whatsapp_persona`) — via migration
-- `supabase/functions/ia-whatsapp-inbound/index.ts` — adicionar system de reforço + baixar temperature
+- Arquivos novos: `supabase/functions/_shared/imoview-auth.ts`, `supabase/functions/imoview-auth-test/index.ts`
+- Arquivo editado: `src/crm/pages/Configuracoes.tsx` (apenas adiciona o card de teste)
+- Cache do `codigoacesso` é por-instância da edge function (memória do worker), com expiração ~50min e refresh automático em 401
