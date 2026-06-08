@@ -6,10 +6,10 @@
 export type PortalId = 'zap_vivareal' | 'olx' | 'imovelweb' | 'chavesnamao';
 
 export const PORTAIS: { id: PortalId; nome: string; descricao: string }[] = [
-  { id: 'zap_vivareal', nome: 'Zap Imóveis / VivaReal', descricao: 'Padrão VRSync 2.0' },
-  { id: 'olx', nome: 'OLX', descricao: 'Padrão OLX Real Estate' },
-  { id: 'imovelweb', nome: 'ImovelWeb', descricao: 'Padrão Universal Feed' },
-  { id: 'chavesnamao', nome: 'Chaves na Mão', descricao: 'Padrão Chaves na Mão XML' },
+  { id: 'zap_vivareal', nome: 'Zap + VivaReal', descricao: 'Padrão VRSync (Grupo OLX)' },
+  { id: 'olx', nome: 'OLX', descricao: 'Padrão VRSync (Grupo OLX)' },
+  { id: 'imovelweb', nome: 'ImovelWeb', descricao: 'Universal Feed' },
+  { id: 'chavesnamao', nome: 'Chaves na Mão', descricao: 'XML Chaves na Mão' },
 ];
 
 export interface ImovelParaValidacao {
