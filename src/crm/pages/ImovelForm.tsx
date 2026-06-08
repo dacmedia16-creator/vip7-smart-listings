@@ -620,6 +620,17 @@ export default function ImovelForm() {
               <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Excluir</Button>
             ) : <div />}
             <div className="flex gap-2">
+              {id && canEditThisRecord && (
+                loadedRecord?.ativo && loadedRecord?.status !== 'inativo' ? (
+                  <Button type="button" variant="outline" onClick={handleToggleAtivo}>
+                    <EyeOff className="h-4 w-4 mr-2" />Desativar (ocultar do site)
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" onClick={handleToggleAtivo}>
+                    <Eye className="h-4 w-4 mr-2" />Reativar no site
+                  </Button>
+                )
+              )}
               <Button type="button" variant="outline" onClick={() => navigate('/crm/imoveis')}>Cancelar</Button>
               <Button type="submit" disabled={saving || (!!id && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
