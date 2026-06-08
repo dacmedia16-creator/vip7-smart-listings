@@ -1,39 +1,37 @@
-## Ajuste no webhook ZionTalk → IA
 
-A configuração no ZionTalk está **correta** (evento "Mensagem recebida", URL e canal certos). Mas o payload chega no formato aninhado do ZionTalk:
+## Problema
 
-```json
-{
-  "evento": "mensagem.recebida",
-  "contato": { "telefone": "+55...", "nome": "..." },
-  "mensagem": { "texto": "...", "canal": "...", "tipo": "text" }
-}
-```
+Formulário do site mostrava "Mensagem enviada!" mas o lead nunca chegava ao CRM quando o telefone/email já existia nos últimos 30 dias. Causa: `capturarLead()` desviava para criar uma `lead_interacao` no lead antigo, mas `lead_interacoes` só aceita INSERT de usuários autenticados — anônimo falha silenciosamente.
 
-E hoje a função `ia-whatsapp-inbound` só procura telefone/mensagem nos campos do topo — então retorna `400 missing phone or message`.
+## Solução (opção A escolhida)
 
-### O que vou alterar
+**Cada submissão do site sempre cria um lead novo.** Quando o telefone/email já existe nos últimos 30 dias, o novo lead é marcado com tag `recontato` e recebe uma observação apontando o lead anterior. Sem mais perda de contatos.
 
-**1 arquivo:** `supabase/functions/ia-whatsapp-inbound/index.ts`
+## Mudanças
 
-Atualizar `extractPayload()` para:
-- Ler `contato.telefone` → telefone
-- Ler `mensagem.texto` → texto
-- Ler `contato.nome` → nome (pra log/match futuro)
-- Ler `mensagem.tipo` → tipo (ignorar se vier algo diferente de `text`, ex.: áudio/imagem, com mensagem amigável "ainda não consigo processar áudio/imagem, pode me escrever?")
-- Manter os fallbacks atuais (`phone`, `message`, etc.) pra não quebrar testes manuais
+### 1. `src/lib/leadCapture.ts`
+- Remover o desvio para `lead_interacoes` quando há duplicata.
+- **Sempre** inserir em `leads`.
+- Se `find_duplicate_lead` retornar um lead anterior:
+  - Adicionar tag `'recontato'` no novo lead
+  - Prefixar `observacoes` com `"⚠️ Recontato (lead anterior: <id>) — "`
+- Propagar erro real (sem engolir): retornar `{ ok: false, error: msg }` para o componente.
 
-**Log do payload bruto** na primeira linha do handler (`console.log(JSON.stringify(payload).slice(0,500))`) pra confirmarmos o formato real em produção. Removo depois.
+### 2. `src/pages/Contato.tsx` e demais formulários que chamam `capturarLead`
+- Conferir retorno: se `ok === false`, mostrar toast de erro com a mensagem real em vez do toast genérico de sucesso.
+- Se `duplicate === true`, mostrar toast de sucesso com aviso suave: "Já temos seu contato — vamos te chamar em breve."
 
-### Segurança (recomendado mas opcional)
+### 3. Fluxo IA WhatsApp
+- Como agora **todo** envio do site vira um INSERT em `leads`, o trigger `disparar_ia_whatsapp` vai disparar a saudação automática para cada novo lead. Isso é o comportamento desejado (você já confirmou).
+- Como salvaguarda contra spam (mesmo telefone enviando o form 5x em 5 min), adicionar no edge function `ia-whatsapp-greeting` um early-return se já existir uma mensagem `ia_conversas` para o mesmo telefone nos últimos 10 minutos.
 
-Hoje o webhook está **aberto**. Pra travar:
-1. Em **Configurações avançadas** do gatilho ZionTalk, adicionar header:
-   `Authorization: Bearer SEU_TOKEN_AQUI`
-2. Definir o secret `ZIONTALK_INBOUND_TOKEN` no projeto com o mesmo valor.
+## Não está no escopo
 
-Posso deixar pra fazer isso depois do primeiro teste funcionar — confirma se quer ativar agora ou depois.
+- Tabela `site_submissions` de auditoria (você não pediu).
+- Mudar a janela de dedup ou a policy de `lead_interacoes`.
 
-### Teste
+## Teste após aplicar
 
-Depois do deploy: enviar uma mensagem real do WhatsApp pro número 15996659107 a partir de um telefone que já existe como lead no CRM (últimos 90 dias) e checar logs.
+1. Preencher form em `/contato` com seu telefone `15981788214`.
+2. Esperado: novo lead aparece no CRM com tag `recontato` e observação apontando o lead anterior.
+3. WhatsApp recebe saudação da IA (se IA estiver ligada e for o 1º envio em 10 min).

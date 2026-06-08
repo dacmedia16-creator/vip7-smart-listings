@@ -18,24 +18,39 @@ interface CapturarLeadInput {
   imovel_interesse_codigo?: string;
 }
 
-/** Insert lead from public site forms. Deduplicates by phone/email within 30 days. */
-export async function capturarLead(input: CapturarLeadInput): Promise<{ ok: boolean; duplicate?: boolean; id?: string }> {
-  try {
-    const { data: dup } = await supabase.rpc('find_duplicate_lead', {
-      _telefone: input.telefone,
-      _email: input.email ?? null,
-    });
+export interface CapturarLeadResult {
+  ok: boolean;
+  duplicate?: boolean;
+  id?: string;
+  error?: string;
+}
 
-    if (dup) {
-      // Add interaction note instead of duplicate insert
-      await supabase.from('lead_interacoes').insert({
-        lead_id: dup as any,
-        tipo: 'outro' as any,
-        descricao: `Novo contato pelo site (${input.origem}): ${input.observacoes ?? '—'}`,
+/**
+ * Insert lead from public site forms.
+ * SEMPRE cria um novo lead. Se o telefone/email já existir nos últimos 30 dias,
+ * marca como recontato (tag + observação apontando o lead anterior).
+ */
+export async function capturarLead(input: CapturarLeadInput): Promise<CapturarLeadResult> {
+  try {
+    // 1) Detecta duplicata (informativo, não bloqueia)
+    let duplicateId: string | null = null;
+    try {
+      const { data: dup } = await supabase.rpc('find_duplicate_lead', {
+        _telefone: input.telefone,
+        _email: input.email ?? null,
       });
-      return { ok: true, duplicate: true, id: dup as any };
+      if (dup) duplicateId = dup as any;
+    } catch (e) {
+      console.warn('find_duplicate_lead falhou (ignorando):', e);
     }
 
+    // 2) Monta observações e tags
+    const tags = duplicateId ? ['recontato'] : [];
+    const observacoes = duplicateId
+      ? `⚠️ Recontato (lead anterior: ${duplicateId}) — ${input.observacoes ?? ''}`.trim()
+      : (input.observacoes ?? null);
+
+    // 3) SEMPRE insere novo lead
     const { data, error } = await supabase
       .from('leads')
       .insert({
@@ -50,16 +65,20 @@ export async function capturarLead(input: CapturarLeadInput): Promise<{ ok: bool
         bairro_interesse: input.bairro_interesse ?? null,
         orcamento_min: input.orcamento_min ?? null,
         orcamento_max: input.orcamento_max ?? null,
-        observacoes: input.observacoes ?? null,
+        observacoes,
         imovel_interesse_codigo: input.imovel_interesse_codigo ?? null,
+        tags,
       })
       .select('id')
       .single();
 
-    if (error) throw error;
-    return { ok: true, id: data?.id };
-  } catch (e) {
+    if (error) {
+      console.error('capturarLead insert error:', error);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true, id: data?.id, duplicate: !!duplicateId };
+  } catch (e: any) {
     console.error('capturarLead error:', e);
-    return { ok: false };
+    return { ok: false, error: e?.message ?? 'erro desconhecido' };
   }
 }
