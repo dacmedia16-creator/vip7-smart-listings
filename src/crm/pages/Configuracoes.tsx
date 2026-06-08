@@ -395,6 +395,8 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <NovoUsuarioDialog open={novoUserOpen} onOpenChange={setNovoUserOpen} onCreated={loadUsers} />
     </CrmLayout>
   );
 }
