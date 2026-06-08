@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Users, Settings as SettingsIcon, Shuffle, Bell, Bot, Copy, ExternalLink, Plug, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useRoles } from '../hooks/useRole';
 import { useAuth } from '../hooks/useAuth';
+import NovoUsuarioDialog from '../components/NovoUsuarioDialog';
+import { UserPlus } from 'lucide-react';
 
 const ROLES = ['admin', 'gestor', 'corretor', 'atendente'] as const;
 const INBOUND_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ia-whatsapp-inbound`;
@@ -23,6 +25,7 @@ export default function Configuracoes() {
   const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [me, setMe] = useState<any>(null);
+  const [novoUserOpen, setNovoUserOpen] = useState(false);
 
   // IA state
   const [iaEnabled, setIaEnabled] = useState(false);
@@ -338,9 +341,16 @@ export default function Configuracoes() {
 
         <TabsContent value="usuarios" className="mt-4">
           <Card className="p-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Novos usuários se cadastram em <code className="text-xs bg-muted px-1 rounded">/crm/login</code>. Após o cadastro, defina aqui a permissão de cada um.
-            </p>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <p className="text-sm text-muted-foreground">
+                Crie usuários direto aqui ou peça que se cadastrem em <code className="text-xs bg-muted px-1 rounded">/crm/login</code>. Defina a permissão de cada um abaixo.
+              </p>
+              {isAdmin && (
+                <Button size="sm" onClick={() => setNovoUserOpen(true)} className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D] shrink-0">
+                  <UserPlus className="h-4 w-4 mr-2" />Novo usuário
+                </Button>
+              )}
+            </div>
             <div className="space-y-2">
               {users.length === 0 && <p className="text-muted-foreground text-sm">Nenhum usuário.</p>}
               {users.map((u) => (
@@ -385,6 +395,8 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <NovoUsuarioDialog open={novoUserOpen} onOpenChange={setNovoUserOpen} onCreated={loadUsers} />
     </CrmLayout>
   );
 }

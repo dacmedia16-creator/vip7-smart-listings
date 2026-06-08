@@ -1,56 +1,46 @@
-## Objetivo
-Importar imóveis desativados (com fotos + dados completos + proprietários) direto da API Imoview, sem depender de planilha.
+# Criar usuários direto pela aba Usuários
 
-## Diagnóstico
-Endpoints já testados e descartados:
-- `RetornarImoveis` → 404
-- `RetornarImoveisInativos` → 404
-- `RetornarImoveisDisponiveis` → só ativos (já em uso)
+Adiciona, em **Configurações → Usuários**, um botão **"Novo usuário"** (visível só para admin) que abre um dialog pra cadastrar a pessoa já com perfil definido — sem precisar mandar o corretor se cadastrar em `/crm/login`.
 
-O único endpoint App_ que confirmadamente traz inativos é `App_RetornarDetalhesImovel`, mas precisa do código pra chamar — não lista.
+## Fluxo
 
-## Etapa 1 — Probe (descartável, 1 edge function temporária)
+1. Admin clica **"Novo usuário"** no topo da lista.
+2. Preenche o formulário no dialog:
+   - Nome completo (obrigatório)
+   - Email (obrigatório)
+   - Senha (obrigatório, mín. 8 caracteres, com botão "Gerar senha forte")
+   - Telefone / WhatsApp (opcional)
+   - Perfil: admin · gestor · corretor · atendente · sem acesso
+   - Ativo (switch, default ligado)
+3. Sistema cria o usuário no auth + profile + role num passo só.
+4. Toast mostra "Usuário criado" e dá a opção **Copiar credenciais** (email + senha) pra admin enviar pro corretor.
+5. Lista de usuários atualiza.
 
-Criar `supabase/functions/imoview-probe-inativos` que tenta autenticado (com `codigoacesso`) os candidatos abaixo e devolve qual respondeu 200 com lista:
+## Detalhes técnicos
 
-```
-GET  /Imovel/App_RetornarImoveis?pagina=1&quantidade=10&situacao=inativo
-GET  /Imovel/App_RetornarImoveisInativos?pagina=1&quantidade=10
-GET  /Imovel/App_RetornarTodosImoveis?pagina=1&quantidade=10
-GET  /Imovel/App_RetornarImoveisAlterados?dias=3650&pagina=1&quantidade=10
-POST /Imovel/App_PesquisarImoveis  body: { situacao: "inativo", pagina:1, quantidade:10 }
-```
+**Nova edge function `crm-create-user`** (necessária porque criar usuário no auth exige service role e não pode rodar do client):
 
-Retorna JSON tipo:
-```json
-{
-  "results": [
-    { "path": "...", "status": 200, "count": 47, "sample_codigo": 12345, "sample_situacao": "Inativo" },
-    { "path": "...", "status": 404 }
-  ]
-}
-```
+- Verifica o JWT do chamador e confirma que ele tem role `admin` via `has_role(auth.uid(), 'admin')`.
+- Valida payload com zod: email válido, senha ≥8, nome ≥2, role no enum permitido.
+- Usa `supabase.auth.admin.createUser({ email, password, email_confirm: true, user_meta_data: { nome, telefone } })`.
+  - `email_confirm: true` pra usuário já entrar sem precisar confirmar email.
+- O trigger `handle_new_user` já cria a linha em `profiles` automaticamente. A function só faz `UPDATE profiles SET telefone, ativo` e `INSERT user_roles (user_id, role)` (pulando insert se role = `sem_acesso`).
+- Em caso de erro depois do `createUser`, faz rollback chamando `auth.admin.deleteUser`.
+- Retorna `{ ok: true, user_id }` ou `{ ok: false, error }`.
 
-Rodar via curl_edge_functions. **Sem alterar nada na UI ainda.**
+**Frontend (`src/crm/pages/Configuracoes.tsx`)**:
+- Novo componente `NovoUsuarioDialog` na mesma pasta de páginas (ou inline).
+- Botão "Novo usuário" no header da aba Usuários, com `disabled={!isAdmin}`.
+- Chama `supabase.functions.invoke('crm-create-user', { body: {...} })`.
+- Após sucesso → fecha dialog, mostra toast com botão "Copiar credenciais", chama `loadUsers()`.
 
-## Etapa 2 — Decisão (depende do resultado da Etapa 1)
+**Segurança**:
+- Function valida role server-side (não confia em flag do client).
+- Senha nunca é logada.
+- `service_role` só dentro da edge function.
 
-**Caso A — algum endpoint funciona:**
-- Adicionar `mode: 'desativados_api'` em `imoview-sync` reaproveitando o paginador
-- Trocar o card "Imóveis desativados" pra ter um botão único **"Sincronizar desativados via API (com fotos e proprietários)"** que:
-  1. Pagina o endpoint descoberto → coleta códigos
-  2. Pra cada código chama `App_RetornarDetalhesImovel` (já existente) → grava em `imoveis_proprios` com `status='inativo'`, `ativo=false`, baixa fotos
-  3. No final, dispara `imoview-sync-proprietarios` com os UUIDs novos
-- Manter o fluxo da planilha como fallback escondido (ou remover, se você preferir)
+## Fora do escopo
 
-**Caso B — nenhum endpoint funciona:**
-- Te aviso aqui e a única opção continua sendo a planilha
-- Não mexo na UI
-
-## Etapa 3 — Limpeza
-Deletar `imoview-probe-inativos` (só serve pra descoberta).
-
-## O que NÃO vou fazer
-- Varredura sequencial de códigos (1..N) — descartado: lento, frágil, queima quota
-- Mexer no fluxo de sincronização de ativos que já funciona
-- Construir UI nova antes de saber se a API responde
+- Envio de email de boas-vindas com as credenciais (admin copia/cola manualmente).
+- Edição de email/senha de usuário existente (fica pra depois — hoje a aba já permite trocar role e ativar/desativar).
+- Reset de senha pelo admin.
