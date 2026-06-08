@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.portal-feed]
 verify_jwt = false
+
+[functions.portal-lead-grupozap]
+verify_jwt = false
