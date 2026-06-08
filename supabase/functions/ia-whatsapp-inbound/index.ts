@@ -18,13 +18,40 @@ import {
 
 const ZIONTALK_INBOUND_TOKEN = Deno.env.get("ZIONTALK_INBOUND_TOKEN") ?? "";
 
-function extractPayload(p: any): { phone: string; message: string } {
-  // ZionTalk não publica spec do webhook; tentamos vários nomes comuns.
+function extractPayload(p: any): {
+  phone: string;
+  message: string;
+  tipo: string;
+  evento: string;
+} {
+  // Formato ZionTalk (aninhado) + fallbacks de topo pra testes manuais.
   const phone =
-    p?.phone ?? p?.mobile_phone ?? p?.from ?? p?.sender ?? p?.number ?? p?.telefone ?? "";
+    p?.contato?.telefone ??
+    p?.contato?.phone ??
+    p?.phone ??
+    p?.mobile_phone ??
+    p?.from ??
+    p?.sender ??
+    p?.number ??
+    p?.telefone ??
+    "";
   const message =
-    p?.message ?? p?.msg ?? p?.text ?? p?.body ?? p?.content ?? "";
-  return { phone: String(phone ?? ""), message: String(message ?? "") };
+    p?.mensagem?.texto ??
+    p?.mensagem?.text ??
+    p?.message ??
+    p?.msg ??
+    p?.text ??
+    p?.body ??
+    p?.content ??
+    "";
+  const tipo = String(p?.mensagem?.tipo ?? p?.tipo ?? "text").toLowerCase();
+  const evento = String(p?.evento ?? p?.event ?? "").toLowerCase();
+  return {
+    phone: String(phone ?? ""),
+    message: String(message ?? ""),
+    tipo,
+    evento,
+  };
 }
 
 serve(async (req) => {
@@ -60,9 +87,34 @@ serve(async (req) => {
     return json(400, { error: "invalid JSON" });
   }
 
-  const { phone, message } = extractPayload(payload);
+  // Log payload bruto (temporário, pra confirmar formato real do ZionTalk)
+  try {
+    console.log("[ia-inbound] payload:", JSON.stringify(payload).slice(0, 500));
+  } catch {
+    // ignore
+  }
+
+  const { phone, message, tipo, evento } = extractPayload(payload);
   const phoneBR = normalizarTelefone(phone);
   const userMessage = (message ?? "").trim();
+
+  // Ignora eventos que não são mensagem recebida (evita loop se ZionTalk enviar "enviada")
+  if (evento && evento.includes("enviada")) {
+    console.log(`[ia-inbound] skip evento=${evento}`);
+    return json(200, { skip: "evento-enviada" });
+  }
+
+  // Mensagens não-texto (áudio, imagem, documento) — responde amigável e sai
+  if (tipo && !["text", "texto", "chat", ""].includes(tipo)) {
+    console.log(`[ia-inbound] tipo não suportado: ${tipo}`);
+    if (phoneBR) {
+      enviarWhatsApp(
+        phoneBR,
+        "Recebi seu envio! Por enquanto ainda não consigo ouvir áudios nem ver imagens por aqui — pode me escrever em texto o que está procurando? 🙏",
+      ).catch((e) => console.warn("[ia-inbound] aviso tipo falhou:", e?.message));
+    }
+    return json(200, { skip: `tipo-${tipo}` });
+  }
 
   if (!phoneBR || !userMessage) {
     console.warn("[ia-inbound] payload inválido", { phone, hasMsg: !!message });
