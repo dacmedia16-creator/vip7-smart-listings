@@ -20,20 +20,38 @@ export default function Contato() {
     e.preventDefault();
     try {
       const { capturarLead } = await import('@/lib/leadCapture');
-      await capturarLead({
+      const res = await capturarLead({
         nome: formData.nome,
         telefone: formData.telefone,
         email: formData.email,
         origem: 'site_contato',
         observacoes: formData.mensagem,
       });
-    } catch (err) { console.warn('CRM capture failed', err); }
-    toast({
-      title: 'Mensagem enviada!',
-      description: 'Em breve entraremos em contato.',
-    });
-    setFormData({ nome: '', email: '', telefone: '', mensagem: '' });
+      if (!res.ok) {
+        toast({
+          title: 'Não foi possível enviar',
+          description: res.error ?? 'Tente novamente em instantes ou fale conosco pelo WhatsApp.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({
+        title: res.duplicate ? 'Recebemos seu contato!' : 'Mensagem enviada!',
+        description: res.duplicate
+          ? 'Já estamos com seus dados — um especialista vai te chamar em breve.'
+          : 'Em breve entraremos em contato.',
+      });
+      setFormData({ nome: '', email: '', telefone: '', mensagem: '' });
+    } catch (err: any) {
+      console.error('Contato submit error', err);
+      toast({
+        title: 'Erro ao enviar',
+        description: err?.message ?? 'Tente novamente.',
+        variant: 'destructive',
+      });
+    }
   };
+
 
 
   return (

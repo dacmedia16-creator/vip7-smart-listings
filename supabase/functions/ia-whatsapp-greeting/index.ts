@@ -82,6 +82,22 @@ serve(async (req) => {
       return json(200, { skip: "already sent" });
     }
 
+    // 3b) anti-spam: mesmo telefone enviou form 2x em 10min?
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: recentSameNumber } = await admin
+      .from("leads")
+      .select("id, ia_conversas!inner(id,role,created_at)")
+      .eq("telefone", lead.telefone)
+      .neq("id", leadId)
+      .gte("ia_conversas.created_at", tenMinAgo)
+      .eq("ia_conversas.role", "assistant")
+      .limit(1);
+    if (recentSameNumber && recentSameNumber.length > 0) {
+      console.log("[ia-greeting] skip: saudação recente p/ mesmo telefone");
+      return json(200, { skip: "recent same phone" });
+    }
+
+
     // 4) busca imóvel de interesse
     let imovel: any = null;
     const codigo = Number(lead.imovel_interesse_codigo);
