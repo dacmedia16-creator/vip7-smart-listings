@@ -461,6 +461,7 @@ export default function Imoveis() {
                       {foto ? <img src={foto} alt={im.titulo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Building2 className="h-12 w-12 text-muted-foreground/40" /></div>}
                       <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
                       {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
+                      {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
                     </div>
                     <div className="p-4">
                       <p className="text-xs text-muted-foreground mb-1">{im.codigo_interno || '—'} · {im.tipo}</p>
