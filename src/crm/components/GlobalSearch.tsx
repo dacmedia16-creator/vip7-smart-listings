@@ -59,6 +59,7 @@ type ImovelHit = {
   preco: number | null;
   status: string;
   finalidade: string;
+  ativo: boolean;
 };
 
 type Corretor = { id: string; nome: string };
@@ -206,7 +207,8 @@ export function GlobalSearch() {
     if (filter !== 'leads' && filter !== 'acoes') {
       let q = supabase
         .from('imoveis_proprios')
-        .select('id, titulo, codigo_interno, cidade, bairro, preco, status, finalidade')
+        .select('id, titulo, codigo_interno, cidade, bairro, preco, status, finalidade, ativo')
+        .order('ativo', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(MAX_PER_GROUP);
       if (s) {
@@ -501,6 +503,7 @@ export function GlobalSearch() {
                           <Highlight text={im.titulo} query={debounced} />
                         </span>
                         <Badge variant="outline" className={`text-[10px] ${meta.color}`}>{meta.label}</Badge>
+                        {im.ativo === false && <Badge variant="outline" className="text-[10px]">Desativado</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {im.codigo_interno ? `${im.codigo_interno} · ` : ''}

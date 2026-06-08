@@ -21,6 +21,7 @@ type Filters = {
   codigos: string;
   finalidade: string;
   status: string;
+  ativo: string;
   tipo: string;
   etiqueta: string;
   cidade: string;
@@ -47,7 +48,7 @@ type Filters = {
 };
 
 const EMPTY: Filters = {
-  codigos: '', finalidade: 'venda', status: 'disponivel', tipo: 'todos', etiqueta: 'todos',
+  codigos: '', finalidade: 'venda', status: 'disponivel', ativo: 'ativos', tipo: 'todos', etiqueta: 'todos',
   cidade: '', regiao: 'todos', sub_regiao: 'todos', bairro: '',
   endereco: '', numero: '', complemento: '', local_chaves: '', identificador_chaves: '',
   preco_min: '', preco_max: '', cond_min: '', cond_max: '', area_min: '', area_max: '',
@@ -155,6 +156,8 @@ export default function Imoveis() {
         query = query.eq('finalidade', finalidadeDb);
       }
       if (f.status !== 'todos') query = query.eq('status', f.status as any);
+      if (f.ativo === 'ativos') query = query.eq('ativo', true);
+      else if (f.ativo === 'inativos') query = query.eq('ativo', false);
       if (f.tipo !== 'todos') query = query.eq('tipo', f.tipo);
       if (f.etiqueta !== 'todos') query = query.contains('etiquetas', [f.etiqueta]);
 
@@ -211,7 +214,12 @@ export default function Imoveis() {
   }, [pagina, qDebounced, applied]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const update = (k: keyof Filters, v: string) => setFilters((s) => ({ ...s, [k]: v }));
+  const update = (k: keyof Filters, v: string) => setFilters((s) => {
+    const next = { ...s, [k]: v };
+    // Quando o usuário escolhe ver inativos/todos, libera a Situação para não esconder os inativos.
+    if (k === 'ativo' && v !== 'ativos' && s.status === 'disponivel') next.status = 'todos';
+    return next;
+  });
   const apply = () => setApplied(filters);
   const clear = () => { setFilters(EMPTY); setApplied(EMPTY); };
 
@@ -289,6 +297,16 @@ export default function Imoveis() {
                   <SelectContent>
                     <SelectItem value="todos">Todas</SelectItem>
                     {IMOVEL_STATUS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>{N('Visibilidade')}
+                <Select value={filters.ativo} onValueChange={(v) => update('ativo', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativos">Apenas ativos</SelectItem>
+                    <SelectItem value="inativos">Apenas inativos / desativados</SelectItem>
+                    <SelectItem value="todos">Todos (ativos + inativos)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -443,6 +461,7 @@ export default function Imoveis() {
                       {foto ? <img src={foto} alt={im.titulo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Building2 className="h-12 w-12 text-muted-foreground/40" /></div>}
                       <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
                       {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
+                      {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
                     </div>
                     <div className="p-4">
                       <p className="text-xs text-muted-foreground mb-1">{im.codigo_interno || '—'} · {im.tipo}</p>

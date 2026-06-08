@@ -1,36 +1,34 @@
-
 ## Diagnóstico
 
-A API Imoview desta conta **não expõe** `RetornarImoveis` nem `RetornarImoveisInativos` (ambos 404). Só responde os endpoints `*Disponiveis*` — confirmado tanto em `imoview-api/index.ts` quanto nos logs (`23:30:51 ERROR fatal: 404`). Portanto, **não há como "listar" imóveis inativos via API**. O modo `desativados` atual tenta 3 endpoints inexistentes e crasha antes de gravar status, deixando o log fantasma como `running` (igual ao caso anterior).
+Im móveis que a sync de "Desativados" marca como `ativo=false, status='inativo'` ficam invisíveis hoje porque:
 
-## Solução
+1. **Site público** (`src/services/imoveisDb.ts` + RLS `imoveis_public_read`) — exige `ativo=true` AND `status IN ('disponivel','sob_proposta')`. **Correto, não muda.**
+2. **CRM → /crm/imoveis** (`src/crm/pages/Imoveis.tsx`) — não filtra `ativo`, mas o filtro **Situação tem default `disponivel`**, então inativos só aparecem se o usuário trocar manualmente para "Inativo" (e ninguém percebe).
+3. **Busca global do CRM** (`src/crm/components/GlobalSearch.tsx:145`) — tem `eq('ativo', true)` hardcoded, então código de imóvel inativo nunca aparece no Cmd+K.
+4. **Diálogo "Adicionar imóvel de interesse"** — também filtra `ativo=true`. **Correto, fica como está** (não faz sentido vincular cliente a imóvel desativado).
 
-Trocar a estratégia do modo `desativados` de "listar inativos da API" para **reconciliação**:
-1. Listar todos os códigos atualmente disponíveis na Imoview (paginando `RetornarImoveisDisponiveis` para Venda e Aluguel) — sem buscar detalhes.
-2. Marcar como inativos no banco (`ativo=false`, `status='inativo'`) todos os `imoveis_proprios` com `origem='imoview'` cujo `codigo_imoview` NÃO estiver no conjunto retornado.
+## Mudanças
 
-Isso é mais barato (sem `RetornarDetalhes`), confiável, e usa só endpoints que funcionam.
+### 1. `src/crm/pages/Imoveis.tsx`
+- Adicionar campo `ativo: 'ativos' | 'inativos' | 'todos'` ao tipo `Filters` e ao `EMPTY` com default `'ativos'`.
+- Aplicar na query: `'ativos'` → `.eq('ativo', true)`; `'inativos'` → `.eq('ativo', false)`; `'todos'` → sem filtro.
+- Novo `<Select>` "Visibilidade" na seção Identificação ao lado de Situação, com as três opções.
+- Quando usuário escolher `'inativos'` ou `'todos'`, mudar o default de Situação de `'disponivel'` para `'todos'` automaticamente (caso contrário fica vazio).
+- Mostrar badge cinza "Inativo" no card/linha quando `ativo=false` (não bloqueia clique).
 
-## Passo a passo
+### 2. `src/crm/components/GlobalSearch.tsx`
+- Remover o `.eq('ativo', true)` da query de imóveis (linha 145). Em vez disso, ordenar inativos por último (`order('ativo', { ascending: false })`) e mostrar sufixo "(inativo)" no resultado quando aplicável. Assim quem digita o código encontra mesmo se foi desativado.
 
-### 1. Destravar o log preso `a15f54aa-ada1-45a4-9be4-c8026f52cc13`
-`UPDATE imoview_sync_log` → `status='error'`, `finished_at=now()`, `error_details={"reason":"endpoints RetornarImoveis/Inativos retornam 404","fixed_in":"reescrita do modo desativados"}`. Libera os botões da UI imediatamente.
-
-### 2. Reescrever `supabase/functions/imoview-sync/index.ts` — modo `desativados`
-
-- Remover `fetchListingDesativados` (que chama endpoints inexistentes).
-- Adicionar nova função `collectAvailableCodes(finalidade)` que pagina `RetornarImoveisDisponiveis` apenas extraindo `codigo` (sem fetch de detalhes).
-- No handler, quando `mode === 'desativados'`, executar fluxo separado em vez do loop normal:
-  1. Coletar códigos de Venda + Aluguel.
-  2. `SELECT id, codigo_imoview FROM imoveis_proprios WHERE origem='imoview' AND ativo=true`.
-  3. Calcular diff: códigos no banco que **não estão** no conjunto da API.
-  4. Update em lote: `ativo=false, status='inativo', imoview_sync_at=now()` nos IDs do diff.
-  5. Atualizar `imoview_sync_log` com `total` (códigos vistos na API), `removed` (quantos marcados inativos), `status='ok'`, `finished_at=now()`.
-- Como esse modo é leve (só listagem + 1 update), roda numa única invocação — sem self-invoke/chunks. Se o volume passar de ~6000 códigos, paginar a coleta com persistência intermediária de cursor.
-
-### 3. Validação
-Após deploy, disparar manualmente o modo `desativados` pela UI e conferir em `imoview_sync_log`: `status='ok'`, `finished_at` preenchido, `total > 0`, `removed >= 0`, `errors_count = 0`.
+### 3. Nada mais
+- `imoveisDb.ts`, RLS pública, página pública e `AddImovelInteresseDialog` permanecem intocados — inativos não vazam para o site.
 
 ## Fora de escopo
-- Modos `full`, `incremental` e `single` permanecem inalterados.
-- Nenhuma mudança de schema, RLS ou UI.
+- Edge functions de sync.
+- Schema do banco / RLS.
+- Site público.
+
+## Validação
+1. Em `/crm/imoveis` com Visibilidade=Apenas ativos (default) → contagem igual à de hoje.
+2. Trocar para "Apenas inativos" → aparecem os ~6 imóveis que a sync `desativados` acabou de marcar.
+3. Cmd+K digitando o código de um imóvel inativo → aparece com sufixo "(inativo)".
+4. Diálogo de "Adicionar imóvel de interesse" no cliente → continua mostrando só ativos.
