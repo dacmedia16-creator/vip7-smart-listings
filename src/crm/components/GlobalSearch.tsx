@@ -59,6 +59,7 @@ type ImovelHit = {
   preco: number | null;
   status: string;
   finalidade: string;
+  ativo: boolean;
 };
 
 type Corretor = { id: string; nome: string };
