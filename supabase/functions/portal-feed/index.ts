@@ -168,7 +168,7 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
         <LivingArea unit="square metres">${Math.round((im.area ?? im.area_total) ?? 0)}</LivingArea>
         ${im.area_total ? `<LotArea unit="square metres">${Math.round(im.area_total)}</LotArea>` : ''}
         ${im.quartos != null ? `<Bedrooms>${im.quartos}</Bedrooms>` : ''}
-        ${im.bathrooms_skip ?? im.banheiros != null ? `<Bathrooms>${im.banheiros ?? 0}</Bathrooms>` : ''}
+        ${im.banheiros != null ? `<Bathrooms>${im.banheiros}</Bathrooms>` : ''}
         ${im.suites != null ? `<Suites>${im.suites}</Suites>` : ''}
         ${im.vagas != null ? `<Garage type="Parking Space">${im.vagas}</Garage>` : ''}
         ${features}
