@@ -391,11 +391,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { mode = "full", sync_id, codigo, internal_cursor } = body as {
-      mode?: "full" | "incremental" | "single" | "desativados";
+    const { mode = "full", sync_id, codigo, codigos, internal_cursor } = body as {
+      mode?: "full" | "incremental" | "single" | "desativados" | "inativos_por_codigos";
       sync_id?: string;
       codigo?: number;
-      internal_cursor?: { finalidadeIdx: number; pagina: number };
+      codigos?: number[];
+      internal_cursor?: { finalidadeIdx?: number; pagina?: number; idx?: number; codigos?: number[] };
     };
     const isDesat = mode === "desativados";
 
@@ -407,6 +408,91 @@ serve(async (req) => {
       const stats = { inserted: 0, updated: 0, unchanged: 0, photos: 0, errors: 0 };
       await syncOne(sb, detail, stats, null);
       return new Response(JSON.stringify({ ok: true, stats }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ===== modo inativos_por_codigos =====
+    // Recebe uma lista de códigos (ex: extraída de planilha .xls da Imoview),
+    // busca detalhes de cada um e salva com ativo=false / status=inativo.
+    if (mode === "inativos_por_codigos") {
+      let activeSyncId = sync_id;
+      let codigosList: number[] = [];
+      let startIdx = 0;
+
+      if (!activeSyncId) {
+        const lista = (codigos || []).map((c) => Number(c)).filter((n) => Number.isFinite(n) && n > 0);
+        if (lista.length === 0) {
+          return new Response(JSON.stringify({ error: "codigos obrigatório (array)" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const auth = req.headers.get("Authorization") || "";
+        let userId: string | null = null;
+        if (auth.startsWith("Bearer ")) {
+          const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
+          const { data } = await userClient.auth.getUser();
+          userId = data.user?.id ?? null;
+        }
+        const { data: log, error } = await sb
+          .from("imoview_sync_log")
+          .insert({ status: "running", mode, triggered_by: userId, total: lista.length, cursor: { idx: 0, codigos: lista } })
+          .select("id").single();
+        if (error) throw error;
+        activeSyncId = log.id as string;
+        codigosList = lista;
+      } else {
+        codigosList = internal_cursor?.codigos || [];
+        startIdx = internal_cursor?.idx || 0;
+      }
+
+      const BATCH = 20;
+      const CONC = 4;
+      const endIdx = Math.min(startIdx + BATCH, codigosList.length);
+      const slice = codigosList.slice(startIdx, endIdx);
+      const stats = { inserted: 0, updated: 0, unchanged: 0, photos: 0, errors: 0 };
+
+      const runChunk = async () => {
+        for (let i = 0; i < slice.length; i += CONC) {
+          const sub = slice.slice(i, i + CONC);
+          const details = await Promise.all(sub.map(async (c) => {
+            try { return { c, d: await fetchDetails(c) }; }
+            catch (e) { console.warn(`[inativos] erro fetch ${c}:`, (e as Error).message); return { c, d: null }; }
+          }));
+          for (const { c, d } of details) {
+            if (!d) {
+              stats.errors++;
+              await persistStats(sb, activeSyncId!, { errors: 1 });
+              console.warn(`[inativos] sem detalhe para codigo=${c}`);
+              continue;
+            }
+            if (!d.codigo) d.codigo = c;
+            await syncOne(sb, d, stats, activeSyncId!, true);
+          }
+        }
+        const nextIdx = endIdx;
+        const done = nextIdx >= codigosList.length;
+        const update: Record<string, unknown> = {
+          cursor: { idx: nextIdx, codigos: codigosList },
+          updated_at: new Date().toISOString(),
+        };
+        if (done) {
+          const cur = await sb.from("imoview_sync_log").select("errors_count").eq("id", activeSyncId!).single();
+          update.status = (cur.data?.errors_count || 0) > 0 ? "partial" : "ok";
+          update.finished_at = new Date().toISOString();
+        }
+        await sb.from("imoview_sync_log").update(update).eq("id", activeSyncId!);
+        if (!done) {
+          const selfUrl = `${SUPABASE_URL}/functions/v1/imoview-sync`;
+          await fetch(selfUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+            body: JSON.stringify({ mode: "inativos_por_codigos", sync_id: activeSyncId, internal_cursor: { idx: nextIdx, codigos: codigosList } }),
+          }).then((r) => r.text()).catch((e) => console.error("[inativos] self-invoke:", e));
+        }
+      };
+
+      (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil(runChunk());
+
+      return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, status: "running", total: codigosList.length, idx: startIdx }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ===== modo desativados (reconciliação em uma única invocação) =====
