@@ -103,7 +103,10 @@ export default function LeadsList() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-[#0F0F12]">Leads</h2>
-            <p className="text-sm text-[#2A2A30]">{leads.length} resultado(s)</p>
+            <p className="text-sm text-[#2A2A30]">
+              {totalCount === 0 ? '0 resultado(s)' : `Mostrando ${rangeStart}–${rangeEnd} de ${totalCount}`}
+            </p>
+
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate('/crm/leads/importar')} className="border-[#E8D9A8] text-[#7A5A14] hover:bg-[#FBF3DC]">
