@@ -1,18 +1,25 @@
 ## Diagnóstico
 
-- O lead de teste criado às 05:28 não disparou mensagem porque a proteção anti-duplicidade bloqueou saudação recente para o mesmo telefone.
-- Antes disso, às 05:21, a função registrou `ziontalk-send ok` para `15981788214`, ou seja: a API aceitou o envio, mas isso não confirma entrega no WhatsApp.
-- Como você não recebeu, precisamos validar se a API key nova está mesmo do canal que tem WhatsApp conectado/ativo e se o endpoint está retornando algum detalhe de fila/erro que hoje não aparece no log.
+Na conversa, o cliente mandou "prontas" e recebeu **5 vezes** a mensagem "⏳ Um momento, já volto com a resposta..." e nenhuma resposta final.
+
+Causa provável: o webhook da ZionTalk tem timeout curto (poucos segundos). A função `ia-whatsapp-inbound` faz tudo de forma síncrona antes de responder 200:
+1. Classifica intenção (chamada IA)
+2. Loop de até 5 iterações de tool-calling (cada iteração = 1 chamada IA + queries no banco)
+3. Só depois envia a resposta final e retorna 200
+
+Quando esse fluxo passa do timeout, a ZionTalk **reenvia o mesmo webhook**. A trava de rate-limit (2s) já existe, mas como cada retry pode chegar com vários segundos de diferença, ela não pega — e cada execução dispara mais um "aguarde". O loop de tool com Gemini também pode estar falhando silenciosamente (mensagem genérica de erro), mas o sintoma principal é o retry do webhook.
 
 ## Plano
 
-1. Forçar um novo envio de teste para `15981788214`, ignorando a trava de saudação recente apenas para esse teste.
-2. Registrar no log a resposta completa da ZionTalk nesse disparo, incluindo status/ID da mensagem quando houver.
-3. Conferir se o lead ficou com `ia_last_message_at` atualizado após o envio.
-4. Se a API responder “ok” de novo e mesmo assim não chegar, orientar a troca para a API key exata do canal conectado ao número certo no painel da ZionTalk.
+1. **Responder 200 imediatamente** no webhook e processar a conversa em background (`EdgeRuntime.waitUntil`), para a ZionTalk parar de reenviar.
+2. **Trava forte anti-duplicidade por mensagem**: antes de qualquer envio, gravar/checar um hash `{telefone + texto}` na tabela `ia_conversas` (role=user). Se já existe nos últimos ~30s, sai sem responder.
+3. **Mandar o "aguarde" só uma vez** por mensagem do cliente (depois da trava acima, e não antes).
+4. **Limitar o loop de tools a 3 iterações** e logar a resposta crua do Gemini quando vier vazia, pra confirmar se o problema também é IA travando.
+5. **Não responder a mensagem genérica "tive um problema"** quando a IA falhar — em vez disso, registrar erro e deixar o handoff manual; evita poluir a conversa.
 
 ## Detalhes técnicos
 
-- Não vou mexer na interface do site.
-- O teste será feito diretamente na função `ia-whatsapp-greeting` ou com um ajuste mínimo para permitir `force=true` em envio manual.
-- A proteção anti-duplicidade continua ativa para leads reais; só será contornada no teste controlado.
+- Mudança fica em `supabase/functions/ia-whatsapp-inbound/index.ts`.
+- Sem alteração de schema; a dedupe usa a própria `ia_conversas` (role='user' + content + created_at >= now-30s + lead_id).
+- A trava de rate-limit por lead (2s) continua, só sobe pra ~5s pra cobrir retries lentos.
+- Nenhuma mudança em UI/CRM.

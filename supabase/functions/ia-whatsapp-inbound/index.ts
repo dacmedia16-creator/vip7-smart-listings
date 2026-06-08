@@ -18,6 +18,15 @@ import {
 
 const ZIONTALK_INBOUND_TOKEN = Deno.env.get("ZIONTALK_INBOUND_TOKEN") ?? "";
 
+function waitUntil(promise: Promise<unknown>) {
+  const runtime = (globalThis as any).EdgeRuntime;
+  if (runtime?.waitUntil) {
+    runtime.waitUntil(promise);
+    return;
+  }
+  promise.catch((e) => console.error("[ia-inbound] background error:", e?.message ?? e));
+}
+
 function extractPayload(p: any): {
   phone: string;
   message: string;
@@ -54,71 +63,30 @@ function extractPayload(p: any): {
   };
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  // GET → status check (UI usa pra mostrar badge "Protegido por token")
-  if (req.method === "GET") {
-    return json(200, {
-      ok: true,
-      service: "ia-whatsapp-inbound",
-      token_configured: ZIONTALK_INBOUND_TOKEN.length > 0,
-    });
-  }
-
-  if (req.method !== "POST") return json(405, { error: "method not allowed" });
-
-  // Auth Bearer (opcional enquanto não tem token)
-  if (ZIONTALK_INBOUND_TOKEN) {
-    const auth = req.headers.get("authorization") ?? "";
-    const xtoken = req.headers.get("x-webhook-token") ?? "";
-    const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    const token = bearer || xtoken;
-    if (token !== ZIONTALK_INBOUND_TOKEN) {
-      console.warn("[ia-inbound] token inválido");
-      return json(401, { error: "unauthorized" });
-    }
-  }
-
-  let payload: any;
-  try {
-    payload = await req.json();
-  } catch {
-    return json(400, { error: "invalid JSON" });
-  }
-
-  // Log payload bruto (temporário, pra confirmar formato real do ZionTalk)
-  try {
-    console.log("[ia-inbound] payload:", JSON.stringify(payload).slice(0, 500));
-  } catch {
-    // ignore
-  }
-
+async function processInbound(payload: any): Promise<void> {
   const { phone, message, tipo, evento } = extractPayload(payload);
   const phoneBR = normalizarTelefone(phone);
   const userMessage = (message ?? "").trim();
 
-  // Ignora eventos que não são mensagem recebida (evita loop se ZionTalk enviar "enviada")
   if (evento && evento.includes("enviada")) {
     console.log(`[ia-inbound] skip evento=${evento}`);
-    return json(200, { skip: "evento-enviada" });
+    return;
   }
 
-  // Mensagens não-texto (áudio, imagem, documento) — responde amigável e sai
   if (tipo && !["text", "texto", "chat", ""].includes(tipo)) {
     console.log(`[ia-inbound] tipo não suportado: ${tipo}`);
     if (phoneBR) {
-      enviarWhatsApp(
+      await enviarWhatsApp(
         phoneBR,
         "Recebi seu envio! Por enquanto ainda não consigo ouvir áudios nem ver imagens por aqui — pode me escrever em texto o que está procurando? 🙏",
       ).catch((e) => console.warn("[ia-inbound] aviso tipo falhou:", e?.message));
     }
-    return json(200, { skip: `tipo-${tipo}` });
+    return;
   }
 
   if (!phoneBR || !userMessage) {
     console.warn("[ia-inbound] payload inválido", { phone, hasMsg: !!message });
-    return json(400, { error: "missing phone or message" });
+    return;
   }
 
   console.log(`[ia-inbound] phone=${phoneBR} msg="${userMessage.slice(0, 80)}"`);
@@ -134,7 +102,7 @@ serve(async (req) => {
     ]);
     if (cfg.ia_whatsapp_enabled !== "true") {
       console.log("[ia-inbound] skip: IA desligada");
-      return json(200, { skip: "disabled" });
+      return;
     }
     const persona = cfg.ia_whatsapp_persona ?? "Você é assistente virtual.";
     const truncate = parseInt(cfg.ia_whatsapp_truncate_chars ?? "600", 10) || 600;
@@ -158,32 +126,63 @@ serve(async (req) => {
 
     if (!lead) {
       console.log("[ia-inbound] lead não encontrado");
-      return json(200, { skip: "no lead" });
+      return;
     }
 
     if (lead.ia_handoff) {
       console.log("[ia-inbound] skip: lead em handoff");
-      return json(200, { skip: "handoff" });
+      return;
     }
 
-    // 3) rate limit (2s)
+    // 3) rate limit (5s) contra retries próximos da ZionTalk
     if (lead.ia_last_message_at) {
       const diffSecs =
         (Date.now() - new Date(lead.ia_last_message_at).getTime()) / 1000;
-      if (diffSecs < 2) {
+      if (diffSecs < 5) {
         console.log(`[rate-limit] skip ${diffSecs.toFixed(1)}s`);
-        return json(200, { skip: "rate-limited" });
+        return;
       }
     }
 
-    // 4) atualiza last_message_at logo (lock soft contra concorrência)
+    // 4) dedupe forte: mesma mensagem do cliente nos últimos 30s
+    const thirtySecsAgo = new Date(Date.now() - 30 * 1000).toISOString();
+    const { data: duplicateUserMsg } = await admin
+      .from("ia_conversas")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .eq("role", "user")
+      .eq("content", userMessage)
+      .gte("created_at", thirtySecsAgo)
+      .limit(1)
+      .maybeSingle();
+    if (duplicateUserMsg) {
+      console.log("[ia-inbound] skip: mensagem duplicada recente");
+      return;
+    }
+
+    const imovelCod = Number(lead.imovel_interesse_codigo);
+    const imovelCodigo = imovelCod && Number.isFinite(imovelCod) ? imovelCod : null;
+
+    // grava a mensagem do usuário antes de qualquer envio/IA para travar retries
+    const { error: userInsertErr } = await admin.from("ia_conversas").insert({
+      lead_id: lead.id,
+      role: "user",
+      content: userMessage,
+      imovel_codigo: imovelCodigo,
+    });
+    if (userInsertErr) {
+      console.warn("[ia-inbound] erro ao gravar user msg:", userInsertErr.message);
+      return;
+    }
+
+    // atualiza last_message_at logo (lock soft contra concorrência)
     await admin
       .from("leads")
       .update({ ia_last_message_at: new Date().toISOString() })
       .eq("id", lead.id);
 
-    // 5) Resposta imediata "aguarde" (fire-and-forget, não bloqueia)
-    enviarWhatsApp(phoneBR, "⏳ Um momento, já volto com a resposta...").catch(
+    // 5) Resposta imediata "aguarde" apenas após a trava anti-duplicidade
+    await enviarWhatsApp(phoneBR, "⏳ Um momento, já volto com a resposta...").catch(
       (e) => console.warn("[ia-inbound] aguarde send falhou:", e?.message),
     );
 
@@ -207,16 +206,6 @@ serve(async (req) => {
         console.warn("[intent] falhou, seguindo como 'outro':", (e as Error).message);
       }
     }
-
-    // grava mensagem do usuário no histórico
-    await admin.from("ia_conversas").insert({
-      lead_id: lead.id,
-      role: "user",
-      content: userMessage,
-      imovel_codigo: lead.imovel_interesse_codigo
-        ? Number(lead.imovel_interesse_codigo) || null
-        : null,
-    });
 
     // 7) handoff
     if (intent === "agendar_visita" || intent === "falar_humano") {
@@ -242,9 +231,7 @@ serve(async (req) => {
         lead_id: lead.id,
         role: "assistant",
         content: respHandoff,
-        imovel_codigo: lead.imovel_interesse_codigo
-          ? Number(lead.imovel_interesse_codigo) || null
-          : null,
+        imovel_codigo: imovelCodigo,
       });
 
       // cria tarefa pro corretor
@@ -266,7 +253,7 @@ serve(async (req) => {
           });
       }
 
-      return json(200, { handoff: true });
+      return;
     }
 
     // 8) conversa normal — carrega histórico (filtrado por imóvel quando aplicável)
@@ -277,10 +264,9 @@ serve(async (req) => {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    const imovelCod = Number(lead.imovel_interesse_codigo);
-    if (Number.isFinite(imovelCod) && imovelCod > 0) {
+    if (imovelCodigo) {
       histQuery = histQuery.or(
-        `imovel_codigo.eq.${imovelCod},imovel_codigo.is.null`,
+        `imovel_codigo.eq.${imovelCodigo},imovel_codigo.is.null`,
       );
     }
     const { data: historico } = await histQuery;
@@ -293,11 +279,11 @@ serve(async (req) => {
       })),
     ];
 
-    // 9) loop de tool calling (máx 5 iterações)
+    // 9) loop de tool calling (máx 3 iterações)
     let respostaFinal = "";
     let handoffViaTool = false;
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       const ai = await comRetry(
         () =>
           callLovableAI(messages, {
@@ -311,6 +297,9 @@ serve(async (req) => {
       // sem tool calls — resposta final
       if (!ai.tool_calls.length) {
         respostaFinal = (ai.content ?? "").trim();
+        if (!respostaFinal) {
+          console.warn(`[gemini-tools] resposta vazia finish=${ai.finish_reason}`);
+        }
         break;
       }
 
@@ -362,7 +351,7 @@ serve(async (req) => {
         lead_id: lead.id,
         role: "assistant",
         content: respHand,
-        imovel_codigo: imovelCod && Number.isFinite(imovelCod) ? imovelCod : null,
+        imovel_codigo: imovelCodigo,
       });
       if (lead.corretor_id) {
         await admin.from("tarefas").insert({
@@ -376,12 +365,12 @@ serve(async (req) => {
           lead_id: lead.id,
         });
       }
-      return json(200, { handoff: true, via: "tool" });
+      return;
     }
 
     if (!respostaFinal) {
-      respostaFinal =
-        "Desculpa, tive um problema agora. Pode me mandar de novo, por favor?";
+      console.error("[ia-inbound] IA não gerou resposta final; não envia fallback genérico");
+      return;
     }
     if (respostaFinal.length > truncate) {
       respostaFinal = respostaFinal.slice(0, truncate).trim() + "...";
@@ -394,16 +383,59 @@ serve(async (req) => {
       lead_id: lead.id,
       role: "assistant",
       content: respostaFinal,
-      imovel_codigo: imovelCod && Number.isFinite(imovelCod) ? imovelCod : null,
+      imovel_codigo: imovelCodigo,
     });
     await admin
       .from("leads")
       .update({ ia_last_message_at: new Date().toISOString() })
       .eq("id", lead.id);
 
-    return json(200, { ok: true, resposta: respostaFinal });
+    console.log(`[ia-inbound] ok lead=${lead.id} phone=${phoneBR}`);
   } catch (e: any) {
     console.error("[ia-inbound] error:", e?.message);
-    return json(500, { error: e?.message ?? "internal error" });
   }
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // GET → status check (UI usa pra mostrar badge "Protegido por token")
+  if (req.method === "GET") {
+    return json(200, {
+      ok: true,
+      service: "ia-whatsapp-inbound",
+      token_configured: ZIONTALK_INBOUND_TOKEN.length > 0,
+    });
+  }
+
+  if (req.method !== "POST") return json(405, { error: "method not allowed" });
+
+  // Auth Bearer (opcional enquanto não tem token)
+  if (ZIONTALK_INBOUND_TOKEN) {
+    const auth = req.headers.get("authorization") ?? "";
+    const xtoken = req.headers.get("x-webhook-token") ?? "";
+    const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    const token = bearer || xtoken;
+    if (token !== ZIONTALK_INBOUND_TOKEN) {
+      console.warn("[ia-inbound] token inválido");
+      return json(401, { error: "unauthorized" });
+    }
+  }
+
+  let payload: any;
+  try {
+    payload = await req.json();
+  } catch {
+    return json(400, { error: "invalid JSON" });
+  }
+
+  // Log payload bruto (temporário, pra confirmar formato real do ZionTalk)
+  try {
+    console.log("[ia-inbound] payload:", JSON.stringify(payload).slice(0, 500));
+  } catch {
+    // ignore
+  }
+
+  waitUntil(processInbound(payload));
+  return json(200, { ok: true, queued: true });
 });
