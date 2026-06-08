@@ -155,7 +155,7 @@ export default function LeadsList() {
                   <SelectItem value="indicacao">Indicação</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={load}>Aplicar</Button>
+              <Button variant="outline" onClick={() => load()}>Aplicar</Button>
             </div>
           </CardContent>
         </Card>
