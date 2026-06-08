@@ -341,9 +341,16 @@ export default function Configuracoes() {
 
         <TabsContent value="usuarios" className="mt-4">
           <Card className="p-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Novos usuários se cadastram em <code className="text-xs bg-muted px-1 rounded">/crm/login</code>. Após o cadastro, defina aqui a permissão de cada um.
-            </p>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <p className="text-sm text-muted-foreground">
+                Crie usuários direto aqui ou peça que se cadastrem em <code className="text-xs bg-muted px-1 rounded">/crm/login</code>. Defina a permissão de cada um abaixo.
+              </p>
+              {isAdmin && (
+                <Button size="sm" onClick={() => setNovoUserOpen(true)} className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D] shrink-0">
+                  <UserPlus className="h-4 w-4 mr-2" />Novo usuário
+                </Button>
+              )}
+            </div>
             <div className="space-y-2">
               {users.length === 0 && <p className="text-muted-foreground text-sm">Nenhum usuário.</p>}
               {users.map((u) => (
