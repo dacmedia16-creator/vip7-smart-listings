@@ -1,11 +1,17 @@
-// Edge function: gera feeds XML de imóveis para portais imobiliários.
-// Acesso público (cada portal lê 1x ao dia). Rotas:
-//   GET /portal-feed/zap           → VRSync 2.0 (Zap + VivaReal)
-//   GET /portal-feed/olx           → OLX Real Estate XML
-//   GET /portal-feed/imovelweb     → Universal Feed
-//   GET /portal-feed/chavesnamao   → Chaves na Mão XML
+// Edge function: feeds XML de imóveis para portais imobiliários.
+// Público (cada portal lê 1-2x/dia). Rotas:
+//   GET /portal-feed/zap | /vivareal | /olx → VRSync (Grupo OLX, padrão único)
+//   GET /portal-feed/imovelweb                → Universal Feed (legado)
+//   GET /portal-feed/chavesnamao              → Chaves na Mão XML
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import {
+  mapUsageType,
+  mapPropertyType,
+  mapFeature,
+  mapDisplayAddress,
+  mapTransactionType,
+} from './vrsync-maps.ts';
 
 type Portal = 'zap_vivareal' | 'olx' | 'imovelweb' | 'chavesnamao';
 
@@ -24,20 +30,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': '*',
 };
 
+// Dados padrão da imobiliária (sobrescrevíveis via app_config.imobiliaria_contato_json).
+const DEFAULT_CONTATO = {
+  nome: 'VIP7 Imoveis',
+  email: 'contato@vipsevenimoveis.com.br',
+  telefone: '15 3500-8641',
+  website: 'https://vipsevenimoveis.com.br',
+  endereco: 'Rua XV de Novembro',
+  cidade: 'Sorocaba',
+  estado: 'SP',
+  cep: '18010-080',
+  bairro: 'Centro',
+};
+
+const SITE_URL = 'https://vipsevenimoveis.com.br';
+
 function esc(v: unknown): string {
   if (v === null || v === undefined) return '';
   return String(v)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
-
 function cdata(v: unknown): string {
   if (v === null || v === undefined) return '<![CDATA[]]>';
-  const s = String(v).replace(/]]>/g, ']]]]><![CDATA[>');
-  return `<![CDATA[${s}]]>`;
+  return `<![CDATA[${String(v).replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
 }
 
 interface ImovelRow {
@@ -57,6 +73,8 @@ interface ImovelRow {
   preco: number;
   condominio: number | null;
   iptu: number | null;
+  iptu_anual: number | null;
+  iptu_mensal: number | null;
   area: number | null;
   area_total: number | null;
   quartos: number | null;
@@ -75,8 +93,10 @@ interface ImovelRow {
 }
 
 function validar(im: ImovelRow): string | null {
-  if (!im.titulo || im.titulo.trim().length < 5) return 'Título curto';
-  if (!im.descricao || im.descricao.trim().length < 100) return 'Descrição < 100 chars';
+  if (!im.titulo || im.titulo.trim().length < 10) return 'Título precisa ter pelo menos 10 caracteres';
+  if (im.titulo.length > 100) return 'Título excede 100 caracteres';
+  if (!im.descricao || im.descricao.trim().length < 100) return 'Descrição < 100 caracteres';
+  if (im.descricao.length > 3000) return 'Descrição excede 3000 caracteres';
   if (!im.preco || im.preco <= 0) return 'Sem preço';
   const area = im.area ?? im.area_total;
   if (!area || area <= 0) return 'Sem área';
@@ -88,122 +108,117 @@ function validar(im: ImovelRow): string | null {
   return null;
 }
 
-function transactionType(finalidade: string): 'For Sale' | 'For Rent' {
-  return finalidade === 'aluguel' ? 'For Rent' : 'For Sale';
+function detailUrl(im: ImovelRow): string {
+  const codigo = im.codigo_imoview || im.codigo_interno || im.id;
+  return `${SITE_URL}/imovel/${codigo}`;
 }
 
-function categoryName(tipo: string): string {
-  const t = (tipo || '').toLowerCase();
-  if (t.includes('apartamento')) return 'Apartment';
-  if (t.includes('casa')) return 'Home';
-  if (t.includes('terreno') || t.includes('lote')) return 'Allotment Land';
-  if (t.includes('comercial') || t.includes('sala')) return 'Business';
-  if (t.includes('galp')) return 'Warehouse';
-  return 'Residential';
-}
+// ===== VRSync (Zap + VivaReal + OLX — Grupo OLX, padrão único) =====
+function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): string {
+  const items = imoveis.map((im) => {
+    // Media: vídeo do YouTube + fotos, todos como <Item> dentro do mesmo <Media>
+    const mediaItems: string[] = [];
+    if (im.youtube_url) {
+      mediaItems.push(`<Item medium="video">${esc(im.youtube_url)}</Item>`);
+    }
+    (im.fotos ?? []).slice(0, 30).forEach((url, idx) => {
+      const attrs = idx === 0 ? ' primary="true"' : '';
+      mediaItems.push(`<Item medium="image" caption="img${idx + 1}"${attrs}>${esc(url)}</Item>`);
+    });
+    const media = mediaItems.length ? `<Media>${mediaItems.join('')}</Media>` : '';
 
-// ===== VRSync (Zap/VivaReal) =====
-function buildVRSync(imoveis: ImovelRow[]): string {
-  const itens = imoveis.map((im) => {
-    const fotos = (im.fotos ?? []).slice(0, 30).map((url, idx) =>
-      `<Media medium="image" primary="${idx === 0 ? 'true' : 'false'}"><Url><![CDATA[${url}]]></Url></Media>`
-    ).join('');
-    const features = (im.caracteristicas ?? []).map((c) => `<Feature>${esc(c)}</Feature>`).join('');
-    const valor = transactionType(im.finalidade) === 'For Rent' ? 'RentalPrice' : 'ListPrice';
+    // Features traduzidas e deduplicadas
+    const featureSet = new Set<string>();
+    (im.caracteristicas ?? []).forEach((c) => {
+      const f = mapFeature(c);
+      if (f) featureSet.add(f);
+    });
+    const features = featureSet.size
+      ? `<Features>${[...featureSet].map((f) => `<Feature>${f}</Feature>`).join('')}</Features>`
+      : '';
+
+    // IPTU (novo elemento, substitui YearlyTax)
+    let iptu = '';
+    if (im.iptu_mensal && im.iptu_mensal > 0) {
+      iptu = `<Iptu currency="BRL" period="Monthly">${Math.round(im.iptu_mensal)}</Iptu>`;
+    } else if (im.iptu_anual && im.iptu_anual > 0) {
+      iptu = `<Iptu currency="BRL" period="Yearly">${Math.round(im.iptu_anual)}</Iptu>`;
+    } else if (im.iptu && im.iptu > 0) {
+      iptu = `<Iptu currency="BRL" period="Yearly">${Math.round(im.iptu)}</Iptu>`;
+    }
+
+    const display = mapDisplayAddress(im.mostrar_endereco, im.endereco, im.numero, im.bairro);
+    const listingId = String(im.codigo_imoview || im.codigo_interno || im.id);
+
     return `
     <Listing>
-      <ListingID>${esc(im.codigo_interno || im.codigo_imoview || im.id)}</ListingID>
+      <ListingID>${esc(listingId)}</ListingID>
       <Title>${cdata(im.titulo)}</Title>
-      <TransactionType>${transactionType(im.finalidade)}</TransactionType>
+      <TransactionType>${mapTransactionType(im.finalidade)}</TransactionType>
+      <PublicationType>${im.destaque_portal ? 'SUPER_PREMIUM' : 'STANDARD'}</PublicationType>
+      <DetailViewUrl>${esc(detailUrl(im))}</DetailViewUrl>
+      ${media}
       <Details>
+        <UsageType>${mapUsageType(im.tipo)}</UsageType>
+        <PropertyType>${mapPropertyType(im.tipo)}</PropertyType>
         <Description>${cdata(im.descricao)}</Description>
-        <ListPrice currency="BRL">${im.preco}</ListPrice>
-        ${im.condominio ? `<PropertyAdministrationFee currency="BRL">${im.condominio}</PropertyAdministrationFee>` : ''}
-        ${im.iptu ? `<YearlyTax currency="BRL">${im.iptu}</YearlyTax>` : ''}
-        <PropertyType>${esc(im.tipo)}</PropertyType>
-        <LivingArea unit="square metres">${im.area ?? im.area_total ?? 0}</LivingArea>
-        ${im.area_total ? `<LotArea unit="square metres">${im.area_total}</LotArea>` : ''}
+        <ListPrice currency="BRL">${Math.round(im.preco)}</ListPrice>
+        ${im.condominio ? `<PropertyAdministrationFee currency="BRL">${Math.round(im.condominio)}</PropertyAdministrationFee>` : ''}
+        ${iptu}
+        <LivingArea unit="square metres">${Math.round((im.area ?? im.area_total) ?? 0)}</LivingArea>
+        ${im.area_total ? `<LotArea unit="square metres">${Math.round(im.area_total)}</LotArea>` : ''}
         ${im.quartos != null ? `<Bedrooms>${im.quartos}</Bedrooms>` : ''}
+        ${im.bathrooms_skip ?? im.banheiros != null ? `<Bathrooms>${im.banheiros ?? 0}</Bathrooms>` : ''}
         ${im.suites != null ? `<Suites>${im.suites}</Suites>` : ''}
-        ${im.banheiros != null ? `<Bathrooms>${im.banheiros}</Bathrooms>` : ''}
-        ${im.vagas != null ? `<Garage>${im.vagas}</Garage>` : ''}
-        ${features ? `<Features>${features}</Features>` : ''}
-        ${im.youtube_url ? `<Videos><Video><Url><![CDATA[${im.youtube_url}]]></Url></Video></Videos>` : ''}
-        ${im.tour_virtual_url ? `<VirtualTour><![CDATA[${im.tour_virtual_url}]]></VirtualTour>` : ''}
+        ${im.vagas != null ? `<Garage type="Parking Space">${im.vagas}</Garage>` : ''}
+        ${features}
       </Details>
-      <Location displayAddress="${im.mostrar_endereco ? 'All' : 'Neighborhood'}">
+      <Location displayAddress="${display}">
         <Country abbreviation="BR">Brasil</Country>
         <State abbreviation="${esc(im.estado)}">${esc(im.estado)}</State>
         <City>${esc(im.cidade)}</City>
         <Neighborhood>${esc(im.bairro)}</Neighborhood>
-        ${im.mostrar_endereco && im.endereco ? `<Address>${esc(im.endereco)}</Address>` : ''}
-        ${im.mostrar_endereco && im.numero ? `<StreetNumber>${esc(im.numero)}</StreetNumber>` : ''}
+        ${display === 'Street' && im.endereco ? `<Address>${esc(im.endereco)}</Address>` : ''}
+        ${display === 'Street' && im.numero ? `<StreetNumber>${esc(im.numero)}</StreetNumber>` : ''}
         ${im.cep ? `<PostalCode>${esc(im.cep)}</PostalCode>` : ''}
         ${im.latitude && im.longitude ? `<Latitude>${im.latitude}</Latitude><Longitude>${im.longitude}</Longitude>` : ''}
       </Location>
-      ${fotos ? `<Media>${fotos}</Media>` : ''}
-      ${im.destaque_portal ? '<PublicationType>SUPER_PREMIUM</PublicationType>' : '<PublicationType>STANDARD</PublicationType>'}
+      <ContactInfo>
+        <Name>${esc(contato.nome)}</Name>
+        <Email>${esc(contato.email)}</Email>
+        <Website>${esc(contato.website)}</Website>
+        <OfficeName>${esc(contato.nome)}</OfficeName>
+        <Telephone>${esc(contato.telefone)}</Telephone>
+        <Location>
+          <Country abbreviation="BR">Brasil</Country>
+          <State abbreviation="${esc(contato.estado)}">${esc(contato.estado)}</State>
+          <City>${esc(contato.cidade)}</City>
+          <Neighborhood>${esc(contato.bairro)}</Neighborhood>
+          <Address>${esc(contato.endereco)}</Address>
+          <PostalCode>${esc(contato.cep)}</PostalCode>
+        </Location>
+      </ContactInfo>
     </Listing>`;
   }).join('');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<ListingDataFeed xmlns="http://www.vivareal.com/schemas/1.0/VRSync.xsd">
+<ListingDataFeed xmlns="http://www.vivareal.com/schemas/1.0/VRSync"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xsi:schemaLocation="http://www.vivareal.com/schemas/1.0/VRSync http://xml.vivareal.com/vrsync.xsd">
   <Header>
-    <Provider>VIP7 Imoveis</Provider>
-    <PublishDate>${new Date().toISOString()}</PublishDate>
-    <Email>contato@vipsevenimoveis.com.br</Email>
+    <Provider>${esc(contato.nome)}</Provider>
+    <Email>${esc(contato.email)}</Email>
+    <ContactName>${esc(contato.nome)}</ContactName>
+    <PublishDate>${new Date().toISOString().slice(0, 19)}</PublishDate>
+    <Telephone>${esc(contato.telefone)}</Telephone>
   </Header>
-  <Listings>${itens}
+  <Listings>${items}
   </Listings>
 </ListingDataFeed>`;
 }
 
-// ===== OLX (Real Estate XML) =====
-function buildOLX(imoveis: ImovelRow[]): string {
-  const ads = imoveis.map((im) => {
-    const fotos = (im.fotos ?? []).slice(0, 20).map((url) => `<image_url><![CDATA[${url}]]></image_url>`).join('');
-    const featuresArr = im.caracteristicas ?? [];
-    const features = featuresArr.map((c) => `<feature>${esc(c)}</feature>`).join('');
-    return `
-    <ad>
-      <id>${esc(im.codigo_interno || im.codigo_imoview || im.id)}</id>
-      <category>${categoryName(im.tipo)}</category>
-      <subject>${cdata(im.titulo)}</subject>
-      <body>${cdata(im.descricao)}</body>
-      <price>${im.preco}</price>
-      <type>${im.finalidade === 'aluguel' ? 'rent' : 'sale'}</type>
-      <real_estate>
-        ${im.condominio ? `<condo_fee>${im.condominio}</condo_fee>` : ''}
-        ${im.iptu ? `<iptu>${im.iptu}</iptu>` : ''}
-        <constructed_area>${im.area ?? im.area_total ?? 0}</constructed_area>
-        ${im.area_total ? `<total_area>${im.area_total}</total_area>` : ''}
-        ${im.quartos != null ? `<bedrooms>${im.quartos}</bedrooms>` : ''}
-        ${im.suites != null ? `<suites>${im.suites}</suites>` : ''}
-        ${im.banheiros != null ? `<bathrooms>${im.banheiros}</bathrooms>` : ''}
-        ${im.vagas != null ? `<garage_spaces>${im.vagas}</garage_spaces>` : ''}
-        ${features ? `<features>${features}</features>` : ''}
-      </real_estate>
-      <location>
-        <zipcode>${esc(im.cep)}</zipcode>
-        <state>${esc(im.estado)}</state>
-        <city>${esc(im.cidade)}</city>
-        <neighborhood>${esc(im.bairro)}</neighborhood>
-        ${im.mostrar_endereco && im.endereco ? `<address>${esc(im.endereco)}</address>` : ''}
-        ${im.mostrar_endereco && im.numero ? `<address_number>${esc(im.numero)}</address_number>` : ''}
-        ${im.latitude && im.longitude ? `<latitude>${im.latitude}</latitude><longitude>${im.longitude}</longitude>` : ''}
-      </location>
-      <images>${fotos}</images>
-      ${im.youtube_url ? `<videos><video_url><![CDATA[${im.youtube_url}]]></video_url></videos>` : ''}
-    </ad>`;
-  }).join('');
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<ads>${ads}
-</ads>`;
-}
-
-// ===== ImovelWeb / Universal Feed =====
-function buildImovelWeb(imoveis: ImovelRow[]): string {
+// ===== ImovelWeb / Universal Feed (legado, formato PT genérico) =====
+function buildImovelWeb(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): string {
   const itens = imoveis.map((im) => {
     const fotos = (im.fotos ?? []).slice(0, 25).map((url, i) =>
       `<imagem ordem="${i + 1}"><![CDATA[${url}]]></imagem>`
@@ -246,8 +261,9 @@ function buildImovelWeb(imoveis: ImovelRow[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <carga>
   <imobiliaria>
-    <nome>VIP7 Imoveis</nome>
-    <email>contato@vipsevenimoveis.com.br</email>
+    <nome>${esc(contato.nome)}</nome>
+    <email>${esc(contato.email)}</email>
+    <telefone>${esc(contato.telefone)}</telefone>
   </imobiliaria>
   <imoveis>${itens}
   </imoveis>
@@ -290,22 +306,33 @@ function buildChavesNaMao(imoveis: ImovelRow[]): string {
 </imoveis>`;
 }
 
+async function loadContato(supabase: any): Promise<typeof DEFAULT_CONTATO> {
+  try {
+    const { data } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'imobiliaria_contato_json')
+      .maybeSingle();
+    if (data?.value) {
+      const parsed = JSON.parse(data.value);
+      return { ...DEFAULT_CONTATO, ...parsed };
+    }
+  } catch (_) { /* usa default */ }
+  return DEFAULT_CONTATO;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const url = new URL(req.url);
-    // Match last path segment
     const parts = url.pathname.split('/').filter(Boolean);
     const slug = (parts[parts.length - 1] || '').toLowerCase();
     const portal = ROUTE_TO_PORTAL[slug];
 
     if (!portal) {
       return new Response(
-        JSON.stringify({
-          error: 'Rota inválida',
-          rotas_validas: Object.keys(ROUTE_TO_PORTAL),
-        }),
+        JSON.stringify({ error: 'Rota inválida', rotas_validas: Object.keys(ROUTE_TO_PORTAL) }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -315,18 +342,23 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Imóveis publicados no portal
+    const contato = await loadContato(supabase);
+
     const { data: pubs, error: pubErr } = await supabase
       .from('imovel_portais')
       .select('imovel_id, destaque_portal')
       .eq('portal', portal)
       .eq('publicar', true);
-
     if (pubErr) throw pubErr;
+
+    const xmlHeaders = {
+      ...corsHeaders,
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    };
+
     if (!pubs || pubs.length === 0) {
-      return new Response(buildEmpty(portal), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=1800' },
-      });
+      return new Response(buildEmpty(portal, contato), { headers: xmlHeaders });
     }
 
     const ids = pubs.map((p: any) => p.imovel_id);
@@ -336,36 +368,28 @@ Deno.serve(async (req) => {
       .from('imoveis_proprios')
       .select(
         'id,codigo_imoview,codigo_interno,titulo,descricao,finalidade,tipo,cidade,bairro,estado,endereco,numero,cep,' +
-        'preco,condominio,iptu,area,area_total,quartos,suites,banheiros,vagas,caracteristicas,fotos,latitude,longitude,' +
-        'mostrar_endereco,youtube_url,video_url,tour_virtual_url',
+        'preco,condominio,iptu,iptu_anual,iptu_mensal,area,area_total,quartos,suites,banheiros,vagas,' +
+        'caracteristicas,fotos,latitude,longitude,mostrar_endereco,youtube_url,video_url,tour_virtual_url',
       )
       .in('id', ids)
       .eq('ativo', true)
       .in('status', ['disponivel', 'sob_proposta']);
-
     if (imErr) throw imErr;
 
     const validos: ImovelRow[] = [];
     const erros: { id: string; erro: string }[] = [];
-
     for (const im of (imoveis ?? []) as ImovelRow[]) {
       const erro = validar(im);
-      if (erro) {
-        erros.push({ id: im.id, erro });
-        continue;
-      }
+      if (erro) { erros.push({ id: im.id, erro }); continue; }
       im.destaque_portal = destaqueMap.get(im.id) ?? false;
       validos.push(im);
     }
 
-    // Atualiza erros de validação (fire and forget)
     if (erros.length > 0) {
-      const upd = erros.map((e) =>
+      Promise.allSettled(erros.map((e) =>
         supabase.from('imovel_portais').update({ erro_validacao: e.erro }).eq('portal', portal).eq('imovel_id', e.id),
-      );
-      Promise.allSettled(upd);
+      ));
     }
-    // Limpa erros antigos dos válidos
     if (validos.length > 0) {
       supabase.from('imovel_portais')
         .update({ erro_validacao: null, ultimo_envio_em: new Date().toISOString() })
@@ -376,19 +400,13 @@ Deno.serve(async (req) => {
 
     let xml = '';
     switch (portal) {
-      case 'zap_vivareal': xml = buildVRSync(validos); break;
-      case 'olx': xml = buildOLX(validos); break;
-      case 'imovelweb': xml = buildImovelWeb(validos); break;
+      case 'zap_vivareal':
+      case 'olx':         xml = buildVRSync(validos, contato); break;
+      case 'imovelweb':   xml = buildImovelWeb(validos, contato); break;
       case 'chavesnamao': xml = buildChavesNaMao(validos); break;
     }
 
-    return new Response(xml, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/xml; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    });
+    return new Response(xml, { headers: xmlHeaders });
   } catch (e) {
     console.error('[portal-feed] erro', e);
     return new Response(
@@ -398,11 +416,11 @@ Deno.serve(async (req) => {
   }
 });
 
-function buildEmpty(portal: Portal): string {
+function buildEmpty(portal: Portal, contato: typeof DEFAULT_CONTATO): string {
   switch (portal) {
-    case 'zap_vivareal': return buildVRSync([]);
-    case 'olx': return buildOLX([]);
-    case 'imovelweb': return buildImovelWeb([]);
+    case 'zap_vivareal':
+    case 'olx':         return buildVRSync([], contato);
+    case 'imovelweb':   return buildImovelWeb([], contato);
     case 'chavesnamao': return buildChavesNaMao([]);
   }
 }
