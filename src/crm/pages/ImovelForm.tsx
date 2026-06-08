@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Upload, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, X, Trash2, EyeOff, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
 import { Button } from '@/components/ui/button';
@@ -224,6 +224,24 @@ export default function ImovelForm() {
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     toast({ title: 'Excluído' });
     navigate('/crm/imoveis');
+  };
+
+  const handleToggleAtivo = async () => {
+    if (!id) return;
+    const currentlyAtivo = !!loadedRecord?.ativo && loadedRecord?.status !== 'inativo';
+    const msg = currentlyAtivo
+      ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
+      : 'Reativar este imóvel? Ele voltará a aparecer no site principal.';
+    if (!confirm(msg)) return;
+    const updates = currentlyAtivo
+      ? { ativo: false, status: 'inativo' as const }
+      : { ativo: true, status: 'disponivel' as const };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', id);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: currentlyAtivo ? 'Imóvel desativado' : 'Imóvel reativado' });
+    form.setValue('ativo', updates.ativo);
+    form.setValue('status', updates.status);
+    setLoadedRecord((r: any) => r ? { ...r, ...updates } : r);
   };
 
   // Helpers para campos
@@ -602,6 +620,17 @@ export default function ImovelForm() {
               <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Excluir</Button>
             ) : <div />}
             <div className="flex gap-2">
+              {id && canEditThisRecord && (
+                loadedRecord?.ativo && loadedRecord?.status !== 'inativo' ? (
+                  <Button type="button" variant="outline" onClick={handleToggleAtivo}>
+                    <EyeOff className="h-4 w-4 mr-2" />Desativar (ocultar do site)
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" onClick={handleToggleAtivo}>
+                    <Eye className="h-4 w-4 mr-2" />Reativar no site
+                  </Button>
+                )
+              )}
               <Button type="button" variant="outline" onClick={() => navigate('/crm/imoveis')}>Cancelar</Button>
               <Button type="submit" disabled={saving || (!!id && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
