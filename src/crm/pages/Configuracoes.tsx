@@ -290,6 +290,52 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="integracoes" className="mt-4 space-y-4">
+          <Card className="p-6 space-y-4 max-w-3xl">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2"><Plug className="h-5 w-5" />Imoview — Conexão App (login)</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Testa o login com email + senha no Imoview (<code className="text-xs bg-muted px-1 rounded">App_ValidarAcesso</code>) e faz uma chamada de smoke test em
+                <code className="text-xs bg-muted px-1 rounded ml-1">App_RetornarPessoas</code>. Necessário para puxar lista de clientes e proprietários em lote.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Credenciais ficam guardadas como secrets (<code>IMOVIEW_USER_EMAIL</code>, <code>IMOVIEW_USER_PASSWORD</code>).
+              </p>
+            </div>
+
+            <div>
+              <Button onClick={testImoviewAuth} disabled={imoviewTesting} className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]">
+                {imoviewTesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plug className="h-4 w-4 mr-2" />}
+                {imoviewTesting ? 'Testando…' : 'Testar conexão'}
+              </Button>
+            </div>
+
+            {imoviewResult && (
+              <div className={`rounded-md border p-4 text-sm ${imoviewResult.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                <div className="flex items-center gap-2 font-medium mb-2">
+                  {imoviewResult.ok ? (
+                    <><CheckCircle2 className="h-5 w-5 text-emerald-600" /><span className="text-emerald-700">Conexão OK</span></>
+                  ) : (
+                    <><XCircle className="h-5 w-5 text-red-600" /><span className="text-red-700">Falhou</span></>
+                  )}
+                </div>
+                {imoviewResult.error && (
+                  <pre className="text-xs whitespace-pre-wrap text-red-700">{imoviewResult.error}</pre>
+                )}
+                {imoviewResult.login && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div>Login: {imoviewResult.login.elapsed_ms}ms · usuário #{imoviewResult.login.codigousuario} · codigoacesso {imoviewResult.login.codigoacesso_preview}</div>
+                    {imoviewResult.probe && (
+                      <div>Probe ({imoviewResult.probe.endpoint}): status {imoviewResult.probe.status} · {imoviewResult.probe.elapsed_ms}ms{typeof imoviewResult.probe.sample?.quantidade === 'number' ? ` · ${imoviewResult.probe.sample.quantidade} pessoas na base` : ''}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+
         <TabsContent value="usuarios" className="mt-4">
           <Card className="p-4">
             <p className="text-sm text-muted-foreground mb-4">
