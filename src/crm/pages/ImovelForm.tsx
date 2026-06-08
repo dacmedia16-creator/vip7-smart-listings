@@ -217,6 +217,16 @@ export default function ImovelForm() {
   };
 
   const removeFoto = (url: string) => setFotos((p) => p.filter((u) => u !== url));
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const reorderFotos = (from: number, to: number) => {
+    if (from === to) return;
+    setFotos((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
 
   const handleDelete = async () => {
     if (!id || !confirm('Excluir este imóvel?')) return;
