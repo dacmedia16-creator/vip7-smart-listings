@@ -6,7 +6,9 @@ import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
 
 const IMOVIEW_BASE = "https://api.imoview.com.br";
 
-type CacheEntry = { codigo: string; expiresAt: number };
+export type ImoviewSession = { codigoacesso: string; codigousuario: number | null };
+
+type CacheEntry = ImoviewSession & { expiresAt: number };
 let cached: CacheEntry | null = null;
 const TTL_MS = 50 * 60 * 1000; // 50 min
 
@@ -21,7 +23,7 @@ async function md5Hex(input: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function loginImoview(): Promise<string> {
+export async function loginImoview(): Promise<ImoviewSession> {
   const chave = requireEnv("IMOVIEW_API_KEY");
   const email = requireEnv("IMOVIEW_USER_EMAIL");
   const senhaPlain = requireEnv("IMOVIEW_USER_PASSWORD");
@@ -31,37 +33,36 @@ export async function loginImoview(): Promise<string> {
   url.searchParams.set("email", email);
   url.searchParams.set("senha", senhaMd5);
 
-  const res = await fetch(url.toString(), {
-    method: "GET",
-    headers: { chave },
-  });
-
+  const res = await fetch(url.toString(), { method: "GET", headers: { chave } });
   const text = await res.text();
   let json: any = null;
   try { json = JSON.parse(text); } catch { /* keep raw */ }
 
-  if (!res.ok) {
-    throw new Error(`App_ValidarAcesso ${res.status}: ${text.slice(0, 300)}`);
-  }
+  if (!res.ok) throw new Error(`App_ValidarAcesso ${res.status}: ${text.slice(0, 300)}`);
 
-  const codigo =
-    json?.codigoacesso ??
-    json?.codigoAcesso ??
-    json?.codigo_acesso ??
-    json?.codigo ??
-    (typeof json === "string" ? json : null);
-
-  if (!codigo || typeof codigo !== "string") {
+  const codigoacesso =
+    json?.codigoacesso ?? json?.codigoAcesso ?? json?.codigo_acesso ?? json?.codigo ?? null;
+  if (!codigoacesso || typeof codigoacesso !== "string") {
     throw new Error(`App_ValidarAcesso sem codigoacesso. Resposta: ${text.slice(0, 300)}`);
   }
-  return codigo;
+  const codigousuario =
+    typeof json?.codigousuario === "number" ? json.codigousuario :
+    typeof json?.codigoUsuario === "number" ? json.codigoUsuario : null;
+
+  return { codigoacesso, codigousuario };
+}
+
+export async function getSession(force = false): Promise<ImoviewSession> {
+  if (!force && cached && cached.expiresAt > Date.now()) {
+    return { codigoacesso: cached.codigoacesso, codigousuario: cached.codigousuario };
+  }
+  const sess = await loginImoview();
+  cached = { ...sess, expiresAt: Date.now() + TTL_MS };
+  return sess;
 }
 
 export async function getCodigoAcesso(force = false): Promise<string> {
-  if (!force && cached && cached.expiresAt > Date.now()) return cached.codigo;
-  const codigo = await loginImoview();
-  cached = { codigo, expiresAt: Date.now() + TTL_MS };
-  return codigo;
+  return (await getSession(force)).codigoacesso;
 }
 
 export interface ImoviewAppFetchOptions {
