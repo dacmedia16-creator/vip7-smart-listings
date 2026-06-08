@@ -591,7 +591,10 @@ export default function ImovelForm() {
                   {T('tour_360_url', 'URL do tour 360')}
                 </div>
               </Card>
+            </TabsContent>
 
+            {/* FOTOS */}
+            <TabsContent value="fotos" className="space-y-4">
               <Card className="p-6 space-y-4">
                 <h2 className="font-semibold">Fotos</h2>
                 <div>
