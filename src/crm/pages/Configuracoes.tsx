@@ -144,6 +144,7 @@ export default function Configuracoes() {
         <TabsList>
           <TabsTrigger value="notificacoes"><Bell className="h-4 w-4 mr-2" />Notificações</TabsTrigger>
           <TabsTrigger value="ia"><Bot className="h-4 w-4 mr-2" />Atendente IA</TabsTrigger>
+          <TabsTrigger value="integracoes"><Plug className="h-4 w-4 mr-2" />Integrações</TabsTrigger>
           <TabsTrigger value="usuarios"><Users className="h-4 w-4 mr-2" />Usuários</TabsTrigger>
           <TabsTrigger value="distribuicao"><Shuffle className="h-4 w-4 mr-2" />Distribuição</TabsTrigger>
         </TabsList>
