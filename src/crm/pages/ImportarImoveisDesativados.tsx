@@ -548,6 +548,21 @@ export default function ImportarImoveisDesativados() {
               <CardTitle className="text-base">3. Importar</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <Checkbox
+                  checked={syncProprietarios}
+                  onCheckedChange={(v) => setSyncProprietarios(!!v)}
+                  disabled={importing}
+                  className="mt-0.5"
+                />
+                <span className="text-sm">
+                  <strong>Buscar proprietários no Imoview após importar</strong>
+                  <br />
+                  <span className="text-muted-foreground text-xs">
+                    Para cada imóvel inserido, consulta a API e cria/atualiza os clientes (papel: proprietário) com nome, e-mail, telefone e percentual.
+                  </span>
+                </span>
+              </label>
               <Button onClick={startImport} disabled={importing} size="lg">
                 {importing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importando…</> : <>Importar {rows.length} imóveis como inativos</>}
               </Button>
@@ -564,7 +579,7 @@ export default function ImportarImoveisDesativados() {
         {result && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Resultado</CardTitle>
+              <CardTitle className="text-base">Resultado — Imóveis</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>✅ Inseridos: <strong>{result.inseridos}</strong></p>
@@ -585,6 +600,55 @@ export default function ImportarImoveisDesativados() {
                   <Link to="/crm/imoveis">Ver imóveis</Link>
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {propSync.phase !== 'idle' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Resultado — Proprietários
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {(propSync.phase === 'starting' || propSync.phase === 'running') && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>
+                      {propSync.phase === 'starting'
+                        ? 'Iniciando consulta no Imoview…'
+                        : `Processando ${propSync.processed ?? 0} / ${propSync.total ?? 0} imóveis…`}
+                    </span>
+                  </div>
+                  <Progress value={((propSync.processed ?? 0) / Math.max(1, propSync.total ?? 1)) * 100} />
+                  {propSync.vinculos != null && (
+                    <p className="text-xs text-muted-foreground">
+                      Vínculos até agora: {propSync.vinculos} · Com proprietário: {propSync.comProp ?? 0} · Sem: {propSync.semProp ?? 0} · Erros: {propSync.errors ?? 0}
+                    </p>
+                  )}
+                </>
+              )}
+              {propSync.phase === 'done' && (
+                <>
+                  <p>🔗 Vínculos criados: <strong>{propSync.vinculos ?? 0}</strong></p>
+                  <p>👥 Imóveis com proprietário: <strong>{propSync.comProp ?? 0}</strong></p>
+                  <p>➖ Sem proprietário no Imoview: <strong>{propSync.semProp ?? 0}</strong></p>
+                  {(propSync.errors ?? 0) > 0 && (
+                    <p className="text-destructive">❌ Erros: <strong>{propSync.errors}</strong></p>
+                  )}
+                  <div className="pt-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/crm/clientes">Ver clientes</Link>
+                    </Button>
+                  </div>
+                </>
+              )}
+              {propSync.phase === 'error' && (
+                <p className="text-destructive">❌ {propSync.errMsg ?? 'Erro desconhecido'}</p>
+              )}
             </CardContent>
           </Card>
         )}
