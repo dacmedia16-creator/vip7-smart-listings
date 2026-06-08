@@ -8,7 +8,8 @@ import { useRoles } from '../hooks/useRole';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Upload, FileSpreadsheet, ArrowLeft, Info } from 'lucide-react';
+import { Loader2, Upload, FileSpreadsheet, ArrowLeft, Info, Users } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import * as XLSX from 'xlsx';
 
 type Row = Record<string, string>;
@@ -282,6 +283,19 @@ type Result = {
   ignoradosDup: number;
   ignoradosErro: number;
   erros: { codigo: number | string; motivo: string }[];
+  codigosInseridos: number[];
+};
+
+type PropSync = {
+  phase: 'idle' | 'starting' | 'running' | 'done' | 'error';
+  syncId?: string;
+  total?: number;
+  processed?: number;
+  vinculos?: number;
+  comProp?: number;
+  semProp?: number;
+  errors?: number;
+  errMsg?: string;
 };
 
 const BATCH = 100;
@@ -296,6 +310,8 @@ export default function ImportarImoveisDesativados() {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState<Result | null>(null);
+  const [syncProprietarios, setSyncProprietarios] = useState(true);
+  const [propSync, setPropSync] = useState<PropSync>({ phase: 'idle' });
 
   const preview = useMemo(() => rows.slice(0, 5), [rows]);
 
@@ -322,7 +338,8 @@ export default function ImportarImoveisDesativados() {
     setResult(null);
     setProgress({ done: 0, total: rows.length });
 
-    const agg: Result = { inseridos: 0, ignoradosDup: 0, ignoradosErro: 0, erros: [] };
+    const agg: Result = { inseridos: 0, ignoradosDup: 0, ignoradosErro: 0, erros: [], codigosInseridos: [] };
+    setPropSync({ phase: 'idle' });
 
     try {
       // Pré-carrega códigos existentes em batches (in-clause limitado)
@@ -357,10 +374,11 @@ export default function ImportarImoveisDesativados() {
           for (const item of batch) {
             const { error: e1 } = await supabase.from('imoveis_proprios').insert(item as never);
             if (e1) agg.erros.push({ codigo: item.codigo_imoview, motivo: e1.message });
-            else agg.inseridos++;
+            else { agg.inseridos++; agg.codigosInseridos.push(item.codigo_imoview); }
           }
         } else {
           agg.inseridos += batch.length;
+          for (const it of batch) agg.codigosInseridos.push(it.codigo_imoview);
         }
         setProgress({ done: Math.min(i + batch.length, toInsert.length) + agg.ignoradosDup + agg.ignoradosErro, total: rows.length });
         setResult({ ...agg });
@@ -369,10 +387,77 @@ export default function ImportarImoveisDesativados() {
       setProgress({ done: rows.length, total: rows.length });
       setResult(agg);
       toast.success(`Importação concluída: ${agg.inseridos} inseridos`);
+
+      if (syncProprietarios && agg.codigosInseridos.length > 0) {
+        await iniciarSyncProprietarios(agg.codigosInseridos);
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setImporting(false);
+    }
+  };
+
+  const iniciarSyncProprietarios = async (codigos: number[]) => {
+    setPropSync({ phase: 'starting', total: codigos.length });
+    try {
+      // Resolve UUIDs dos imóveis recém-inseridos
+      const imovelIds: string[] = [];
+      for (let i = 0; i < codigos.length; i += 500) {
+        const chunk = codigos.slice(i, i + 500);
+        const { data, error } = await supabase
+          .from('imoveis_proprios')
+          .select('id')
+          .in('codigo_imoview', chunk);
+        if (error) throw error;
+        for (const r of data ?? []) imovelIds.push((r as { id: string }).id);
+      }
+      if (imovelIds.length === 0) {
+        setPropSync({ phase: 'done', total: 0, vinculos: 0, comProp: 0, semProp: 0, errors: 0 });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('imoview-sync-proprietarios', {
+        body: { mode: 'full', imovelIds },
+      });
+      if (error) throw error;
+      const syncId = (data as { sync_id?: string })?.sync_id;
+      if (!syncId) throw new Error('sync_id ausente na resposta');
+
+      setPropSync({ phase: 'running', syncId, total: imovelIds.length, processed: 0, vinculos: 0, comProp: 0, semProp: 0, errors: 0 });
+
+      // Polling do log
+      const start = Date.now();
+      const TIMEOUT_MS = 20 * 60 * 1000;
+      while (Date.now() - start < TIMEOUT_MS) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const { data: log } = await supabase
+          .from('imoview_sync_log')
+          .select('status, total, inserted, updated, unchanged, errors_count, cursor')
+          .eq('id', syncId)
+          .maybeSingle();
+        if (!log) continue;
+        const l = log as { status: string; total: number; inserted: number; updated: number; unchanged: number; errors_count: number; cursor: { offset?: number } | null };
+        const processed = l.cursor?.offset ?? 0;
+        setPropSync((prev) => ({
+          ...prev,
+          phase: l.status === 'running' ? 'running' : 'done',
+          total: l.total,
+          processed,
+          vinculos: l.inserted,
+          comProp: l.updated,
+          semProp: l.unchanged,
+          errors: l.errors_count,
+        }));
+        if (l.status !== 'running') {
+          toast.success(`Proprietários: ${l.inserted} vínculos em ${l.updated} imóveis`);
+          return;
+        }
+      }
+      setPropSync((prev) => ({ ...prev, phase: 'error', errMsg: 'Timeout no polling' }));
+    } catch (e) {
+      setPropSync({ phase: 'error', errMsg: (e as Error).message });
+      toast.error('Sync de proprietários: ' + (e as Error).message);
     }
   };
 
@@ -463,6 +548,21 @@ export default function ImportarImoveisDesativados() {
               <CardTitle className="text-base">3. Importar</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <Checkbox
+                  checked={syncProprietarios}
+                  onCheckedChange={(v) => setSyncProprietarios(!!v)}
+                  disabled={importing}
+                  className="mt-0.5"
+                />
+                <span className="text-sm">
+                  <strong>Buscar proprietários no Imoview após importar</strong>
+                  <br />
+                  <span className="text-muted-foreground text-xs">
+                    Para cada imóvel inserido, consulta a API e cria/atualiza os clientes (papel: proprietário) com nome, e-mail, telefone e percentual.
+                  </span>
+                </span>
+              </label>
               <Button onClick={startImport} disabled={importing} size="lg">
                 {importing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importando…</> : <>Importar {rows.length} imóveis como inativos</>}
               </Button>
@@ -479,7 +579,7 @@ export default function ImportarImoveisDesativados() {
         {result && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Resultado</CardTitle>
+              <CardTitle className="text-base">Resultado — Imóveis</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>✅ Inseridos: <strong>{result.inseridos}</strong></p>
@@ -500,6 +600,55 @@ export default function ImportarImoveisDesativados() {
                   <Link to="/crm/imoveis">Ver imóveis</Link>
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {propSync.phase !== 'idle' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Resultado — Proprietários
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {(propSync.phase === 'starting' || propSync.phase === 'running') && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>
+                      {propSync.phase === 'starting'
+                        ? 'Iniciando consulta no Imoview…'
+                        : `Processando ${propSync.processed ?? 0} / ${propSync.total ?? 0} imóveis…`}
+                    </span>
+                  </div>
+                  <Progress value={((propSync.processed ?? 0) / Math.max(1, propSync.total ?? 1)) * 100} />
+                  {propSync.vinculos != null && (
+                    <p className="text-xs text-muted-foreground">
+                      Vínculos até agora: {propSync.vinculos} · Com proprietário: {propSync.comProp ?? 0} · Sem: {propSync.semProp ?? 0} · Erros: {propSync.errors ?? 0}
+                    </p>
+                  )}
+                </>
+              )}
+              {propSync.phase === 'done' && (
+                <>
+                  <p>🔗 Vínculos criados: <strong>{propSync.vinculos ?? 0}</strong></p>
+                  <p>👥 Imóveis com proprietário: <strong>{propSync.comProp ?? 0}</strong></p>
+                  <p>➖ Sem proprietário no Imoview: <strong>{propSync.semProp ?? 0}</strong></p>
+                  {(propSync.errors ?? 0) > 0 && (
+                    <p className="text-destructive">❌ Erros: <strong>{propSync.errors}</strong></p>
+                  )}
+                  <div className="pt-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/crm/clientes">Ver clientes</Link>
+                    </Button>
+                  </div>
+                </>
+              )}
+              {propSync.phase === 'error' && (
+                <p className="text-destructive">❌ {propSync.errMsg ?? 'Erro desconhecido'}</p>
+              )}
             </CardContent>
           </Card>
         )}

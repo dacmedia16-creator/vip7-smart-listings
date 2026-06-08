@@ -3,11 +3,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getSession, imoviewAppFetch } from "../_shared/imoview-auth.ts";
 
-const IMOVIEW_API_KEY = Deno.env.get("IMOVIEW_API_KEY")!;
-const IMOVIEW_API_URL = "https://api.imoview.com.br";
-const IMOVIEW_APP_EMAIL = Deno.env.get("IMOVIEW_APP_EMAIL") || "";
-const IMOVIEW_APP_SENHA = Deno.env.get("IMOVIEW_APP_SENHA") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -22,41 +19,18 @@ const CONCURRENCY = 4;
 const INTER_BATCH_DELAY_MS = 250;
 
 type Sb = ReturnType<typeof createClient>;
-type Session = { codigoacesso: string; codigousuario: number };
 
-// ---------- login App_ ----------
-let cachedSession: Session | null = null;
-async function loginApp(): Promise<Session> {
-  if (cachedSession) return cachedSession;
-  if (!IMOVIEW_APP_EMAIL || !IMOVIEW_APP_SENHA) throw new Error("IMOVIEW_APP_EMAIL/IMOVIEW_APP_SENHA não configurados");
-  const url = new URL(`${IMOVIEW_API_URL}/Usuario/App_ValidarAcesso`);
-  url.searchParams.set("email", IMOVIEW_APP_EMAIL);
-  url.searchParams.set("senha", IMOVIEW_APP_SENHA);
-  const res = await fetch(url.toString(), { method: "GET", headers: { chave: IMOVIEW_API_KEY } });
-  const txt = await res.text();
-  if (!res.ok) throw new Error(`App_ValidarAcesso ${res.status}: ${txt.slice(0, 300)}`);
-  const data = JSON.parse(txt);
-  cachedSession = { codigoacesso: String(data.codigoacesso ?? ""), codigousuario: Number(data.codigousuario ?? 0) };
-  if (!cachedSession.codigoacesso || !cachedSession.codigousuario) throw new Error(`Login Imoview falhou: ${txt.slice(0, 200)}`);
-  return cachedSession;
-}
-
-async function imoviewApp(path: string, params: Record<string, string | number>): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const s = await loginApp();
-  const url = new URL(`${IMOVIEW_API_URL}${path}`);
-  url.searchParams.set("codigoUsuario", String(s.codigousuario));
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
-  let res = await fetch(url.toString(), { headers: { chave: IMOVIEW_API_KEY, codigoacesso: s.codigoacesso } });
-  if (res.status === 401 || res.status === 403) {
-    cachedSession = null;
-    const s2 = await loginApp();
-    url.searchParams.set("codigoUsuario", String(s2.codigousuario));
-    res = await fetch(url.toString(), { headers: { chave: IMOVIEW_API_KEY, codigoacesso: s2.codigoacesso } });
-  }
-  const txt = await res.text();
-  let data: unknown = null;
-  try { data = JSON.parse(txt); } catch { /* texto puro */ }
-  return { ok: res.ok, status: res.status, data };
+// Wrapper que mantém a assinatura usada pelo restante do arquivo,
+// delegando login/cache para o helper compartilhado (MD5 + refresh em 401).
+async function imoviewApp(
+  path: string,
+  params: Record<string, string | number>,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const sess = await getSession();
+  const query: Record<string, string | number> = { ...params };
+  if (sess.codigousuario != null) query.codigoUsuario = sess.codigousuario;
+  const { status, data } = await imoviewAppFetch(path, { query });
+  return { ok: status >= 200 && status < 300, status, data };
 }
 
 // ---------- helpers ----------
