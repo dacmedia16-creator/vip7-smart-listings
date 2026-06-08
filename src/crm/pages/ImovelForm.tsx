@@ -226,6 +226,24 @@ export default function ImovelForm() {
     navigate('/crm/imoveis');
   };
 
+  const handleToggleAtivo = async () => {
+    if (!id) return;
+    const currentlyAtivo = !!loadedRecord?.ativo && loadedRecord?.status !== 'inativo';
+    const msg = currentlyAtivo
+      ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
+      : 'Reativar este imóvel? Ele voltará a aparecer no site principal.';
+    if (!confirm(msg)) return;
+    const updates = currentlyAtivo
+      ? { ativo: false, status: 'inativo' as const }
+      : { ativo: true, status: 'disponivel' as const };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', id);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: currentlyAtivo ? 'Imóvel desativado' : 'Imóvel reativado' });
+    form.setValue('ativo', updates.ativo);
+    form.setValue('status', updates.status);
+    setLoadedRecord((r: any) => r ? { ...r, ...updates } : r);
+  };
+
   // Helpers para campos
   const T = (name: any, label: string, type: string = 'text', extra: any = {}) => (
     <FormField control={form.control} name={name} render={({ field }) => (
