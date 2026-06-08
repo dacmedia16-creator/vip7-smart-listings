@@ -158,7 +158,7 @@ export default function Avaliacao() {
       // Captura lead no CRM (não bloqueia em caso de falha)
       try {
         const { capturarLead } = await import('@/lib/leadCapture');
-        await capturarLead({
+        const res = await capturarLead({
           nome: data.nome,
           telefone: data.telefone,
           email: data.email,
@@ -169,7 +169,9 @@ export default function Avaliacao() {
           bairro_interesse: data.bairro,
           observacoes: `Solicitação de avaliação. Endereço: ${data.endereco}. ${data.descricao ?? ''}`.trim(),
         });
+        if (!res.ok) console.warn('CRM capture failed:', res.error);
       } catch (e) { console.warn('CRM capture failed', e); }
+
       toast({ title: 'Solicitação enviada com sucesso!', description: 'Entraremos em contato em até 24 horas.' });
       form.reset();
     } catch (error: any) {
