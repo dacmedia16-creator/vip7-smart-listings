@@ -202,20 +202,35 @@ interface CondominioSlim {
   cidade: string;
 }
 
-async function listarCondominiosSlim(cidade?: string, codigoCidade?: number, finalidade?: number): Promise<CondominioSlim[]> {
-  const { data, error } = await supabase.functions.invoke('imoview-api', {
-    body: {
-      action: 'listarCondominiosSlim',
-      params: { cidade, codigoCidade, finalidade },
-    },
-  });
-
+async function listarCondominiosSlim(cidade?: string, _codigoCidade?: number, finalidade?: number): Promise<CondominioSlim[]> {
+  // Read directly from local DB (no Imoview API)
+  const FINALIDADE_DB: Record<number, string[]> = {
+    1: ['aluguel', 'venda_aluguel'],
+    2: ['venda', 'venda_aluguel'],
+  };
+  let q = supabase
+    .from('imoveis_proprios')
+    .select('condominio_nome,cidade,codigo_condominio_imoview')
+    .eq('ativo', true)
+    .in('status', ['disponivel', 'sob_proposta'])
+    .not('condominio_nome', 'is', null);
+  if (cidade) q = q.eq('cidade', cidade);
+  if (finalidade && FINALIDADE_DB[finalidade]) q = q.in('finalidade', FINALIDADE_DB[finalidade]);
+  const { data, error } = await q;
   if (error) {
     console.error('[useCondominiosSlim] Error:', error);
-    throw error;
+    return [];
   }
-
-  return data || [];
+  const seen = new Map<string, CondominioSlim>();
+  let i = 1;
+  for (const r of (data ?? []) as { condominio_nome: string | null; cidade: string | null; codigo_condominio_imoview: number | null }[]) {
+    const nome = (r.condominio_nome ?? '').trim();
+    if (!nome) continue;
+    const codigo = r.codigo_condominio_imoview ?? i++;
+    const key = `${(r.cidade ?? '').toLowerCase()}|${nome.toLowerCase()}`;
+    if (!seen.has(key)) seen.set(key, { codigo, nome, cidade: r.cidade ?? '' });
+  }
+  return Array.from(seen.values()).sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
 export function useCondominiosSlim(cidade?: string, codigoCidade?: number, finalidade?: number) {
