@@ -18,13 +18,40 @@ import {
 
 const ZIONTALK_INBOUND_TOKEN = Deno.env.get("ZIONTALK_INBOUND_TOKEN") ?? "";
 
-function extractPayload(p: any): { phone: string; message: string } {
-  // ZionTalk não publica spec do webhook; tentamos vários nomes comuns.
+function extractPayload(p: any): {
+  phone: string;
+  message: string;
+  tipo: string;
+  evento: string;
+} {
+  // Formato ZionTalk (aninhado) + fallbacks de topo pra testes manuais.
   const phone =
-    p?.phone ?? p?.mobile_phone ?? p?.from ?? p?.sender ?? p?.number ?? p?.telefone ?? "";
+    p?.contato?.telefone ??
+    p?.contato?.phone ??
+    p?.phone ??
+    p?.mobile_phone ??
+    p?.from ??
+    p?.sender ??
+    p?.number ??
+    p?.telefone ??
+    "";
   const message =
-    p?.message ?? p?.msg ?? p?.text ?? p?.body ?? p?.content ?? "";
-  return { phone: String(phone ?? ""), message: String(message ?? "") };
+    p?.mensagem?.texto ??
+    p?.mensagem?.text ??
+    p?.message ??
+    p?.msg ??
+    p?.text ??
+    p?.body ??
+    p?.content ??
+    "";
+  const tipo = String(p?.mensagem?.tipo ?? p?.tipo ?? "text").toLowerCase();
+  const evento = String(p?.evento ?? p?.event ?? "").toLowerCase();
+  return {
+    phone: String(phone ?? ""),
+    message: String(message ?? ""),
+    tipo,
+    evento,
+  };
 }
 
 serve(async (req) => {
