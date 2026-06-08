@@ -633,8 +633,8 @@ serve(async (req) => {
 
     while (pagesProcessed < PAGES_PER_CHUNK && finalidadeIdx < FINALIDADES.length) {
       const fin = FINALIDADES[finalidadeIdx];
-      const lista = isDesat ? await fetchListingDesativados(fin, pagina) : await fetchListing(fin, pagina);
-      console.log(`[sync${isDesat ? '-desat' : ''}] fin=${fin} pag=${pagina} -> ${lista.length} itens`);
+      const lista = await fetchListing(fin, pagina);
+      console.log(`[sync] fin=${fin} pag=${pagina} -> ${lista.length} itens`);
       totalSeen += lista.length;
 
       if (lista.length === 0) {
