@@ -335,11 +335,11 @@ async function syncOne(
       .maybeSingle();
 
     // Proteção: se já está inativo no banco e não estamos forçando reativação, mantém inativo
-    const keepInativo = !forceInativo && existing && existing.ativo === false;
-    const activeFlags = forceInativo
-      ? { ativo: false, status: "inativo" as const }
+    const keepInativo = !forceInativo && !!existing && existing.ativo === false;
+    const activeFlags: { ativo: boolean; status?: "inativo" } = forceInativo
+      ? { ativo: false, status: "inativo" }
       : keepInativo
-        ? { ativo: false, status: (existing!.status as string) === "inativo" ? "inativo" as const : (existing!.status as "inativo") }
+        ? { ativo: false, status: "inativo" }
         : { ativo: true };
 
     if (existing && existing.imoview_hash === hash) {
