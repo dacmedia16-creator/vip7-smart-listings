@@ -1,28 +1,56 @@
-## Iniciar importação de desativados + proprietários
+## Objetivo
+Importar imóveis desativados (com fotos + dados completos + proprietários) direto da API Imoview, sem depender de planilha.
 
-Você escolheu a opção 2: usar o fluxo que já existe, sem construir nova página de acompanhamento.
+## Diagnóstico
+Endpoints já testados e descartados:
+- `RetornarImoveis` → 404
+- `RetornarImoveisInativos` → 404
+- `RetornarImoveisDisponiveis` → só ativos (já em uso)
 
-### Passo a passo
+O único endpoint App_ que confirmadamente traz inativos é `App_RetornarDetalhesImovel`, mas precisa do código pra chamar — não lista.
 
-1. Abra **CRM → Imóveis → Importar desativados** (`/crm/imoveis/importar-desativados`).
-2. Faça upload da planilha exportada do painel Imoview (.xls / .xlsx / .html com a lista de imóveis desativados).
-3. Mantenha a checkbox **"Buscar proprietários no Imoview após importar"** marcada (padrão).
-4. Clique em **Importar**.
+## Etapa 1 — Probe (descartável, 1 edge function temporária)
 
-### O que vai acontecer
+Criar `supabase/functions/imoview-probe-inativos` que tenta autenticado (com `codigoacesso`) os candidatos abaixo e devolve qual respondeu 200 com lista:
 
-- Os imóveis da planilha entram em `imoveis_proprios` com `status='inativo'`, `ativo=false`, `origem='imoview_desativado'`.
-- Em seguida, a função `imoview-sync-proprietarios` é disparada automaticamente passando os UUIDs recém-inseridos.
-- A própria tela faz polling em `imoview_sync_log` a cada 3s e mostra dois cards de resultado:
-  - **Imóveis**: inseridos / ignorados / erros
-  - **Proprietários**: vinculados / sem proprietário / erros (com link para `/crm/clientes`)
-- Em paralelo, se quiser acompanhar no histórico geral, abra **Sincronização Imoview** — o run aparece com modo `proprietarios_full`.
+```
+GET  /Imovel/App_RetornarImoveis?pagina=1&quantidade=10&situacao=inativo
+GET  /Imovel/App_RetornarImoveisInativos?pagina=1&quantidade=10
+GET  /Imovel/App_RetornarTodosImoveis?pagina=1&quantidade=10
+GET  /Imovel/App_RetornarImoveisAlterados?dias=3650&pagina=1&quantidade=10
+POST /Imovel/App_PesquisarImoveis  body: { situacao: "inativo", pagina:1, quantidade:10 }
+```
 
-### Não vou fazer agora
+Retorna JSON tipo:
+```json
+{
+  "results": [
+    { "path": "...", "status": 200, "count": 47, "sample_codigo": 12345, "sample_situacao": "Inativo" },
+    { "path": "...", "status": 404 }
+  ]
+}
+```
 
-- Página dedicada de acompanhamento com barra grande + ETA + erros expandidos (fica para depois, se você validar que precisa).
-- Nenhuma mudança de código.
+Rodar via curl_edge_functions. **Sem alterar nada na UI ainda.**
 
-### Precisa de mim?
+## Etapa 2 — Decisão (depende do resultado da Etapa 1)
 
-Se algo falhar no meio do caminho (erro de login, imóveis sem proprietário, contagem estranha), me cola o print ou o trecho do card de resultado que eu investigo.
+**Caso A — algum endpoint funciona:**
+- Adicionar `mode: 'desativados_api'` em `imoview-sync` reaproveitando o paginador
+- Trocar o card "Imóveis desativados" pra ter um botão único **"Sincronizar desativados via API (com fotos e proprietários)"** que:
+  1. Pagina o endpoint descoberto → coleta códigos
+  2. Pra cada código chama `App_RetornarDetalhesImovel` (já existente) → grava em `imoveis_proprios` com `status='inativo'`, `ativo=false`, baixa fotos
+  3. No final, dispara `imoview-sync-proprietarios` com os UUIDs novos
+- Manter o fluxo da planilha como fallback escondido (ou remover, se você preferir)
+
+**Caso B — nenhum endpoint funciona:**
+- Te aviso aqui e a única opção continua sendo a planilha
+- Não mexo na UI
+
+## Etapa 3 — Limpeza
+Deletar `imoview-probe-inativos` (só serve pra descoberta).
+
+## O que NÃO vou fazer
+- Varredura sequencial de códigos (1..N) — descartado: lento, frágil, queima quota
+- Mexer no fluxo de sincronização de ativos que já funciona
+- Construir UI nova antes de saber se a API responde
