@@ -503,6 +503,7 @@ export function GlobalSearch() {
                           <Highlight text={im.titulo} query={debounced} />
                         </span>
                         <Badge variant="outline" className={`text-[10px] ${meta.color}`}>{meta.label}</Badge>
+                        {im.ativo === false && <Badge variant="outline" className="text-[10px]">Desativado</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {im.codigo_interno ? `${im.codigo_interno} · ` : ''}
