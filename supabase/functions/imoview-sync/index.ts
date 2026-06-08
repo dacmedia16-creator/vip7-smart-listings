@@ -506,8 +506,16 @@ serve(async (req) => {
         for (let i = 0; i < slice.length; i += CONC) {
           const sub = slice.slice(i, i + CONC);
           const details = await Promise.all(sub.map(async (c) => {
-            try { return { c, d: await fetchDetails(c) }; }
-            catch (e) { console.warn(`[inativos] erro fetch ${c}:`, (e as Error).message); return { c, d: null }; }
+            try {
+              // 1) tenta endpoint App_ (acessa inativos/vendidos/alugados)
+              let d = await fetchDetailsApp(c);
+              // 2) fallback: endpoint público (só disponíveis)
+              if (!d) d = await fetchDetails(c);
+              return { c, d };
+            } catch (e) {
+              console.warn(`[inativos] erro fetch ${c}:`, (e as Error).message);
+              return { c, d: null };
+            }
           }));
           for (const { c, d } of details) {
             if (!d) {
