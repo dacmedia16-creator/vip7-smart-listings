@@ -1,34 +1,50 @@
-## Diagnóstico
+## Objetivo
 
-Im móveis que a sync de "Desativados" marca como `ativo=false, status='inativo'` ficam invisíveis hoje porque:
+Trazer para o CRM os 1389 imóveis "Desativado" da planilha que você enviou (e qualquer outra lista futura), com fotos, marcando `ativo=false` e `status='inativo'`, sem que a sync normal os reative.
 
-1. **Site público** (`src/services/imoveisDb.ts` + RLS `imoveis_public_read`) — exige `ativo=true` AND `status IN ('disponivel','sob_proposta')`. **Correto, não muda.**
-2. **CRM → /crm/imoveis** (`src/crm/pages/Imoveis.tsx`) — não filtra `ativo`, mas o filtro **Situação tem default `disponivel`**, então inativos só aparecem se o usuário trocar manualmente para "Inativo" (e ninguém percebe).
-3. **Busca global do CRM** (`src/crm/components/GlobalSearch.tsx:145`) — tem `eq('ativo', true)` hardcoded, então código de imóvel inativo nunca aparece no Cmd+K.
-4. **Diálogo "Adicionar imóvel de interesse"** — também filtra `ativo=true`. **Correto, fica como está** (não faz sentido vincular cliente a imóvel desativado).
+## Como vai funcionar
 
-## Mudanças
+1. Na página **Sincronizar Imoview** entra uma nova seção **"Importar desativados por planilha"**:
+   - botão para subir o arquivo `.xls` exportado da Imoview (mesmo formato deste);
+   - prévia mostrando quantos códigos foram detectados e quantos já existem no banco;
+   - botão **"Importar inativos"** dispara a sync em background.
 
-### 1. `src/crm/pages/Imoveis.tsx`
-- Adicionar campo `ativo: 'ativos' | 'inativos' | 'todos'` ao tipo `Filters` e ao `EMPTY` com default `'ativos'`.
-- Aplicar na query: `'ativos'` → `.eq('ativo', true)`; `'inativos'` → `.eq('ativo', false)`; `'todos'` → sem filtro.
-- Novo `<Select>` "Visibilidade" na seção Identificação ao lado de Situação, com as três opções.
-- Quando usuário escolher `'inativos'` ou `'todos'`, mudar o default de Situação de `'disponivel'` para `'todos'` automaticamente (caso contrário fica vazio).
-- Mostrar badge cinza "Inativo" no card/linha quando `ativo=false` (não bloqueia clique).
+2. A edge function `imoview-sync` ganha um novo modo `inativos_por_codigos`:
+   - recebe a lista de códigos;
+   - para cada código chama `RetornarDetalhesImovel?codigoimovel=XXXX` (que funciona pra qualquer status);
+   - usa o mesmo `mapToRow` que já existe, mas força `ativo=false` e `status='inativo'`;
+   - baixa fotos pro bucket `imoveis-fotos` igual o fluxo atual;
+   - processa em lotes (~25 por chamada) e auto-continua, igual o modo `full` já faz, pra não estourar timeout;
+   - grava progresso em `imoview_sync_log` (você acompanha em tempo real).
 
-### 2. `src/crm/components/GlobalSearch.tsx`
-- Remover o `.eq('ativo', true)` da query de imóveis (linha 145). Em vez disso, ordenar inativos por último (`order('ativo', { ascending: false })`) e mostrar sufixo "(inativo)" no resultado quando aplicável. Assim quem digita o código encontra mesmo se foi desativado.
+3. **Proteção contra reativação automática**: a sync normal (`full` / incremental) hoje faz upsert com `ativo: true` cego. Vou ajustar para **não sobrescrever `ativo`/`status` de um registro que já está marcado como inativo** — só reativa se você fizer isso manualmente. Assim, na próxima sincronização normal os 1389 continuam como inativos.
 
-### 3. Nada mais
-- `imoveisDb.ts`, RLS pública, página pública e `AddImovelInteresseDialog` permanecem intocados — inativos não vazam para o site.
+4. **Filtro do CRM**: já está pronto (`Visibilidade = Apenas inativos / desativados` + `Situação = Inativo`). Depois da importação, os imóveis aparecem nesse filtro com badge "Desativado" no card.
 
-## Fora de escopo
-- Edge functions de sync.
-- Schema do banco / RLS.
-- Site público.
+## Detalhes técnicos
 
-## Validação
-1. Em `/crm/imoveis` com Visibilidade=Apenas ativos (default) → contagem igual à de hoje.
-2. Trocar para "Apenas inativos" → aparecem os ~6 imóveis que a sync `desativados` acabou de marcar.
-3. Cmd+K digitando o código de um imóvel inativo → aparece com sufixo "(inativo)".
-4. Diálogo de "Adicionar imóvel de interesse" no cliente → continua mostrando só ativos.
+**Arquivos a alterar / criar**
+- `supabase/functions/imoview-sync/index.ts` — novo modo `inativos_por_codigos`, helper `importInativos(codigos[])`, e ajuste no upsert dos outros modos para preservar `ativo=false`.
+- `src/crm/pages/SincronizarImoview.tsx` (ou equivalente) — bloco de upload `.xls/.csv`, parser client-side (regex sobre `<td>` igual fiz aqui), chamada à edge function passando os códigos em lotes (~500 por requisição pra evitar payload grande), barra de progresso lendo `imoview_sync_log`.
+- Sem mudança de schema; reuso `imoveis_proprios`.
+
+**Estratégia da chamada**
+- Cliente faz upload → parse local → envia `{ codigos: [...] }` ao endpoint.
+- Edge function cria 1 registro em `imoview_sync_log` (mode `inativos_por_codigos`), grava o cursor `{ idx: 0 }` em `cursor`, processa ~25 códigos, atualiza cursor, e reagenda a si mesma via fetch interna até `idx >= total`.
+- Cada item: `RetornarDetalhesImovel` → mapToRow → upsert por `codigo_imoview` com `ativo=false, status='inativo', imoview_sync_at=now()` → mirror das fotos.
+
+**Tratamento de erros**
+- Código que retornar 404 ou vazio é registrado em `error_details` e segue adiante (não trava o lote).
+- Resumo final no log: `total`, `inserted`, `updated`, `photos_uploaded`, `errors_count`.
+
+## Tempo estimado de execução
+
+1389 imóveis × (~1 chamada detalhe + N fotos). Em lotes de 25 com paralelismo de 5, fica em torno de 15–25 min rodando em background. Você pode fechar a aba.
+
+## O que NÃO entra nesse plano
+
+- Não vou criar UI separada de "gerenciar inativos" — eles aparecem nos filtros normais.
+- Não vou mexer no site público (RLS já bloqueia inativos lá).
+- Não vou adicionar botão de "Desativar manualmente" (pode ser próxima iteração se quiser).
+
+Confirma que posso seguir?
