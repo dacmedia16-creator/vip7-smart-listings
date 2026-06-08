@@ -209,6 +209,7 @@ export default function LeadDetail() {
         <Tabs defaultValue="historico">
           <TabsList>
             <TabsTrigger value="historico">Histórico ({interacoes.length})</TabsTrigger>
+            <TabsTrigger value="ia" className="gap-1"><Bot className="h-3 w-3" />Conversa IA</TabsTrigger>
             <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           </TabsList>
 
@@ -220,6 +221,10 @@ export default function LeadDetail() {
               onAdded={load}
             />
             <InteracaoTimeline interacoes={interacoes} profilesMap={profilesMap} onChanged={load} />
+          </TabsContent>
+
+          <TabsContent value="ia">
+            <InteracaoIA leadId={id!} />
           </TabsContent>
 
           <TabsContent value="tarefas">
