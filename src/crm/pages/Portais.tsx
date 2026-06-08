@@ -65,7 +65,31 @@ export default function Portais() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  async function loadWebhookStatus() {
+    try {
+      const res = await fetch(webhookUrl, { method: 'GET' });
+      const j = await res.json();
+      setTokenConfigurado(!!j.token_configured);
+    } catch {
+      setTokenConfigurado(null);
+    }
+  }
+
+  async function loadLeadsPortal() {
+    const { data } = await (supabase as any)
+      .from('leads')
+      .select('id, nome, telefone, tags, observacoes, imovel_interesse_codigo, created_at')
+      .eq('portal_origin', 'grupo_olx')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setLeadsPortal(data ?? []);
+  }
+
+  useEffect(() => {
+    load();
+    loadWebhookStatus();
+    loadLeadsPortal();
+  }, []);
 
   const isPub = (imovelId: string, portal: PortalId) =>
     portais.some((p) => p.imovel_id === imovelId && p.portal === portal && p.publicar);
