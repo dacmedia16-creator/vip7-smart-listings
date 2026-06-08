@@ -295,11 +295,12 @@ export default function ImovelForm() {
             />
           )}
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+            <TabsList className="grid grid-cols-5 w-full max-w-3xl">
               <TabsTrigger value="endereco">Endereço</TabsTrigger>
               <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
               <TabsTrigger value="relacionamentos">Relacionamentos</TabsTrigger>
               <TabsTrigger value="anotacoes">Anotações</TabsTrigger>
+              <TabsTrigger value="fotos">Fotos</TabsTrigger>
             </TabsList>
 
             {/* ENDEREÇO */}
