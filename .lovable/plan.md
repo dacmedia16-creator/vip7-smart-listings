@@ -1,58 +1,50 @@
-# Conectar ao fluxo `App_*` do Imoview
+# Importar imóveis desativados + proprietários, tudo na mesma tela
 
-Objetivo desta etapa: **apenas estabelecer a conexão autenticada** via `/Usuario/App_ValidarAcesso` e validar que conseguimos chamar endpoints `App_*`. Nada de importação de clientes ainda — isso fica para a próxima etapa, depois que confirmarmos que o login funciona.
+## Realidade da API (confirmado no swagger)
 
-## O que vai ser feito
+A API do Imoview **não expõe** um endpoint que liste imóveis desativados. Os únicos endpoints de listagem (`RetornarImoveisDisponiveis`, `RetornarImoveisAlterados`) só trazem imóveis ativos/disponíveis.
 
-### 1. Cadastrar credenciais como secrets
-Vou pedir dois secrets novos:
-- `IMOVIEW_USER_EMAIL` — email do usuário Imoview que será usado como "service account"
-- `IMOVIEW_USER_PASSWORD` — senha desse usuário
+Por isso, a planilha exportada do painel Imoview continua sendo o **ponto de partida obrigatório** para descobrir quais códigos estão desativados.
 
-(A `IMOVIEW_API_KEY` que já temos continua sendo usada como header `chave` em **todas** as chamadas.)
+**A boa notícia**: uma vez que temos o `codigo` do imóvel, o endpoint `App_RetornarDetalhesImovel` (que exige login com `codigoacesso`) retorna o objeto completo do imóvel **incluindo o array `proprietarios`** com nome, email, telefone e percentual. Isso funciona tanto para imóveis ativos quanto desativados.
 
-### 2. Helper compartilhado de autenticação
-Criar `supabase/functions/_shared/imoview-auth.ts` com:
-- Função `getCodigoAcesso()` que:
-  - Chama `POST https://api.imoview.com.br/Usuario/App_ValidarAcesso` com header `chave` + body `{ email, senha }`
-  - Extrai o `codigoacesso` retornado
-  - **Cacheia em memória** dentro da função (com TTL, ex.: 50 min) para não fazer login a cada request
-  - Retorna o `codigoacesso` pronto para uso
+## O que já existe
 
-- Função `imoviewAppFetch(path, options)` que monta a chamada com os dois headers obrigatórios:
-  - `chave: <IMOVIEW_API_KEY>`
-  - `codigoacesso: <resultado do login>`
+- **Tela** `/crm/imoveis/importar-desativados` — faz upload da planilha (.xls/.xlsx/.html), parseia, insere em `imoveis_proprios` com `status='inativo'`, `ativo=false`, `origem='imoview_desativado'`.
+- **Edge function** `imoview-sync-proprietarios` — já chama `App_RetornarDetalhesImovel` para cada imóvel, extrai `proprietarios`, cria/atualiza `clientes` e cria vínculos em `cliente_imoveis` (papel='proprietario'). Aceita parâmetro `imovelIds` (lista de IDs).
 
-### 3. Edge function de teste: `imoview-auth-test`
-Pequena função que:
-- Tenta autenticar via `getCodigoAcesso()`
-- Faz uma chamada de smoke test em um endpoint `App_*` leve (ex.: `App_RetornarPessoas` com `pagina=1, registrosPorPagina=1`) só para confirmar que o `codigoacesso` é aceito
-- Retorna `{ ok: true, sample: {...} }` ou o erro detalhado
+## Problemas a corrigir
 
-### 4. Botão "Testar conexão Imoview (App)" no CRM
-Em `/crm/configuracoes`, adicionar um pequeno card com:
-- Botão **Testar conexão**
-- Resultado (✅ autenticado / ❌ erro + mensagem)
-- Texto indicando que as credenciais ficam guardadas como secrets
+1. A função `imoview-sync-proprietarios` usa secrets antigos (`IMOVIEW_APP_EMAIL`, `IMOVIEW_APP_SENHA`) e **envia a senha em texto puro** — o login está quebrado, porque o Imoview exige senha em MD5 (acabamos de descobrir no card de teste).
+2. A tela de importação termina sem oferecer o passo seguinte (buscar proprietários).
 
-## Validação
+## O que vou fazer
 
-1. Cadastrar os 2 secrets
-2. Clicar em "Testar conexão" no CRM
-3. Esperar: ✅ verde com 1 registro de exemplo retornado
-4. Conferir nos logs da edge function que o `codigoacesso` foi obtido e reutilizado em chamadas subsequentes (sem refazer login)
+### 1. Consertar `imoview-sync-proprietarios`
+Trocar o bloco próprio de login pelo helper compartilhado `_shared/imoview-auth.ts` (que já faz MD5 + cache de 50min + refresh em 401). Manter toda a lógica de batch/cursor/persistência — só o login muda.
 
-## O que NÃO entra nesta etapa
+### 2. Encadear sync após import na tela
+Em `ImportarImoveisDesativados.tsx`:
+- Adicionar checkbox **"Buscar proprietários no Imoview após importar"** (marcado por padrão).
+- Após o loop de inserção, se a checkbox estiver ligada e houver imóveis inseridos:
+  - Pegar os UUIDs dos imóveis recém-inseridos (já temos `codigo_imoview` → query SELECT id WHERE codigo_imoview IN (...)).
+  - Chamar `supabase.functions.invoke('imoview-sync-proprietarios', { body: { mode: 'full', imovelIds } })`.
+  - Mostrar status "Buscando proprietários…" e fazer polling em `imoview_sync_log` (a função roda em background com `EdgeRuntime.waitUntil`) até `status` virar `ok`/`partial`.
+  - Exibir o resultado final: X proprietários vinculados, Y imóveis sem proprietário no Imoview, Z erros.
 
-- Importação em massa de clientes
-- Vinculação de proprietários aos imóveis
-- Sincronização agendada
-- Mudanças em `clientes` / `cliente_imoveis`
+### 3. UI de resultado expandida
+O card final passa a mostrar duas seções:
+- **Imóveis** — inseridos / ignorados (duplicados) / erros
+- **Proprietários** — vinculados / imóveis sem proprietário / erros, com link para `/crm/clientes` para conferir
 
-Esses passos viram um plano separado depois que a conexão estiver confirmada funcionando.
+## O que NÃO entra
+
+- Importação em massa de TODOS os clientes (separado, plano futuro).
+- Reimportação/atualização de imóveis ativos (sync já existente cuida).
+- Listar desativados via API (não existe).
 
 ## Detalhes técnicos
 
-- Arquivos novos: `supabase/functions/_shared/imoview-auth.ts`, `supabase/functions/imoview-auth-test/index.ts`
-- Arquivo editado: `src/crm/pages/Configuracoes.tsx` (apenas adiciona o card de teste)
-- Cache do `codigoacesso` é por-instância da edge function (memória do worker), com expiração ~50min e refresh automático em 401
+- Arquivos editados: `supabase/functions/imoview-sync-proprietarios/index.ts` (substituir login pelo helper compartilhado), `src/crm/pages/ImportarImoveisDesativados.tsx` (checkbox + chamada + polling + UI de resultado).
+- Sem mudanças de schema.
+- Sem novos secrets — usa `IMOVIEW_USER_EMAIL`/`IMOVIEW_USER_PASSWORD` que já cadastramos (e remove a dependência de `IMOVIEW_APP_EMAIL`/`IMOVIEW_APP_SENHA`, que podem ser deletados depois).
