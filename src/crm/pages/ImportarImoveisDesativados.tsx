@@ -338,7 +338,8 @@ export default function ImportarImoveisDesativados() {
     setResult(null);
     setProgress({ done: 0, total: rows.length });
 
-    const agg: Result = { inseridos: 0, ignoradosDup: 0, ignoradosErro: 0, erros: [] };
+    const agg: Result = { inseridos: 0, ignoradosDup: 0, ignoradosErro: 0, erros: [], codigosInseridos: [] };
+    setPropSync({ phase: 'idle' });
 
     try {
       // Pré-carrega códigos existentes em batches (in-clause limitado)
@@ -373,10 +374,11 @@ export default function ImportarImoveisDesativados() {
           for (const item of batch) {
             const { error: e1 } = await supabase.from('imoveis_proprios').insert(item as never);
             if (e1) agg.erros.push({ codigo: item.codigo_imoview, motivo: e1.message });
-            else agg.inseridos++;
+            else { agg.inseridos++; agg.codigosInseridos.push(item.codigo_imoview); }
           }
         } else {
           agg.inseridos += batch.length;
+          for (const it of batch) agg.codigosInseridos.push(it.codigo_imoview);
         }
         setProgress({ done: Math.min(i + batch.length, toInsert.length) + agg.ignoradosDup + agg.ignoradosErro, total: rows.length });
         setResult({ ...agg });
@@ -385,10 +387,77 @@ export default function ImportarImoveisDesativados() {
       setProgress({ done: rows.length, total: rows.length });
       setResult(agg);
       toast.success(`Importação concluída: ${agg.inseridos} inseridos`);
+
+      if (syncProprietarios && agg.codigosInseridos.length > 0) {
+        await iniciarSyncProprietarios(agg.codigosInseridos);
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setImporting(false);
+    }
+  };
+
+  const iniciarSyncProprietarios = async (codigos: number[]) => {
+    setPropSync({ phase: 'starting', total: codigos.length });
+    try {
+      // Resolve UUIDs dos imóveis recém-inseridos
+      const imovelIds: string[] = [];
+      for (let i = 0; i < codigos.length; i += 500) {
+        const chunk = codigos.slice(i, i + 500);
+        const { data, error } = await supabase
+          .from('imoveis_proprios')
+          .select('id')
+          .in('codigo_imoview', chunk);
+        if (error) throw error;
+        for (const r of data ?? []) imovelIds.push((r as { id: string }).id);
+      }
+      if (imovelIds.length === 0) {
+        setPropSync({ phase: 'done', total: 0, vinculos: 0, comProp: 0, semProp: 0, errors: 0 });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('imoview-sync-proprietarios', {
+        body: { mode: 'full', imovelIds },
+      });
+      if (error) throw error;
+      const syncId = (data as { sync_id?: string })?.sync_id;
+      if (!syncId) throw new Error('sync_id ausente na resposta');
+
+      setPropSync({ phase: 'running', syncId, total: imovelIds.length, processed: 0, vinculos: 0, comProp: 0, semProp: 0, errors: 0 });
+
+      // Polling do log
+      const start = Date.now();
+      const TIMEOUT_MS = 20 * 60 * 1000;
+      while (Date.now() - start < TIMEOUT_MS) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const { data: log } = await supabase
+          .from('imoview_sync_log')
+          .select('status, total, inserted, updated, unchanged, errors_count, cursor')
+          .eq('id', syncId)
+          .maybeSingle();
+        if (!log) continue;
+        const l = log as { status: string; total: number; inserted: number; updated: number; unchanged: number; errors_count: number; cursor: { offset?: number } | null };
+        const processed = l.cursor?.offset ?? 0;
+        setPropSync((prev) => ({
+          ...prev,
+          phase: l.status === 'running' ? 'running' : 'done',
+          total: l.total,
+          processed,
+          vinculos: l.inserted,
+          comProp: l.updated,
+          semProp: l.unchanged,
+          errors: l.errors_count,
+        }));
+        if (l.status !== 'running') {
+          toast.success(`Proprietários: ${l.inserted} vínculos em ${l.updated} imóveis`);
+          return;
+        }
+      }
+      setPropSync((prev) => ({ ...prev, phase: 'error', errMsg: 'Timeout no polling' }));
+    } catch (e) {
+      setPropSync({ phase: 'error', errMsg: (e as Error).message });
+      toast.error('Sync de proprietários: ' + (e as Error).message);
     }
   };
 
