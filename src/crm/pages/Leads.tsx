@@ -33,6 +33,8 @@ type Lead = {
   last_contact_at: string | null;
 };
 
+const PAGE_SIZE = 20;
+
 export default function LeadsList() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,34 +42,60 @@ export default function LeadsList() {
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [origemFilter, setOrigemFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
 
-  const load = async () => {
+  const load = async (pageArg?: number) => {
+    const p = pageArg ?? page;
     setLoading(true);
-    let q = supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(200);
+    const from = (p - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    let q = supabase
+      .from('leads')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
     if (statusFilter !== 'all') q = q.eq('status_funil', statusFilter as any);
     if (origemFilter !== 'all') q = q.eq('origem', origemFilter as any);
     if (search.trim()) {
       const s = `%${search.trim()}%`;
       q = q.or(`nome.ilike.${s},telefone.ilike.${s},email.ilike.${s}`);
     }
-    const { data, error } = await q;
-    if (!error) setLeads((data ?? []) as Lead[]);
+    const { data, error, count } = await q;
+    if (!error) {
+      setLeads((data ?? []) as Lead[]);
+      setTotalCount(count ?? 0);
+    }
     setLoading(false);
   };
 
+  // Reset page when filters change
   useEffect(() => {
-    load();
+    setPage(1);
+    load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, origemFilter]);
+
+  // Reload when page changes
+  useEffect(() => {
+    load(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   // Re-run when URL ?q= changes (from global search)
   useEffect(() => {
     const q = searchParams.get('q') ?? '';
     setSearch(q);
-    load();
+    setPage(1);
+    load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, totalCount);
+
 
   return (
     <CrmLayout title="Leads">
@@ -75,7 +103,10 @@ export default function LeadsList() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-[#0F0F12]">Leads</h2>
-            <p className="text-sm text-[#2A2A30]">{leads.length} resultado(s)</p>
+            <p className="text-sm text-[#2A2A30]">
+              {totalCount === 0 ? '0 resultado(s)' : `Mostrando ${rangeStart}–${rangeEnd} de ${totalCount}`}
+            </p>
+
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate('/crm/leads/importar')} className="border-[#E8D9A8] text-[#7A5A14] hover:bg-[#FBF3DC]">
@@ -127,7 +158,7 @@ export default function LeadsList() {
                   <SelectItem value="indicacao">Indicação</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={load}>Aplicar</Button>
+              <Button variant="outline" onClick={() => load()}>Aplicar</Button>
             </div>
           </CardContent>
         </Card>
@@ -198,6 +229,29 @@ export default function LeadsList() {
             </TableBody>
           </Table>
         </Card>
+
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-[#4A4A52]">
+            Página {page} de {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={loading || page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              disabled={loading || page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
+
       </div>
     </CrmLayout>
   );
