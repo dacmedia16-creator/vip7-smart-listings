@@ -1,73 +1,66 @@
-# Integração de Leads — Grupo OLX (Zap / VivaReal / OLX)
+# Integração de Leads — Grupo OLX (sem token ainda)
 
-O Grupo OLX entrega leads via **HTTP POST** num endpoint nosso, com JSON único por lead. Vou criar uma edge function pública que recebe esse POST, valida e grava na tabela `leads`, reaproveitando a deduplicação e o roteamento que já existe.
+Vou deixar tudo pronto. O secret `GRUPOZAP_LEAD_TOKEN` fica **opcional**: enquanto não existir, a function aceita qualquer requisição (modo "homologação aberta") e mostra um aviso no CRM dizendo que o webhook está sem proteção. Assim você consegue validar com o [validador oficial do Grupo OLX](https://developers.grupozap.com/webhooks/endpoint_validator.html) antes mesmo de gerar o token.
 
 ## Endpoint
 
 `POST https://qozlwzgesezsygmnuzky.supabase.co/functions/v1/portal-lead-grupozap`
 
-- Pública (`verify_jwt = false`) — Grupo OLX não envia auth.
-- Proteção: query string `?token=XXX` validado contra secret `GRUPOZAP_LEAD_TOKEN`. URL final que você envia pro Grupo OLX:
-  `…/portal-lead-grupozap?token=XXX`
-- Responde **200** assim que grava, **4xx** se faltar `clientListingId` ou payload inválido (conforme spec — 4xx faz o Grupo OLX reenviar/armazenar por 14 dias), **5xx** em erro inesperado (também dispara retry deles, que tentam 3x).
+- Público (`verify_jwt = false`).
+- **Sem token configurado** → aceita qualquer POST (com aviso visível no CRM).
+- **Com token** → exige `?token=XXX` na URL; se errado, responde 401.
 
 ## Fluxo da function
 
-1. Valida token na query.
-2. Lê JSON e valida campos mínimos: `name`, (`phone` ou `phoneNumber`), `clientListingId`.
-3. Normaliza telefone (`ddd + phone` → E.164/BR).
-4. Mapeia `transactionType`: `SELL`→`venda`, `RENT`→`aluguel`.
-5. Busca imóvel pelo `clientListingId` em `imoveis_proprios`:
-   - tenta `codigo_imoview` (numérico), depois `codigo_interno` (texto), depois `codigo_auxiliar`.
-   - se achou: preenche `imovel_interesse_codigo`, `cidade_interesse`, `bairro_interesse`, `tipo_imovel`, `orcamento_max` (= preço do imóvel).
-6. Deduplicação: chama `find_duplicate_lead(telefone, email)`. Se duplicado:
-   - cria `lead_interacoes` (tipo `outro`) com a mensagem + originLeadId + leadType + temperatura.
-   - **não** cria lead novo.
-7. Senão, insere em `leads` com:
-   - `origem = 'portal'`
-   - `origem_url`: monta `https://www.zapimoveis.com.br/imovel/{originListingId}` quando aplicável, senão deixa null.
-   - `observacoes`: bloco formatado com `message`, `temperature`, `extraData.leadType`, `originLeadId`, `originListingId`, links IZI/feedback se vierem.
-   - `tags`: `['grupo-olx', leadType.toLowerCase(), temperature.toLowerCase()]` + `'lead-certo'` se `extraData.leadCerto === true`.
-8. Se houver regra de distribuição automática ativa, chama `distribuir_lead(lead_id)` (segue padrão do CRM atual; opcional, fica atrás de flag em `app_config`).
-9. Trigger existente `vincular_interessado_de_lead` cuida de ligar o imóvel ao cliente se já existir.
-10. Loga em `activity_log` (entidade `leads`, ação `criou`/`atualizou` via interação).
+1. Lê JSON do corpo.
+2. Valida obrigatórios: `name`, telefone (`phone`/`phoneNumber`), `clientListingId`. Faltou → 400 (Grupo OLX reentenga).
+3. Normaliza telefone (`ddd + phone` → dígitos BR).
+4. Idempotência: se `originLeadId` já existe (coluna nova `portal_origin_lead_id`), responde 200 sem fazer nada.
+5. Mapeia `transactionType`: `SELL`→`venda`, `RENT`→`aluguel`.
+6. Busca imóvel pelo `clientListingId`:
+   - `codigo_imoview` (numérico) → `codigo_interno` → `codigo_auxiliar`.
+   - Achou: preenche `imovel_interesse_codigo`, `cidade_interesse`, `bairro_interesse`, `tipo_imovel`, `orcamento_max` = preço.
+7. Deduplica por telefone/email com `find_duplicate_lead` (30 dias). Duplicado → grava `lead_interacoes` (tipo `outro`) com a mensagem + originLeadId + leadType + temperatura; **não cria lead novo**, mas grava `portal_origin_lead_id` no lead existente pra travar reenvios.
+8. Senão, insere em `leads`:
+   - `origem = 'portal'`, `portal_origin = 'grupo_olx'`, `portal_origin_lead_id = originLeadId`
+   - `origem_url`: `https://www.zapimoveis.com.br/imovel/{originListingId}` se tiver
+   - `observacoes`: bloco com `message`, `temperature`, `leadType`, `originLeadId`, `originListingId`, links IZI/feedback
+   - `tags`: `['grupo-olx', leadType, temperature]` + `'lead-certo'` quando aplicável
+9. Trigger existente `vincular_interessado_de_lead` cuida do vínculo cliente↔imóvel.
+10. Responde 200.
 
-## Idempotência
+Service role no insert (bypass RLS), CORS liberado, todos erros internos retornam 500 (Grupo OLX reentenga 3x e armazena 14 dias).
 
-Antes do passo 6, checa se já existe lead com `originLeadId` no campo `observacoes` ou nova coluna dedicada. Para ficar limpo, adiciono coluna:
+## Idempotência (migration já aprovada)
 
-- `leads.portal_origin_lead_id text` (nullable, unique parcial onde not null) — guarda `originLeadId` do Grupo OLX. Reenvios mesmo após 200 (raro mas possível) não duplicam: function faz `upsert` por essa chave; se já existe, responde 200 sem nada fazer.
-- `leads.portal_origin text` — `grupo_olx`, fica pronto pra outros portais (ImovelWeb etc.) terem o mesmo padrão.
+Já adicionei na migration anterior:
+- `leads.portal_origin text`
+- `leads.portal_origin_lead_id text`
+- índice único parcial `(portal_origin, portal_origin_lead_id)`
 
 ## UI no CRM (`/crm/portais`)
 
-No card do Zap/VivaReal/OLX adicionar bloco "Webhook de leads":
+Novo bloco "Webhook de leads (Grupo OLX)" no topo:
 
-- Mostra a URL completa (`…/portal-lead-grupozap?token=…`) com botão copiar.
-- Botão "Rotacionar token" (chama `secrets--update_secret` indiretamente — na verdade só re-renderiza orientação; rotação real fica nas Configurações).
-- Link pro [validador oficial](https://developers.grupozap.com/webhooks/endpoint_validator.html) e instrução: validar → preencher [formulário de homologação](https://docs.google.com/forms/d/e/1FAIpQLSd6WJ3xw-qoFzW2-6OvrEihTjurUwVsJYei-P4alae2S1yedQ/viewform).
-- Tabela mostrando os últimos 20 leads recebidos via portal (filtro `portal_origin = 'grupo_olx'`).
+- URL completa com botão copiar. Se token existir, URL inclui `?token=…` (busco o token via edge function `get-webhook-url` pra não expor secret no client; alternativa simples: gero a URL no servidor e a página chama a function pra pegar).
+  - **Mais simples**: a página chama a function `portal-lead-grupozap?action=get-url` (GET) que devolve a URL pronta com token mascarado/completo só para usuários admin. Vou nessa.
+- Badge de status:
+  - 🟡 "Sem token — webhook aberto" enquanto `GRUPOZAP_LEAD_TOKEN` não estiver setado
+  - 🟢 "Protegido por token" quando estiver
+- Links: validador oficial, formulário de homologação, doc do Grupo OLX.
+- Tabela "Últimos leads recebidos via portal" (filtro `portal_origin = 'grupo_olx'`, 20 mais recentes, com tipo de lead, temperatura, imóvel).
 
-## Detalhes técnicos
+## Quando você tiver o token
 
-**Migration** (`leads`):
-- `alter table leads add column portal_origin text, add column portal_origin_lead_id text;`
-- `create unique index leads_portal_origin_lead_id_uniq on leads (portal_origin, portal_origin_lead_id) where portal_origin_lead_id is not null;`
-- Sem mudança de RLS (já permite insert anon com `corretor_id IS NULL` — mas a function usa service role, então não importa).
+Você gera qualquer string aleatória (eu sugiro uma na UI com botão "gerar token"), salva em **Lovable Cloud → Secrets** como `GRUPOZAP_LEAD_TOKEN`, e cola a nova URL no painel do Grupo OLX. Function passa a exigir o token automaticamente.
 
-**Secret novo**: `GRUPOZAP_LEAD_TOKEN` (gerado aleatório, você cola na configuração do portal).
+## Arquivos
 
-**Arquivos novos**:
-- `supabase/functions/portal-lead-grupozap/index.ts`
-- bloco em `supabase/config.toml` com `verify_jwt = false`
-- migration acima
-- atualização em `src/crm/pages/Portais.tsx` (bloco webhook)
-- atualização em `src/crm/lib/portais.ts` se precisar tipos
+- `supabase/functions/portal-lead-grupozap/index.ts` (novo)
+- `supabase/config.toml` (bloco `verify_jwt = false`)
+- `src/crm/pages/Portais.tsx` (bloco webhook + tabela últimos leads)
 
 ## Fora deste plano
 
-- Integração de leads de OUTROS portais (ImovelWeb, Chaves na Mão) — cada um tem contrato próprio; faço quando você pedir, reaproveitando a estrutura `portal_origin / portal_origin_lead_id`.
-- Resposta ao feedback URL (`extraData.feedback`) — só guardo o link.
-- Reenvio sob demanda (a doc do Grupo OLX diz que precisa pedir pra eles).
-
-Confirma que vai usar `codigo_imoview` como `clientListingId` no XML do feed (é o que está hoje em `buildVRSync`)? Se você costuma sobrescrever com `codigo_interno`/`codigo_auxiliar`, eu já incluo o fallback como descrito.
+- Webhook de outros portais (cada um tem contrato próprio; estrutura `portal_origin` já está pronta).
+- Reenvio sob demanda (precisa abrir chamado no Grupo OLX).

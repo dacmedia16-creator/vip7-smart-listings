@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Copy, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Globe, Copy, AlertCircle, CheckCircle2, Webhook, ShieldCheck, ShieldAlert, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PORTAIS, type PortalId, validarImovelParaPortais } from '../lib/portais';
+import { Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface ImovelLite {
   id: string;
@@ -42,6 +45,10 @@ export default function Portais() {
   const [filtro, setFiltro] = useState('');
   const [filtroPortal, setFiltroPortal] = useState<PortalId | 'todos'>('todos');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'publicados' | 'nao_publicados' | 'com_erro'>('todos');
+  const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
+  const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
+
+  const webhookUrl = `${PROJECT_URL}/functions/v1/portal-lead-grupozap`;
 
   async function load() {
     setLoading(true);
@@ -58,7 +65,31 @@ export default function Portais() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  async function loadWebhookStatus() {
+    try {
+      const res = await fetch(webhookUrl, { method: 'GET' });
+      const j = await res.json();
+      setTokenConfigurado(!!j.token_configured);
+    } catch {
+      setTokenConfigurado(null);
+    }
+  }
+
+  async function loadLeadsPortal() {
+    const { data } = await (supabase as any)
+      .from('leads')
+      .select('id, nome, telefone, tags, observacoes, imovel_interesse_codigo, created_at')
+      .eq('portal_origin', 'grupo_olx')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setLeadsPortal(data ?? []);
+  }
+
+  useEffect(() => {
+    load();
+    loadWebhookStatus();
+    loadLeadsPortal();
+  }, []);
 
   const isPub = (imovelId: string, portal: PortalId) =>
     portais.some((p) => p.imovel_id === imovelId && p.portal === portal && p.publicar);
@@ -146,6 +177,82 @@ export default function Portais() {
             </Card>
           ))}
         </div>
+
+        <Card className="p-4 border-primary/30">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <Webhook className="h-5 w-5 text-primary" />
+              <div>
+                <h2 className="font-semibold">Webhook de leads — Grupo OLX</h2>
+                <p className="text-xs text-muted-foreground">
+                  Cole essa URL no painel do Grupo OLX para receber leads do Zap, VivaReal e OLX direto no CRM.
+                </p>
+              </div>
+            </div>
+            {tokenConfigurado === true ? (
+              <Badge variant="outline" className="text-emerald-700 border-emerald-400 gap-1 whitespace-nowrap">
+                <ShieldCheck className="h-3 w-3" /> Protegido por token
+              </Badge>
+            ) : tokenConfigurado === false ? (
+              <Badge variant="outline" className="text-amber-700 border-amber-400 gap-1 whitespace-nowrap">
+                <ShieldAlert className="h-3 w-3" /> Sem token — webhook aberto
+              </Badge>
+            ) : null}
+          </div>
+
+          <div className="flex gap-2 items-center">
+            <code className="flex-1 text-xs bg-muted px-3 py-2 rounded border break-all">{webhookUrl}{tokenConfigurado ? '?token=SEU_TOKEN' : ''}</code>
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast({ title: 'URL copiada' }); }}>
+              <Copy className="h-3 w-3" /> Copiar
+            </Button>
+          </div>
+
+          {tokenConfigurado === false && (
+            <p className="text-xs text-amber-800 mt-2">
+              Para proteger o webhook, adicione um secret <code>GRUPOZAP_LEAD_TOKEN</code> em Lovable Cloud (qualquer string aleatória). Depois disso a URL passa a exigir <code>?token=…</code>.
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-3 mt-3 text-xs">
+            <a href="https://developers.grupozap.com/webhooks/endpoint_validator.html" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+              Validador oficial <ExternalLink className="h-3 w-3" />
+            </a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSd6WJ3xw-qoFzW2-6OvrEihTjurUwVsJYei-P4alae2S1yedQ/viewform" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+              Formulário de homologação <ExternalLink className="h-3 w-3" />
+            </a>
+            <a href="https://developers.grupozap.com/webhooks/integration_leads.html" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+              Documentação <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+
+          {leadsPortal.length > 0 && (
+            <div className="mt-4 border-t pt-3">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Últimos {leadsPortal.length} leads recebidos do Grupo OLX</p>
+              <div className="space-y-1 max-h-64 overflow-auto">
+                {leadsPortal.map((l) => (
+                  <Link key={l.id} to={`/crm/leads/${l.id}`} className="flex items-center justify-between gap-2 text-xs p-2 rounded hover:bg-muted">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{l.nome}</div>
+                      <div className="text-muted-foreground truncate">
+                        {l.telefone} {l.imovel_interesse_codigo ? `· cód ${l.imovel_interesse_codigo}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 flex-wrap justify-end">
+                      {(l.tags ?? []).filter((t: string) => t !== 'grupo-olx').slice(0, 3).map((t: string) => (
+                        <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                      ))}
+                    </div>
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: ptBR })}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+
+
 
         {comErro > 0 && (
           <Card className="p-3 border-amber-300 bg-amber-50">
