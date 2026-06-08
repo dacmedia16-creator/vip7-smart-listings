@@ -217,6 +217,16 @@ export default function ImovelForm() {
   };
 
   const removeFoto = (url: string) => setFotos((p) => p.filter((u) => u !== url));
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const reorderFotos = (from: number, to: number) => {
+    if (from === to) return;
+    setFotos((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
 
   const handleDelete = async () => {
     if (!id || !confirm('Excluir este imóvel?')) return;
@@ -605,9 +615,24 @@ export default function ImovelForm() {
                 </div>
                 {fotos.length > 0 && (
                   <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                    {fotos.map((url) => (
-                      <div key={url} className="relative aspect-square">
-                        <img src={url} className="w-full h-full object-cover rounded-md" />
+                    {fotos.map((url, idx) => (
+                      <div
+                        key={url}
+                        draggable
+                        onDragStart={() => setDragIndex(idx)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragIndex !== null) reorderFotos(dragIndex, idx);
+                          setDragIndex(null);
+                        }}
+                        onDragEnd={() => setDragIndex(null)}
+                        className={`relative aspect-square cursor-move transition-opacity ${dragIndex === idx ? 'opacity-40' : ''}`}
+                      >
+                        <img src={url} className="w-full h-full object-cover rounded-md pointer-events-none" />
+                        {idx === 0 && (
+                          <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground">Capa</span>
+                        )}
                         <button type="button" onClick={() => removeFoto(url)} className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground">
                           <X className="h-3 w-3" />
                         </button>
