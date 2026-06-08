@@ -295,11 +295,12 @@ export default function ImovelForm() {
             />
           )}
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+            <TabsList className="grid grid-cols-5 w-full max-w-3xl">
               <TabsTrigger value="endereco">Endereço</TabsTrigger>
               <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
               <TabsTrigger value="relacionamentos">Relacionamentos</TabsTrigger>
               <TabsTrigger value="anotacoes">Anotações</TabsTrigger>
+              <TabsTrigger value="fotos">Fotos</TabsTrigger>
             </TabsList>
 
             {/* ENDEREÇO */}
@@ -590,7 +591,10 @@ export default function ImovelForm() {
                   {T('tour_360_url', 'URL do tour 360')}
                 </div>
               </Card>
+            </TabsContent>
 
+            {/* FOTOS */}
+            <TabsContent value="fotos" className="space-y-4">
               <Card className="p-6 space-y-4">
                 <h2 className="font-semibold">Fotos</h2>
                 <div>
