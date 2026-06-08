@@ -1,114 +1,73 @@
-# Conformidade VRSync (Zap / VivaReal / OLX)
+# Integração de Leads — Grupo OLX (Zap / VivaReal / OLX)
 
-Os três portais do Grupo OLX (OLX, Zap, VivaReal) usam **um único formato: VRSync**. Outros formatos foram descontinuados em out/2024. Vou consolidar e corrigir o feed para passar no validador oficial do Grupo OLX.
+O Grupo OLX entrega leads via **HTTP POST** num endpoint nosso, com JSON único por lead. Vou criar uma edge function pública que recebe esse POST, valida e grava na tabela `leads`, reaproveitando a deduplicação e o roteamento que já existe.
 
-## Mudanças
+## Endpoint
 
-### 1. Consolidar feeds OLX e Zap em um só
+`POST https://qozlwzgesezsygmnuzky.supabase.co/functions/v1/portal-lead-grupozap`
 
-- Atualmente: `/portal-feed/zap` e `/portal-feed/olx` geram XMLs diferentes.
-- Novo: ambas as rotas geram o mesmo VRSync. A diferença fica apenas no filtro de quais imóveis incluir (você ainda pode marcar "publicar no Zap" e "publicar na OLX" separado no CRM — útil porque o plano contratado pode ser diferente em cada um).
-- ImovelWeb e Chaves na Mão continuam com formatos próprios.
+- Pública (`verify_jwt = false`) — Grupo OLX não envia auth.
+- Proteção: query string `?token=XXX` validado contra secret `GRUPOZAP_LEAD_TOKEN`. URL final que você envia pro Grupo OLX:
+  `…/portal-lead-grupozap?token=XXX`
+- Responde **200** assim que grava, **4xx** se faltar `clientListingId` ou payload inválido (conforme spec — 4xx faz o Grupo OLX reenviar/armazenar por 14 dias), **5xx** em erro inesperado (também dispara retry deles, que tentam 3x).
 
-### 2. Reescrever `buildVRSync` conforme o spec
+## Fluxo da function
 
-Estrutura corrigida (resumo dos pontos que mudam):
+1. Valida token na query.
+2. Lê JSON e valida campos mínimos: `name`, (`phone` ou `phoneNumber`), `clientListingId`.
+3. Normaliza telefone (`ddd + phone` → E.164/BR).
+4. Mapeia `transactionType`: `SELL`→`venda`, `RENT`→`aluguel`.
+5. Busca imóvel pelo `clientListingId` em `imoveis_proprios`:
+   - tenta `codigo_imoview` (numérico), depois `codigo_interno` (texto), depois `codigo_auxiliar`.
+   - se achou: preenche `imovel_interesse_codigo`, `cidade_interesse`, `bairro_interesse`, `tipo_imovel`, `orcamento_max` (= preço do imóvel).
+6. Deduplicação: chama `find_duplicate_lead(telefone, email)`. Se duplicado:
+   - cria `lead_interacoes` (tipo `outro`) com a mensagem + originLeadId + leadType + temperatura.
+   - **não** cria lead novo.
+7. Senão, insere em `leads` com:
+   - `origem = 'portal'`
+   - `origem_url`: monta `https://www.zapimoveis.com.br/imovel/{originListingId}` quando aplicável, senão deixa null.
+   - `observacoes`: bloco formatado com `message`, `temperature`, `extraData.leadType`, `originLeadId`, `originListingId`, links IZI/feedback se vierem.
+   - `tags`: `['grupo-olx', leadType.toLowerCase(), temperature.toLowerCase()]` + `'lead-certo'` se `extraData.leadCerto === true`.
+8. Se houver regra de distribuição automática ativa, chama `distribuir_lead(lead_id)` (segue padrão do CRM atual; opcional, fica atrás de flag em `app_config`).
+9. Trigger existente `vincular_interessado_de_lead` cuida de ligar o imóvel ao cliente se já existir.
+10. Loga em `activity_log` (entidade `leads`, ação `criou`/`atualizou` via interação).
 
-```xml
-<ListingDataFeed xmlns="http://www.vivareal.com/schemas/1.0/VRSync"
-                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                 xsi:schemaLocation="http://www.vivareal.com/schemas/1.0/VRSync http://xml.vivareal.com/vrsync.xsd">
-  <Header>
-    <Provider>VIP7 Imoveis</Provider>
-    <Email>contato@vipsevenimoveis.com.br</Email>
-    <ContactName>VIP7 Imoveis</ContactName>
-    <PublishDate>2026-06-08T...</PublishDate>
-    <Telephone>15 3500-8641</Telephone>
-  </Header>
-  <Listings>
-    <Listing>
-      <ListingID>...</ListingID>
-      <Title>...</Title>
-      <TransactionType>For Sale | For Rent</TransactionType>
-      <PublicationType>STANDARD | PREMIUM | SUPER_PREMIUM</PublicationType>
-      <DetailViewUrl>https://vipsevenimoveis.com.br/imovel/{codigo}</DetailViewUrl>
-      <Media>
-        <Item medium="video">{youtube_url}</Item>
-        <Item medium="image" primary="true">URL_FOTO_1</Item>
-        <Item medium="image">URL_FOTO_2</Item>
-      </Media>
-      <Details>
-        <UsageType>Residential | Commercial</UsageType>
-        <PropertyType>Residential / Apartment</PropertyType>
-        <Description><![CDATA[...]]></Description>
-        <ListPrice currency="BRL">860000</ListPrice>
-        <PropertyAdministrationFee currency="BRL">980</PropertyAdministrationFee>
-        <Iptu currency="BRL" period="Yearly">4500</Iptu>
-        <LivingArea unit="square metres">80</LivingArea>
-        <LotArea unit="square metres">90</LotArea>
-        <Bedrooms>2</Bedrooms>
-        <Bathrooms>1</Bathrooms>
-        <Suites>1</Suites>
-        <Garage type="Parking Space">2</Garage>
-        <Features>
-          <Feature>Pool</Feature>
-          ...
-        </Features>
-      </Details>
-      <Location displayAddress="Street | Neighborhood | City | None">
-        <Country abbreviation="BR">Brasil</Country>
-        <State abbreviation="SP">São Paulo</State>
-        <City>Sorocaba</City>
-        <Neighborhood>Centro</Neighborhood>
-        <Address>Rua X</Address>
-        <StreetNumber>123</StreetNumber>
-        <PostalCode>...</PostalCode>
-        <Latitude>...</Latitude>
-        <Longitude>...</Longitude>
-      </Location>
-      <ContactInfo>
-        <Name>VIP7 Imoveis</Name>
-        <Email>contato@vipsevenimoveis.com.br</Email>
-        <Telephone>15 3500-8641</Telephone>
-        <Website>https://vipsevenimoveis.com.br</Website>
-      </ContactInfo>
-    </Listing>
-  </Listings>
-</ListingDataFeed>
-```
+## Idempotência
 
-### 3. Tabelas de mapeamento (em `supabase/functions/portal-feed/vrsync-maps.ts`)
+Antes do passo 6, checa se já existe lead com `originLeadId` no campo `observacoes` ou nova coluna dedicada. Para ficar limpo, adiciono coluna:
 
-- `mapPropertyType(tipoDb)` → casa→`Residential / Home`, apartamento→`Residential / Apartment`, terreno→`Allotment Land`, sala/comercial→`Commercial / Business`, galpão→`Commercial / Warehouse`, etc.
-- `mapUsageType(tipoDb)` → comercial/sala/galpão→`Commercial`, resto→`Residential`.
-- `mapFeature(caracteristicaPt)` → tabela PT→EN com ~60 entradas (Piscina→Pool, Academia→Gym, Churrasqueira→BBQ, Elevador→Elevator, Varanda→Balcony, Mobiliado→Furnished, Portaria 24h→Security Guard on Duty, etc.). Características sem match são descartadas (não invalida o imóvel).
-- `mapDisplayAddress(mostrar_endereco, endereco, numero)` → `Street` se mostra tudo, `Neighborhood` caso contrário, `None` se sem bairro.
+- `leads.portal_origin_lead_id text` (nullable, unique parcial onde not null) — guarda `originLeadId` do Grupo OLX. Reenvios mesmo após 200 (raro mas possível) não duplicam: function faz `upsert` por essa chave; se já existe, responde 200 sem nada fazer.
+- `leads.portal_origin text` — `grupo_olx`, fica pronto pra outros portais (ImovelWeb etc.) terem o mesmo padrão.
 
-### 4. Dados da imobiliária centralizados
+## UI no CRM (`/crm/portais`)
 
-Constante no topo da edge function: nome, email, telefone, site, endereço (Sorocaba). Lê de `app_config` se existir chave `imobiliaria_contato_json`, senão usa padrão.
+No card do Zap/VivaReal/OLX adicionar bloco "Webhook de leads":
 
-### 5. Página `/crm/portais` — pequenos ajustes
+- Mostra a URL completa (`…/portal-lead-grupozap?token=…`) com botão copiar.
+- Botão "Rotacionar token" (chama `secrets--update_secret` indiretamente — na verdade só re-renderiza orientação; rotação real fica nas Configurações).
+- Link pro [validador oficial](https://developers.grupozap.com/webhooks/endpoint_validator.html) e instrução: validar → preencher [formulário de homologação](https://docs.google.com/forms/d/e/1FAIpQLSd6WJ3xw-qoFzW2-6OvrEihTjurUwVsJYei-P4alae2S1yedQ/viewform).
+- Tabela mostrando os últimos 20 leads recebidos via portal (filtro `portal_origin = 'grupo_olx'`).
 
-- Card do Zap passa a dizer "Zap + VivaReal + OLX (Grupo OLX)" para deixar claro.
-- Mostra 1 URL única para os 3 (mas mantém colunas separadas na tabela porque você pode ter contratos diferentes por portal e querer escolher quem vai pra cada um).
-- Tooltip explicando que o XML é o mesmo, mas o portal só lê imóveis marcados especificamente para ele.
+## Detalhes técnicos
 
-### 6. Validação reforçada
+**Migration** (`leads`):
+- `alter table leads add column portal_origin text, add column portal_origin_lead_id text;`
+- `create unique index leads_portal_origin_lead_id_uniq on leads (portal_origin, portal_origin_lead_id) where portal_origin_lead_id is not null;`
+- Sem mudança de RLS (já permite insert anon com `corretor_id IS NULL` — mas a function usa service role, então não importa).
 
-Adicionar ao `validarImovelParaPortais`:
-- Título 10–100 chars (spec do Zap)
-- Descrição 100–3000 chars (Zap rejeita acima)
-- Pelo menos 5 fotos é recomendado (mas só 1 é obrigatório — manter como warning, não bloqueio).
+**Secret novo**: `GRUPOZAP_LEAD_TOKEN` (gerado aleatório, você cola na configuração do portal).
+
+**Arquivos novos**:
+- `supabase/functions/portal-lead-grupozap/index.ts`
+- bloco em `supabase/config.toml` com `verify_jwt = false`
+- migration acima
+- atualização em `src/crm/pages/Portais.tsx` (bloco webhook)
+- atualização em `src/crm/lib/portais.ts` se precisar tipos
 
 ## Fora deste plano
 
-- Suporte a Aluguel Digital, leads via webhook do Zap, ou Lead Manager API (são integrações separadas no portal Grupo OLX e exigem credenciais B2B).
-- Validador local do XML — usuário pode subir o arquivo no [validador oficial](https://developers.grupozap.com/feeds/xml_validator/) baixando do nosso endpoint.
+- Integração de leads de OUTROS portais (ImovelWeb, Chaves na Mão) — cada um tem contrato próprio; faço quando você pedir, reaproveitando a estrutura `portal_origin / portal_origin_lead_id`.
+- Resposta ao feedback URL (`extraData.feedback`) — só guardo o link.
+- Reenvio sob demanda (a doc do Grupo OLX diz que precisa pedir pra eles).
 
-## Arquivos a alterar
-
-- `supabase/functions/portal-feed/index.ts` — reescrever `buildVRSync`, importar mapas.
-- `supabase/functions/portal-feed/vrsync-maps.ts` — novo, com mapeamentos PT→EN.
-- `src/crm/lib/portais.ts` — atualizar labels (Zap card) e endurecer validador.
-- `src/crm/pages/Portais.tsx` — texto do card Zap.
+Confirma que vai usar `codigo_imoview` como `clientListingId` no XML do feed (é o que está hoje em `buildVRSync`)? Se você costuma sobrescrever com `codigo_interno`/`codigo_auxiliar`, eu já incluo o fallback como descrito.
