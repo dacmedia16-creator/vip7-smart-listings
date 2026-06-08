@@ -21,6 +21,7 @@ type Filters = {
   codigos: string;
   finalidade: string;
   status: string;
+  ativo: string;
   tipo: string;
   etiqueta: string;
   cidade: string;
@@ -47,7 +48,7 @@ type Filters = {
 };
 
 const EMPTY: Filters = {
-  codigos: '', finalidade: 'venda', status: 'disponivel', tipo: 'todos', etiqueta: 'todos',
+  codigos: '', finalidade: 'venda', status: 'disponivel', ativo: 'ativos', tipo: 'todos', etiqueta: 'todos',
   cidade: '', regiao: 'todos', sub_regiao: 'todos', bairro: '',
   endereco: '', numero: '', complemento: '', local_chaves: '', identificador_chaves: '',
   preco_min: '', preco_max: '', cond_min: '', cond_max: '', area_min: '', area_max: '',
