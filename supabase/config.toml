@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.import-proprietarios-batch]
 verify_jwt = false
+
+[functions.portal-feed]
+verify_jwt = false
