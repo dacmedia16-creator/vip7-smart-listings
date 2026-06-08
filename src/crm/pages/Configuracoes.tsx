@@ -13,6 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Users, Settings as SettingsIcon, Shuffle, Bell, Bot, Copy, ExternalLink, Plug, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useRoles } from '../hooks/useRole';
 import { useAuth } from '../hooks/useAuth';
+import NovoUsuarioDialog from '../components/NovoUsuarioDialog';
+import { UserPlus } from 'lucide-react';
 
 const ROLES = ['admin', 'gestor', 'corretor', 'atendente'] as const;
 const INBOUND_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ia-whatsapp-inbound`;
