@@ -1,8 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const IMOVIEW_API_KEY = Deno.env.get('IMOVIEW_API_KEY');
-const IMOVIEW_API_URL = 'https://api.imoview.com.br';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const DEFAULT_SITE_URL = 'https://vip7imoveis.com.br';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,57 +13,48 @@ const corsHeaders = {
 };
 
 async function fetchPropertyDetails(codigo: string) {
-  console.log(`[og-metadata] Fetching property details for ${codigo}`);
-  
-  // Use the correct endpoint for property details (GET instead of POST)
-  const url = `${IMOVIEW_API_URL}/Imovel/RetornarDetalhesImovelDisponivel?codigoimovel=${codigo}`;
-  
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'chave': IMOVIEW_API_KEY || '',
-    },
-  });
+  console.log(`[og-metadata] Fetching property details for ${codigo} (local DB)`);
 
-  if (!response.ok) {
-    console.error(`[og-metadata] API error: ${response.status}`);
+  // Try by codigo_imoview first
+  let row: Record<string, unknown> | null = null;
+  const codigoNum = parseInt(codigo, 10);
+  if (Number.isFinite(codigoNum)) {
+    const { data } = await supabase
+      .from('imoveis_proprios')
+      .select('codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description')
+      .eq('codigo_imoview', codigoNum)
+      .eq('ativo', true)
+      .maybeSingle();
+    row = data as Record<string, unknown> | null;
+  }
+  // Fallback: by UUID
+  if (!row && /^[0-9a-f-]{36}$/i.test(codigo)) {
+    const { data } = await supabase
+      .from('imoveis_proprios')
+      .select('codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description')
+      .eq('id', codigo)
+      .maybeSingle();
+    row = data as Record<string, unknown> | null;
+  }
+
+  if (!row) {
+    console.log(`[og-metadata] Property ${codigo} not found in local DB`);
     return null;
   }
 
-  const data = await response.json();
-  console.log(`[og-metadata] API response keys:`, Object.keys(data || {}));
-  
-  // The details endpoint returns the property directly or wrapped
-  const raw = data?.imovel || data;
-  
-  if (!raw || !raw.codigo) {
-    console.log(`[og-metadata] Property ${codigo} not found or invalid response`);
-    return null;
-  }
-
-  console.log(`[og-metadata] Found property:`, raw.titulo || raw.codigo);
-
-  // Get the main image - try multiple sources
-  let imagem = '';
-  if (raw.urlfotoprincipal) {
-    imagem = raw.urlfotoprincipal;
-  } else if (Array.isArray(raw.fotos) && raw.fotos.length > 0) {
-    imagem = raw.fotos[0]?.url || raw.fotos[0]?.urlFoto || '';
-  }
-  
-  console.log(`[og-metadata] Property image:`, imagem);
+  const fotos = Array.isArray(row.fotos) ? row.fotos as string[] : [];
+  const imagem = fotos[0] || '';
 
   return {
-    codigo: raw.codigo,
-    titulo: raw.titulo || `${raw.tipo || 'Imóvel'} em ${raw.bairro || 'Sorocaba'}`,
-    descricao: raw.descricao || raw.metadescription || `Imóvel disponível em ${raw.bairro || ''}, ${raw.cidade || 'Sorocaba'}`,
+    codigo: row.codigo_imoview ?? codigo,
+    titulo: (row.titulo as string) || `${row.tipo || 'Imóvel'} em ${row.bairro || 'Sorocaba'}`,
+    descricao: (row.meta_description as string) || (row.descricao as string) || `Imóvel disponível em ${row.bairro || ''}, ${row.cidade || 'Sorocaba'}`,
     imagem,
-    bairro: raw.bairro || '',
-    cidade: raw.cidade || 'Sorocaba',
-    tipo: raw.tipo || 'Imóvel',
-    valor: raw.valor,
-    finalidade: raw.finalidade,
+    bairro: (row.bairro as string) || '',
+    cidade: (row.cidade as string) || 'Sorocaba',
+    tipo: (row.tipo as string) || 'Imóvel',
+    valor: row.preco as number,
+    finalidade: row.finalidade as string,
   };
 }
 
@@ -78,7 +72,6 @@ function formatCurrency(value: unknown): string {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -86,26 +79,17 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const codigo = url.searchParams.get('codigo');
-
-    // Allow dynamic redirect URL (for different environments)
-    // `redirect` pode ser:
-    // - base do site (ex: https://site.com)
-    // - URL final do imóvel (ex: https://site.com/imovel/123 ou https://site.com/#/imovel/123)
-    // - template com {codigo} (ex: https://site.com/imovel/{codigo})
     const redirectParam = (url.searchParams.get('redirect') || DEFAULT_SITE_URL).trim();
 
-    // Base do site (usado para rotas padrão como /imoveis e fallback)
     let redirectOrigin = DEFAULT_SITE_URL;
     try {
       redirectOrigin = new URL(redirectParam).origin;
     } catch (_) {
-      // Se vier inválido, mantém DEFAULT_SITE_URL
+      // keep default
     }
-
-    const siteUrl = redirectOrigin.replace(/\/$/, ''); // Remove trailing slash
+    const siteUrl = redirectOrigin.replace(/\/$/, '');
 
     if (!codigo) {
-      // Redirect to homepage if no code
       return new Response(null, {
         status: 302,
         headers: { ...corsHeaders, 'Location': siteUrl },
@@ -115,14 +99,14 @@ serve(async (req) => {
     const property = await fetchPropertyDetails(codigo);
 
     if (!property) {
-      // Redirect to properties page if not found
       return new Response(null, {
         status: 302,
         headers: { ...corsHeaders, 'Location': `${siteUrl}/imoveis` },
       });
     }
 
-    const isRental = String(property.finalidade).toLowerCase().includes('aluguel') || property.finalidade === 1;
+    const finalidadeStr = String(property.finalidade || '').toLowerCase();
+    const isRental = finalidadeStr.includes('aluguel');
     const valorFormatado = formatCurrency(property.valor);
     const finalidadeTexto = isRental ? 'Aluguel' : 'Venda';
 
@@ -133,9 +117,6 @@ serve(async (req) => {
 
     const canonicalUrl = buildCanonicalUrl(redirectParam, siteUrl, codigo);
     const imageUrl = property.imagem || `${siteUrl}/og-image.jpg`;
-
-    // Para WhatsApp, a imagem ideal é 1200x630px
-    // Não adicionar parâmetros de resize que podem quebrar a URL da imagem
     const optimizedImageUrl = imageUrl;
 
     const userAgent = req.headers.get('user-agent') || '';
@@ -145,8 +126,6 @@ serve(async (req) => {
       `[og-metadata] codigo=${codigo} canonical="${canonicalUrl}" crawler=${isCrawler} ua="${userAgent}"`,
     );
 
-    // Se for clique humano (browser), redireciona imediatamente.
-    // Para crawlers (Facebook/WhatsApp), devolve HTML com OG tags.
     if (!isCrawler) {
       return new Response(null, {
         status: 302,
@@ -163,12 +142,8 @@ serve(async (req) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Basic Meta -->
   <title>${escapeHtml(pageTitle)}</title>
   <meta name="description" content="${escapeHtml(pageDescription)}">
-
-  <!-- Open Graph / Facebook / WhatsApp - Otimizado para 1200x630px -->
   <meta property="og:type" content="product">
   <meta property="og:url" content="${canonicalUrl}">
   <meta property="og:title" content="${escapeHtml(pageTitle)}">
@@ -181,21 +156,13 @@ serve(async (req) => {
   <meta property="og:image:alt" content="${escapeHtml(pageTitle)}">
   <meta property="og:site_name" content="VIP7 Imóveis">
   <meta property="og:locale" content="pt_BR">
-
-  <!-- Twitter Card - Otimizado para large image -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(pageTitle)}">
   <meta name="twitter:description" content="${escapeHtml(pageDescription)}">
   <meta name="twitter:image" content="${escapeHtml(optimizedImageUrl)}">
   <meta name="twitter:image:alt" content="${escapeHtml(pageTitle)}">
-
-  <!-- WhatsApp specific -->
   <meta property="og:image:url" content="${escapeHtml(optimizedImageUrl)}">
-
-  <!-- Canonical -->
   <link rel="canonical" href="${canonicalUrl}">
-
-  <!-- Redirect after crawler reads meta tags -->
   <meta http-equiv="refresh" content="0;url=${canonicalUrl}">
 </head>
 <body>
@@ -203,19 +170,13 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    // Force Content-Type to be honored by intermediaries (send bytes + lowercase header)
     const responseHeaders = new Headers();
     responseHeaders.set('content-type', 'text/html; charset=utf-8');
     responseHeaders.set('cache-control', 'public, max-age=3600');
     responseHeaders.set('access-control-allow-origin', '*');
-    responseHeaders.set(
-      'access-control-allow-headers',
-      'authorization, x-client-info, apikey, content-type',
-    );
+    responseHeaders.set('access-control-allow-headers', 'authorization, x-client-info, apikey, content-type');
 
-    const body = new TextEncoder().encode(html);
-
-    return new Response(body, {
+    return new Response(new TextEncoder().encode(html), {
       status: 200,
       headers: responseHeaders,
     });
@@ -231,59 +192,31 @@ serve(async (req) => {
 function buildCanonicalUrl(redirectParam: string, siteUrl: string, codigo: string): string {
   const redirect = (redirectParam || '').trim();
   const base = redirect.replace(/\/$/, '');
-
-  // Sem redirect válido, usa hash route (funciona mesmo sem rewrite no servidor)
   if (!base) return `${siteUrl}/#/imovel/${codigo}`;
-
-  // Template (ex: https://site.com/#/imovel/{codigo})
   if (base.includes('{codigo}')) {
     return base.split('{codigo}').join(String(codigo));
   }
-
   const lower = base.toLowerCase();
   const isFullUrl =
     lower.includes('/imovel/') ||
     lower.includes('#/imovel/') ||
     lower.includes('codigo=');
-
   if (isFullUrl) return base;
-
-  // Fallback: tratar redirect como base do site e usar hash route
   return `${base}/#/imovel/${codigo}`;
 }
 
 function isSocialCrawlerUserAgent(userAgent: string): boolean {
   const ua = (userAgent || '').toLowerCase();
-
-  // Crawlers conhecidos (sempre servir HTML com OG tags)
   const crawlerTokens = [
-    'facebookexternalhit',
-    'facebot',
-    'twitterbot',
-    'slackbot',
-    'telegrambot',
-    'linkedinbot',
-    'discordbot',
-    'pinterest',
+    'facebookexternalhit', 'facebot', 'twitterbot', 'slackbot',
+    'telegrambot', 'linkedinbot', 'discordbot', 'pinterest',
   ];
-
-  if (crawlerTokens.some((t) => ua.includes(t))) {
-    return true;
-  }
-
-  // WhatsApp: o fetcher de preview é "WhatsApp/2.x" (sem Mozilla)
-  // O clique humano abre no in-app browser com "Mozilla/... WhatsApp/..."
+  if (crawlerTokens.some((t) => ua.includes(t))) return true;
   const isWhatsapp = ua.includes('whatsapp');
   const hasMozilla = ua.includes('mozilla');
-  
-  if (isWhatsapp && !hasMozilla) {
-    console.log(`[og-metadata] WhatsApp crawler detected: ua="${userAgent}"`);
-    return true;
-  }
-
+  if (isWhatsapp && !hasMozilla) return true;
   return false;
 }
-
 
 function escapeHtml(text: string): string {
   return text
