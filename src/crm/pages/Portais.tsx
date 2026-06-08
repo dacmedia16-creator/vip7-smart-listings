@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Copy, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Globe, Copy, AlertCircle, CheckCircle2, Webhook, ShieldCheck, ShieldAlert, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PORTAIS, type PortalId, validarImovelParaPortais } from '../lib/portais';
+import { Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface ImovelLite {
   id: string;
