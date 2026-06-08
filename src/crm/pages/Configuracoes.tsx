@@ -140,6 +140,20 @@ export default function Configuracoes() {
     toast({ title: 'Copiado' });
   };
 
+  const testImoviewAuth = async () => {
+    setImoviewTesting(true);
+    setImoviewResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('imoview-auth-test', { body: {} });
+      if (error) throw error;
+      setImoviewResult(data);
+    } catch (e: any) {
+      setImoviewResult({ ok: false, error: e?.message ?? String(e) });
+    } finally {
+      setImoviewTesting(false);
+    }
+  };
+
   return (
     <CrmLayout>
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><SettingsIcon className="h-6 w-6" />Configurações</h1>
