@@ -277,6 +277,44 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_conversas: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          imovel_codigo: number | null
+          lead_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          imovel_codigo?: number | null
+          lead_id: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          imovel_codigo?: number | null
+          lead_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_conversas_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imoveis_proprios: {
         Row: {
           aceita_financiamento: boolean
@@ -906,6 +944,10 @@ export type Database = {
           created_by: string | null
           email: string | null
           finalidade: string | null
+          ia_handoff: boolean
+          ia_handoff_at: string | null
+          ia_handoff_motivo: string | null
+          ia_last_message_at: string | null
           id: string
           imoveis_carrinho_codigos: string[]
           imoveis_proposta_codigos: string[]
@@ -935,6 +977,10 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           finalidade?: string | null
+          ia_handoff?: boolean
+          ia_handoff_at?: string | null
+          ia_handoff_motivo?: string | null
+          ia_last_message_at?: string | null
           id?: string
           imoveis_carrinho_codigos?: string[]
           imoveis_proposta_codigos?: string[]
@@ -964,6 +1010,10 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           finalidade?: string | null
+          ia_handoff?: boolean
+          ia_handoff_at?: string | null
+          ia_handoff_motivo?: string | null
+          ia_last_message_at?: string | null
           id?: string
           imoveis_carrinho_codigos?: string[]
           imoveis_proposta_codigos?: string[]
