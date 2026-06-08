@@ -44,6 +44,7 @@ import CrmImportarClientes from "./crm/pages/ImportarClientes";
 import CrmImportarProprietarios from "./crm/pages/ImportarProprietarios";
 import CrmImportarLeads from "./crm/pages/ImportarLeads";
 import CrmImportarImoveisDesativados from "./crm/pages/ImportarImoveisDesativados";
+import CrmPortais from "./crm/pages/Portais";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -99,6 +100,7 @@ const App = () => (
                 <Route path="/crm/relatorios" element={<RequireAuth><CrmRelatorios /></RequireAuth>} />
                 <Route path="/crm/configuracoes" element={<RequireAuth><CrmConfiguracoes /></RequireAuth>} />
                 <Route path="/crm/configuracoes/imoview" element={<RequireAuth roles={['admin','gestor']}><CrmSincronizacaoImoview /></RequireAuth>} />
+                <Route path="/crm/portais" element={<RequireAuth roles={['admin','gestor']}><CrmPortais /></RequireAuth>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

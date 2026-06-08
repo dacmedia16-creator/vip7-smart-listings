@@ -13,6 +13,7 @@ import { useRoles } from '../hooks/useRole';
 import { imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
 import { PessoasVinculadasCard } from '../components/PessoasVinculadasCard';
+import { PortaisCard } from '../components/PortaisCard';
 
 export default function ImovelDetail() {
   const { id } = useParams();
@@ -155,6 +156,7 @@ export default function ImovelDetail() {
           </Card>
 
           <PessoasVinculadasCard imovelId={imovel.id} />
+          <PortaisCard imovelId={imovel.id} imovel={imovel as any} />
         </div>
       </div>
 

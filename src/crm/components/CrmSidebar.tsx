@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Building,
   Contact,
+  Globe,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const items = [
   { title: 'Imóveis', url: '/crm/imoveis', icon: Building2, roles: ['admin', 'gestor', 'corretor'] },
   { title: 'Clientes', url: '/crm/clientes', icon: Contact, roles: ['admin', 'gestor', 'corretor'] },
   { title: 'Condomínios', url: '/crm/condominios', icon: Building, roles: ['admin', 'gestor', 'corretor'] },
+  { title: 'Portais', url: '/crm/portais', icon: Globe, roles: ['admin', 'gestor'] },
   { title: 'Tarefas', url: '/crm/tarefas', icon: CheckSquare, roles: ['admin', 'gestor', 'corretor', 'atendente'] },
   { title: 'Agenda', url: '/crm/agenda', icon: Calendar, roles: ['admin', 'gestor', 'corretor'] },
   { title: 'Relatórios', url: '/crm/relatorios', icon: BarChart3, roles: ['admin', 'gestor'] },
