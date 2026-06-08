@@ -689,7 +689,7 @@ serve(async (req) => {
     if (done) {
       const startedAtRes = await sb.from("imoview_sync_log").select("started_at, errors_count").eq("id", activeSyncId).single();
       const startedAt = startedAtRes.data?.started_at as string | undefined;
-      if (startedAt && !isDesat) {
+      if (startedAt) {
         const { data: stale, count } = await sb
           .from("imoveis_proprios")
           .update({ ativo: false, status: "inativo" }, { count: "exact" })
