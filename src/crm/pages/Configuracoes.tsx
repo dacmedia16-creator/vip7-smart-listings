@@ -32,6 +32,10 @@ export default function Configuracoes() {
   const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
   const [iaMetrics, setIaMetrics] = useState<{ msgs: number; handoffs: number }>({ msgs: 0, handoffs: 0 });
 
+  // Imoview App auth test
+  const [imoviewTesting, setImoviewTesting] = useState(false);
+  const [imoviewResult, setImoviewResult] = useState<any>(null);
+
   const loadUsers = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*').order('nome');
     const { data: roles } = await supabase.from('user_roles').select('*');
