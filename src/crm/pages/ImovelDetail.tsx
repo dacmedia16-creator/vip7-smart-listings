@@ -155,6 +155,7 @@ export default function ImovelDetail() {
           </Card>
 
           <PessoasVinculadasCard imovelId={imovel.id} />
+          <PortaisCard imovelId={imovel.id} imovel={imovel as any} />
         </div>
       </div>
 
