@@ -1,32 +1,17 @@
-# Teste da IA WhatsApp — sem repetição
+# Resetar o lead correto e testar de novo
 
-## Objetivo
-Validar em produção que, após o fix do loop, a IA processa cada mensagem do cliente **uma única vez** e responde sem repetir o "⏳ Um momento...".
+## Diagnóstico
+A função `ia-whatsapp-inbound` busca o lead pelo telefone `LIKE '%15981788214%'` ordenado por `created_at DESC LIMIT 1`. Existem 10+ leads com esse mesmo número; o "vencedor" é o mais recente:
+
+- `59b803a7-f3aa-4979-b0bf-6f36b95c5b86` — "Teste Canal IA" — `ia_handoff=true` ← é esse que está bloqueando
+- `54aff7e6-d735-40f8-aa88-378c3787fa04` — "Denis Fabio de Souza" — já resetei, mas o webhook nunca chega nele.
 
 ## Passos
 
-1. **Resetar o lead de teste** (telefone 15981788214 — lead `54aff7e6-d735-40f8-aa88-378c3787fa04` que está aberto na tela):
-   - `ia_handoff = false`
-   - `ia_handoff_at = null`
-   - `ia_handoff_motivo = null`
-   - `ia_last_message_at = null` (libera o rate-limit de 5s)
+1. **Resetar o lead `59b803a7...`** (o que o webhook realmente usa): `ia_handoff=false`, `ia_handoff_at=null`, `ia_handoff_motivo=null`, `ia_last_message_at=null`.
+2. Pedir pro usuário mandar `ola` de novo no WhatsApp.
+3. Verificar logs: deve aparecer 1 `payload`, 1 `phone=... msg="ola"`, **sem** `skip: lead em handoff`, e terminar com `[ia-inbound] ok lead=59b803a7...`.
+4. Se a resposta da IA chegar 1x só no WhatsApp, teste OK.
 
-2. **Limpar dedupe recente** (opcional, só por segurança): apagar mensagens role='user' com content='ola' do lead nos últimos 5 minutos, pra `ola` voltar a ser processada como nova.
-
-3. **Pedir que o usuário envie** uma mensagem real no WhatsApp pro número conectado (ex.: `ola, quero ver o imóvel`).
-
-4. **Monitorar `edge_function_logs` de `ia-whatsapp-inbound`** logo após o envio. Critérios de sucesso:
-   - 1 linha `[ia-inbound] payload:` por mensagem do cliente (retries da ZionTalk são OK se aparecerem, mas devem cair em `skip: mensagem duplicada recente` ou `skip rate-limit`).
-   - 1 envio de `⏳ Um momento...` por mensagem (não 5 como antes).
-   - 1 linha final `[ia-inbound] ok lead=... phone=...` com a resposta gerada.
-   - Sem linhas de `[ia-inbound] error`.
-
-5. **Conferir na tela do lead** (`/crm/leads/54aff7e6...`) que o `InteracaoTimeline` mostra: 1 mensagem do usuário, 1 "aguarde" e 1 resposta da IA — sem duplicatas.
-
-## Critério de falha
-Se aparecer mais de 1 envio de "aguarde" no WhatsApp ou mais de 1 resposta final para a mesma mensagem do cliente, abrir os logs e investigar (provavelmente um caminho de retry escapou da dedupe ou a ZionTalk está chamando o webhook por mais de um canal).
-
-## Detalhes técnicos
-- Reset feito via `supabase--insert` (UPDATE na tabela `leads`) com filtro `id = '54aff7e6-d735-40f8-aa88-378c3787fa04'`.
-- A limpeza de `ia_conversas` (opcional) usa migration, já que delete não está disponível via insert direto. Se preferir, pulamos e só esperamos os 30s passarem.
-- Nenhuma alteração de código: a correção do loop já está deployada (background processing + dedupe forte + rate-limit 5s).
+## Observação para depois
+Ter vários leads com o mesmo telefone vai continuar causando confusão (a IA sempre escolhe o mais novo). Em um próximo ajuste vale pensar em: (a) deduplicar leads por telefone na criação, ou (b) o webhook escolher o lead com `ia_handoff=false` mais recente em vez do absolutamente mais recente. Fora do escopo desse teste.
