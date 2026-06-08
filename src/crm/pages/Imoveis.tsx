@@ -214,7 +214,12 @@ export default function Imoveis() {
   }, [pagina, qDebounced, applied]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const update = (k: keyof Filters, v: string) => setFilters((s) => ({ ...s, [k]: v }));
+  const update = (k: keyof Filters, v: string) => setFilters((s) => {
+    const next = { ...s, [k]: v };
+    // Quando o usuário escolhe ver inativos/todos, libera a Situação para não esconder os inativos.
+    if (k === 'ativo' && v !== 'ativos' && s.status === 'disponivel') next.status = 'todos';
+    return next;
+  });
   const apply = () => setApplied(filters);
   const clear = () => { setFilters(EMPTY); setApplied(EMPTY); };
 
