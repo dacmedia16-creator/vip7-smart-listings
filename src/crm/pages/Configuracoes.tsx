@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings as SettingsIcon, Shuffle, Bell, Bot, Copy, ExternalLink } from 'lucide-react';
+import { Users, Settings as SettingsIcon, Shuffle, Bell, Bot, Copy, ExternalLink, Plug, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useRoles } from '../hooks/useRole';
 import { useAuth } from '../hooks/useAuth';
 
