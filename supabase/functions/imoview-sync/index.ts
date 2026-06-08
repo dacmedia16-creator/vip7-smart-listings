@@ -330,15 +330,23 @@ async function syncOne(
 
     const { data: existing } = await sb
       .from("imoveis_proprios")
-      .select("id, imoview_hash, fotos")
+      .select("id, imoview_hash, fotos, ativo, status")
       .eq("codigo_imoview", mapped.codigo)
       .maybeSingle();
+
+    // Proteção: se já está inativo no banco e não estamos forçando reativação, mantém inativo
+    const keepInativo = !forceInativo && existing && existing.ativo === false;
+    const activeFlags = forceInativo
+      ? { ativo: false, status: "inativo" as const }
+      : keepInativo
+        ? { ativo: false, status: (existing!.status as string) === "inativo" ? "inativo" as const : (existing!.status as "inativo") }
+        : { ativo: true };
 
     if (existing && existing.imoview_hash === hash) {
       stats.unchanged++;
       await sb.from("imoveis_proprios").update({
         imoview_sync_at: new Date().toISOString(),
-        ...(forceInativo ? { ativo: false, status: "inativo" } : { ativo: true }),
+        ...activeFlags,
       }).eq("id", existing.id);
       if (syncId) await persistStats(sb, syncId, { unchanged: 1 });
       return;
@@ -349,6 +357,7 @@ async function syncOne(
       : ((existing?.fotos as string[] | undefined) || []);
     const baseRow = {
       ...mapped.payload,
+      ...activeFlags,
       fotos: fotosOrigem,
       imoview_hash: hash,
       imoview_sync_at: new Date().toISOString(),
@@ -358,10 +367,12 @@ async function syncOne(
       await sb.from("imoveis_proprios").update(baseRow).eq("id", existing.id);
       stats.updated++;
       if (syncId) await persistStats(sb, syncId, { updated: 1 });
+      if (fotosOrigem.length > 0 && syncId) await persistStats(sb, syncId, { photos: fotosOrigem.length });
     } else {
       await sb.from("imoveis_proprios").insert(baseRow);
       stats.inserted++;
       if (syncId) await persistStats(sb, syncId, { inserted: 1 });
+      if (fotosOrigem.length > 0 && syncId) await persistStats(sb, syncId, { photos: fotosOrigem.length });
     }
 
   } catch (e) {
