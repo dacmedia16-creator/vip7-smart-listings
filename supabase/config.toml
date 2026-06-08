@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.portal-lead-grupozap]
 verify_jwt = false
+
+[functions.ia-whatsapp-greeting]
+verify_jwt = false
+
+[functions.ia-whatsapp-inbound]
+verify_jwt = false
