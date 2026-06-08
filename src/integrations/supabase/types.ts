@@ -348,6 +348,7 @@ export type Database = {
           matricula: string | null
           melhor_acesso: string | null
           meta_description: string | null
+          mostrar_endereco: boolean
           na_planta: boolean
           notas_privadas: string | null
           num_andares: number | null
@@ -381,6 +382,7 @@ export type Database = {
           torre_bloco: string | null
           total_unidades: number | null
           tour_360_url: string | null
+          tour_virtual_url: string | null
           unidades_por_andar: number | null
           updated_at: string
           vagas: number | null
@@ -391,6 +393,7 @@ export type Database = {
           varandas: number | null
           venc_autorizacao_venda: string | null
           video_url: string | null
+          youtube_url: string | null
           zona_uso: string | null
         }
         Insert: {
@@ -463,6 +466,7 @@ export type Database = {
           matricula?: string | null
           melhor_acesso?: string | null
           meta_description?: string | null
+          mostrar_endereco?: boolean
           na_planta?: boolean
           notas_privadas?: string | null
           num_andares?: number | null
@@ -496,6 +500,7 @@ export type Database = {
           torre_bloco?: string | null
           total_unidades?: number | null
           tour_360_url?: string | null
+          tour_virtual_url?: string | null
           unidades_por_andar?: number | null
           updated_at?: string
           vagas?: number | null
@@ -506,6 +511,7 @@ export type Database = {
           varandas?: number | null
           venc_autorizacao_venda?: string | null
           video_url?: string | null
+          youtube_url?: string | null
           zona_uso?: string | null
         }
         Update: {
@@ -578,6 +584,7 @@ export type Database = {
           matricula?: string | null
           melhor_acesso?: string | null
           meta_description?: string | null
+          mostrar_endereco?: boolean
           na_planta?: boolean
           notas_privadas?: string | null
           num_andares?: number | null
@@ -611,6 +618,7 @@ export type Database = {
           torre_bloco?: string | null
           total_unidades?: number | null
           tour_360_url?: string | null
+          tour_virtual_url?: string | null
           unidades_por_andar?: number | null
           updated_at?: string
           vagas?: number | null
@@ -621,6 +629,7 @@ export type Database = {
           varandas?: number | null
           venc_autorizacao_venda?: string | null
           video_url?: string | null
+          youtube_url?: string | null
           zona_uso?: string | null
         }
         Relationships: [
@@ -629,6 +638,50 @@ export type Database = {
             columns: ["corretor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imovel_portais: {
+        Row: {
+          created_at: string
+          destaque_portal: boolean
+          erro_validacao: string | null
+          id: string
+          imovel_id: string
+          portal: Database["public"]["Enums"]["portal_imobiliario"]
+          publicar: boolean
+          ultimo_envio_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          destaque_portal?: boolean
+          erro_validacao?: string | null
+          id?: string
+          imovel_id: string
+          portal: Database["public"]["Enums"]["portal_imobiliario"]
+          publicar?: boolean
+          ultimo_envio_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          destaque_portal?: boolean
+          erro_validacao?: string | null
+          id?: string
+          imovel_id?: string
+          portal?: Database["public"]["Enums"]["portal_imobiliario"]
+          publicar?: boolean
+          ultimo_envio_em?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imovel_portais_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_proprios"
             referencedColumns: ["id"]
           },
         ]
@@ -1230,6 +1283,7 @@ export type Database = {
         | "proposta_enviada"
         | "fechamento"
         | "perdido"
+      portal_imobiliario: "zap_vivareal" | "olx" | "imovelweb" | "chavesnamao"
       tarefa_prioridade: "baixa" | "media" | "alta"
       tarefa_status: "pendente" | "concluida" | "cancelada"
       tarefa_tipo:
@@ -1401,6 +1455,7 @@ export const Constants = {
         "fechamento",
         "perdido",
       ],
+      portal_imobiliario: ["zap_vivareal", "olx", "imovelweb", "chavesnamao"],
       tarefa_prioridade: ["baixa", "media", "alta"],
       tarefa_status: ["pendente", "concluida", "cancelada"],
       tarefa_tipo: [
