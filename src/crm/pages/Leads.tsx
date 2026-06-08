@@ -229,6 +229,29 @@ export default function LeadsList() {
             </TableBody>
           </Table>
         </Card>
+
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-[#4A4A52]">
+            Página {page} de {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={loading || page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              disabled={loading || page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
+
       </div>
     </CrmLayout>
   );
