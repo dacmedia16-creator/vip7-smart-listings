@@ -277,6 +277,14 @@ async function processInbound(payload: any): Promise<void> {
         role: h.role as "user" | "assistant" | "system",
         content: h.content,
       })),
+      {
+        role: "system",
+        content:
+          `MENSAGEM ATUAL DO CLIENTE: "${userMessage}"\n` +
+          `Reextraia os filtros (tipo, finalidade, bairro, cidade, quartos, preço) APENAS desta mensagem. ` +
+          `Se ela conflitar com buscas anteriores (ex: trocou casa→apartamento, mudou de bairro, corrigiu com "eu disse X"), ` +
+          `IGNORE os argumentos das tools anteriores e refaça a busca do zero com os novos filtros.`,
+      },
     ];
 
     // 9) loop de tool calling (máx 3 iterações)
@@ -288,7 +296,7 @@ async function processInbound(payload: any): Promise<void> {
         () =>
           callLovableAI(messages, {
             tools: IA_TOOLS,
-            temperature: 0.4,
+            temperature: 0.2,
           }),
         2,
         "gemini-tools",
