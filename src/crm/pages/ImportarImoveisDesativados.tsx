@@ -8,7 +8,8 @@ import { useRoles } from '../hooks/useRole';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Upload, FileSpreadsheet, ArrowLeft, Info } from 'lucide-react';
+import { Loader2, Upload, FileSpreadsheet, ArrowLeft, Info, Users } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import * as XLSX from 'xlsx';
 
 type Row = Record<string, string>;
