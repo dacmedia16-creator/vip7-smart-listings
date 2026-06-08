@@ -93,6 +93,54 @@ export default function SincronizacaoImoview() {
     }
   };
 
+  const handleFileChange = async (file: File | null) => {
+    setInativosFile(file);
+    setInativosCodes([]);
+    setInativosExistentes(null);
+    if (!file) return;
+    setParsing(true);
+    try {
+      const codes = await parseImoviewXls(file);
+      if (codes.length === 0) {
+        toast.error('Nenhum código encontrado na planilha. Confirme que é a exportação .xls da Imoview.');
+        return;
+      }
+      setInativosCodes(codes);
+      // checar quantos já existem
+      const { count } = await supabase
+        .from('imoveis_proprios')
+        .select('id', { count: 'exact', head: true })
+        .in('codigo_imoview', codes);
+      setInativosExistentes(count ?? 0);
+      toast.success(`${codes.length} códigos detectados (${count ?? 0} já no banco)`);
+    } catch (e) {
+      toast.error('Erro lendo planilha: ' + (e as Error).message);
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const importarInativos = async () => {
+    if (inativosCodes.length === 0) return;
+    if (!confirm(`Importar ${inativosCodes.length} imóveis como inativos? Pode levar 15–25 min em background. Pode fechar a aba — a importação continua.`)) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('imoview-sync', {
+        body: { mode: 'inativos_por_codigos', codigos: inativosCodes },
+      });
+      if (error) throw error;
+      toast.success(`Importação iniciada: ${(data as { sync_id?: string })?.sync_id?.slice(0, 8)}`);
+      setInativosFile(null);
+      setInativosCodes([]);
+      setInativosExistentes(null);
+      fetchLogs();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const running = logs.find((l) => l.status === 'running');
 
   return (
