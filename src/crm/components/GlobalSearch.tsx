@@ -207,7 +207,8 @@ export function GlobalSearch() {
     if (filter !== 'leads' && filter !== 'acoes') {
       let q = supabase
         .from('imoveis_proprios')
-        .select('id, titulo, codigo_interno, cidade, bairro, preco, status, finalidade')
+        .select('id, titulo, codigo_interno, cidade, bairro, preco, status, finalidade, ativo')
+        .order('ativo', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(MAX_PER_GROUP);
       if (s) {
