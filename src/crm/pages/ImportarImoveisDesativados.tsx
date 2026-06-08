@@ -283,6 +283,19 @@ type Result = {
   ignoradosDup: number;
   ignoradosErro: number;
   erros: { codigo: number | string; motivo: string }[];
+  codigosInseridos: number[];
+};
+
+type PropSync = {
+  phase: 'idle' | 'starting' | 'running' | 'done' | 'error';
+  syncId?: string;
+  total?: number;
+  processed?: number;
+  vinculos?: number;
+  comProp?: number;
+  semProp?: number;
+  errors?: number;
+  errMsg?: string;
 };
 
 const BATCH = 100;
@@ -297,6 +310,8 @@ export default function ImportarImoveisDesativados() {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState<Result | null>(null);
+  const [syncProprietarios, setSyncProprietarios] = useState(true);
+  const [propSync, setPropSync] = useState<PropSync>({ phase: 'idle' });
 
   const preview = useMemo(() => rows.slice(0, 5), [rows]);
 
