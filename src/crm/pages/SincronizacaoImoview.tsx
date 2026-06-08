@@ -8,8 +8,27 @@ import { useRoles } from '../hooks/useRole';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Download, RotateCw, Users, Home, Archive } from 'lucide-react';
+import { Loader2, RefreshCw, Download, RotateCw, Users, Home, Archive, Upload, FileSpreadsheet } from 'lucide-react';
 import { triggerSyncClientes, triggerSyncProprietarios } from '../lib/clientes';
+
+// Extrai códigos de imóveis a partir do .xls exportado pela Imoview
+// (na verdade um HTML com <table>). Cada linha tem <td> e o código está na 1ª coluna.
+async function parseImoviewXls(file: File): Promise<number[]> {
+  const buf = await file.arrayBuffer();
+  // Imoview exporta como latin-1 / windows-1252
+  const text = new TextDecoder('windows-1252').decode(buf);
+  const rows = text.match(/<tr>[\s\S]*?<\/tr>/gi) || [];
+  const codes = new Set<number>();
+  for (const r of rows) {
+    if (!/<td/i.test(r)) continue;
+    const firstTd = r.match(/<td[^>]*>([\s\S]*?)<\/td>/i);
+    if (!firstTd) continue;
+    const raw = firstTd[1].replace(/<[^>]+>/g, '').trim();
+    const n = parseInt(raw, 10);
+    if (Number.isFinite(n) && n > 0) codes.add(n);
+  }
+  return Array.from(codes).sort((a, b) => a - b);
+}
 
 type SyncLog = {
   id: string;
