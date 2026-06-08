@@ -6,10 +6,10 @@
 export type PortalId = 'zap_vivareal' | 'olx' | 'imovelweb' | 'chavesnamao';
 
 export const PORTAIS: { id: PortalId; nome: string; descricao: string }[] = [
-  { id: 'zap_vivareal', nome: 'Zap Imóveis / VivaReal', descricao: 'Padrão VRSync 2.0' },
-  { id: 'olx', nome: 'OLX', descricao: 'Padrão OLX Real Estate' },
-  { id: 'imovelweb', nome: 'ImovelWeb', descricao: 'Padrão Universal Feed' },
-  { id: 'chavesnamao', nome: 'Chaves na Mão', descricao: 'Padrão Chaves na Mão XML' },
+  { id: 'zap_vivareal', nome: 'Zap + VivaReal', descricao: 'Padrão VRSync (Grupo OLX)' },
+  { id: 'olx', nome: 'OLX', descricao: 'Padrão VRSync (Grupo OLX)' },
+  { id: 'imovelweb', nome: 'ImovelWeb', descricao: 'Universal Feed' },
+  { id: 'chavesnamao', nome: 'Chaves na Mão', descricao: 'XML Chaves na Mão' },
 ];
 
 export interface ImovelParaValidacao {
@@ -29,8 +29,12 @@ export interface ImovelParaValidacao {
 
 export function validarImovelParaPortais(im: ImovelParaValidacao): string[] {
   const erros: string[] = [];
-  if (!im.titulo || im.titulo.trim().length < 5) erros.push('Título precisa ter pelo menos 5 caracteres');
-  if (!im.descricao || im.descricao.trim().length < 100) erros.push('Descrição precisa ter pelo menos 100 caracteres');
+  const titulo = (im.titulo ?? '').trim();
+  if (titulo.length < 10) erros.push('Título precisa ter pelo menos 10 caracteres');
+  else if (titulo.length > 100) erros.push('Título não pode passar de 100 caracteres');
+  const descricao = (im.descricao ?? '').trim();
+  if (descricao.length < 100) erros.push('Descrição precisa ter pelo menos 100 caracteres');
+  else if (descricao.length > 3000) erros.push('Descrição não pode passar de 3000 caracteres');
   if (!im.preco || Number(im.preco) <= 0) erros.push('Preço obrigatório');
   const area = im.area ?? im.area_total;
   if (!area || Number(area) <= 0) erros.push('Área obrigatória');

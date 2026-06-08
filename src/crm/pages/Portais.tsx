@@ -123,7 +123,10 @@ export default function Portais() {
         <div>
           <h1 className="text-2xl font-bold">Portais Imobiliários</h1>
           <p className="text-sm text-muted-foreground">
-            Marque quais imóveis publicar em cada portal. Cole as URLs abaixo no painel de cada portal — eles leem o feed 1x por dia.
+            Marque quais imóveis publicar em cada portal. Cole as URLs abaixo no painel de cada portal — eles leem o feed 1-2x por dia.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            <strong>Zap, VivaReal e OLX</strong> são do Grupo OLX e usam o mesmo formato (VRSync). O conteúdo do XML é igual, mas cada portal só lê os imóveis que você marcou para ele.
           </p>
         </div>
 
