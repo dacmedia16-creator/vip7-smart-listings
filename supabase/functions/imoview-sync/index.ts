@@ -9,9 +9,63 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const IMOVIEW_API_KEY = Deno.env.get("IMOVIEW_API_KEY")!;
 const IMOVIEW_API_URL = "https://api.imoview.com.br";
+const IMOVIEW_APP_EMAIL = Deno.env.get("IMOVIEW_APP_EMAIL") || "";
+const IMOVIEW_APP_SENHA = Deno.env.get("IMOVIEW_APP_SENHA") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+// ---------- App_ session (acesso a inativos) ----------
+type AppSession = { codigoacesso: string; codigousuario: number };
+let cachedAppSession: AppSession | null = null;
+async function loginApp(): Promise<AppSession> {
+  if (cachedAppSession) return cachedAppSession;
+  if (!IMOVIEW_APP_EMAIL || !IMOVIEW_APP_SENHA) throw new Error("IMOVIEW_APP_EMAIL/IMOVIEW_APP_SENHA não configurados");
+  const url = new URL(`${IMOVIEW_API_URL}/Usuario/App_ValidarAcesso`);
+  url.searchParams.set("email", IMOVIEW_APP_EMAIL);
+  url.searchParams.set("senha", IMOVIEW_APP_SENHA);
+  const res = await fetch(url.toString(), { method: "GET", headers: { chave: IMOVIEW_API_KEY } });
+  const txt = await res.text();
+  if (!res.ok) throw new Error(`App_ValidarAcesso ${res.status}: ${txt.slice(0, 300)}`);
+  const data = JSON.parse(txt);
+  cachedAppSession = { codigoacesso: String(data.codigoacesso ?? ""), codigousuario: Number(data.codigousuario ?? 0) };
+  if (!cachedAppSession.codigoacesso || !cachedAppSession.codigousuario) throw new Error(`Login App falhou: ${txt.slice(0, 200)}`);
+  return cachedAppSession;
+}
+
+async function imoviewApp(path: string, params: Record<string, string | number>): Promise<{ ok: boolean; status: number; data: unknown; text: string }> {
+  const s = await loginApp();
+  const url = new URL(`${IMOVIEW_API_URL}${path}`);
+  url.searchParams.set("codigoUsuario", String(s.codigousuario));
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+  let res = await fetch(url.toString(), { headers: { chave: IMOVIEW_API_KEY, codigoacesso: s.codigoacesso } });
+  if (res.status === 401 || res.status === 403) {
+    cachedAppSession = null;
+    const s2 = await loginApp();
+    url.searchParams.set("codigoUsuario", String(s2.codigousuario));
+    res = await fetch(url.toString(), { headers: { chave: IMOVIEW_API_KEY, codigoacesso: s2.codigoacesso } });
+  }
+  const txt = await res.text();
+  let data: unknown = null;
+  try { data = JSON.parse(txt); } catch { /* texto puro */ }
+  return { ok: res.ok, status: res.status, data, text: txt };
+}
+
+async function fetchDetailsApp(codigo: number): Promise<Record<string, unknown> | null> {
+  try {
+    const { ok, data, status, text } = await imoviewApp("/Imovel/App_RetornarDetalhesImovel", { codigoImovel: codigo });
+    if (!ok) {
+      console.warn(`[sync] App_RetornarDetalhesImovel cod=${codigo} ${status}: ${text.slice(0, 200)}`);
+      return null;
+    }
+    const unwrapped = unwrapDetail(data);
+    if (unwrapped && !unwrapped.codigo) unwrapped.codigo = codigo;
+    return unwrapped;
+  } catch (e) {
+    console.warn(`[sync] App_RetornarDetalhesImovel cod=${codigo} erro:`, (e as Error).message);
+    return null;
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -452,8 +506,16 @@ serve(async (req) => {
         for (let i = 0; i < slice.length; i += CONC) {
           const sub = slice.slice(i, i + CONC);
           const details = await Promise.all(sub.map(async (c) => {
-            try { return { c, d: await fetchDetails(c) }; }
-            catch (e) { console.warn(`[inativos] erro fetch ${c}:`, (e as Error).message); return { c, d: null }; }
+            try {
+              // 1) tenta endpoint App_ (acessa inativos/vendidos/alugados)
+              let d = await fetchDetailsApp(c);
+              // 2) fallback: endpoint público (só disponíveis)
+              if (!d) d = await fetchDetails(c);
+              return { c, d };
+            } catch (e) {
+              console.warn(`[inativos] erro fetch ${c}:`, (e as Error).message);
+              return { c, d: null };
+            }
           }));
           for (const { c, d } of details) {
             if (!d) {
