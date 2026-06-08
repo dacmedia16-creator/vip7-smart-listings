@@ -1,4 +1,4 @@
-import { getCodigoAcesso, imoviewAppFetch } from "../_shared/imoview-auth.ts";
+import { getSession, imoviewAppFetch } from "../_shared/imoview-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,28 +16,32 @@ Deno.serve(async (req) => {
     });
 
   try {
-    // 1. Login
     const t0 = Date.now();
-    const codigo = await getCodigoAcesso(true); // force fresh login for clarity
+    const sess = await getSession(true);
     const loginMs = Date.now() - t0;
 
-    // 2. Smoke test: try a lightweight App_* call
     const t1 = Date.now();
     const probe = await imoviewAppFetch("/Cliente/App_RetornarPessoas", {
       method: "GET",
-      query: { pagina: 1, registrosPorPagina: 1 },
+      query: {
+        numeroPagina: 1,
+        numeroRegistros: 1,
+        codigoUsuario: sess.codigousuario ?? 0,
+      },
     });
     const probeMs = Date.now() - t1;
 
+    const ok = probe.status >= 200 && probe.status < 300;
     return json(200, {
-      ok: probe.status >= 200 && probe.status < 300,
+      ok,
       login: {
         success: true,
-        codigoacesso_preview: `${codigo.slice(0, 6)}…${codigo.slice(-4)} (len=${codigo.length})`,
+        codigoacesso_preview: `${sess.codigoacesso.slice(0, 6)}…${sess.codigoacesso.slice(-4)} (len=${sess.codigoacesso.length})`,
+        codigousuario: sess.codigousuario,
         elapsed_ms: loginMs,
       },
       probe: {
-        endpoint: "/Cliente/App_RetornarPessoas?pagina=1&registrosPorPagina=1",
+        endpoint: "/Cliente/App_RetornarPessoas?numeroPagina=1&numeroRegistros=1",
         status: probe.status,
         elapsed_ms: probeMs,
         sample: typeof probe.data === "string" ? probe.data.slice(0, 500) : probe.data,
@@ -47,3 +51,4 @@ Deno.serve(async (req) => {
     return json(500, { ok: false, error: (e as Error).message });
   }
 });
+
