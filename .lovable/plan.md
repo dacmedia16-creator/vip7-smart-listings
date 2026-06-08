@@ -1,46 +1,46 @@
-# Criar usuários direto pela aba Usuários
+# Notificação de handoff para Eder via WhatsApp
 
-Adiciona, em **Configurações → Usuários**, um botão **"Novo usuário"** (visível só para admin) que abre um dialog pra cadastrar a pessoa já com perfil definido — sem precisar mandar o corretor se cadastrar em `/crm/login`.
+Sempre que um lead passar para handoff (IA para de responder e um humano precisa assumir), enviar mensagem WhatsApp para **Eder Francisco de Souza** (15 98176-7268) com nome do lead, imóvel de interesse e detalhes.
 
-## Fluxo
+## Comportamento
 
-1. Admin clica **"Novo usuário"** no topo da lista.
-2. Preenche o formulário no dialog:
-   - Nome completo (obrigatório)
-   - Email (obrigatório)
-   - Senha (obrigatório, mín. 8 caracteres, com botão "Gerar senha forte")
-   - Telefone / WhatsApp (opcional)
-   - Perfil: admin · gestor · corretor · atendente · sem acesso
-   - Ativo (switch, default ligado)
-3. Sistema cria o usuário no auth + profile + role num passo só.
-4. Toast mostra "Usuário criado" e dá a opção **Copiar credenciais** (email + senha) pra admin enviar pro corretor.
-5. Lista de usuários atualiza.
+Disparo automático em **todos** os caminhos que setam `ia_handoff = true`:
+- IA decide transferir (`ia-whatsapp-inbound` — pedido do lead, fora de horário, falha repetida)
+- Corretor assume manualmente (botão "Assumir conversa" em `InteracaoIA.tsx`)
+- Qualquer UPDATE futuro que mude `ia_handoff` de false → true
+
+Mensagem (texto WhatsApp):
+```
+🚨 Lead em handoff — atenção necessária
+
+Lead: {nome} ({telefone})
+Imóvel de interesse: #{codigo} — {tipo} em {bairro}/{cidade}
+Finalidade: {finalidade}
+Orçamento: {orcamento_max}
+Motivo do handoff: {ia_handoff_motivo}
+
+Abra no CRM: {url}/crm/leads/{id}
+```
+
+Campos ausentes aparecem como "—". Falha de envio é silenciosa (apenas log), não bloqueia o handoff.
 
 ## Detalhes técnicos
 
-**Nova edge function `crm-create-user`** (necessária porque criar usuário no auth exige service role e não pode rodar do client):
+1. **Trigger no Postgres** sobre `public.leads`, AFTER UPDATE, condição `OLD.ia_handoff = false AND NEW.ia_handoff = true`. Usa `net.http_post` (mesmo padrão já em uso em `disparar_ia_whatsapp`) chamando uma nova edge function `notify-handoff` com `{ lead_id }` e header `X-Internal-Secret: CRON_SECRET`.
 
-- Verifica o JWT do chamador e confirma que ele tem role `admin` via `has_role(auth.uid(), 'admin')`.
-- Valida payload com zod: email válido, senha ≥8, nome ≥2, role no enum permitido.
-- Usa `supabase.auth.admin.createUser({ email, password, email_confirm: true, user_meta_data: { nome, telefone } })`.
-  - `email_confirm: true` pra usuário já entrar sem precisar confirmar email.
-- O trigger `handle_new_user` já cria a linha em `profiles` automaticamente. A function só faz `UPDATE profiles SET telefone, ativo` e `INSERT user_roles (user_id, role)` (pulando insert se role = `sem_acesso`).
-- Em caso de erro depois do `createUser`, faz rollback chamando `auth.admin.deleteUser`.
-- Retorna `{ ok: true, user_id }` ou `{ ok: false, error }`.
+2. **Nova edge function `notify-handoff`** (`verify_jwt = false`, valida `X-Internal-Secret` contra `CRON_SECRET`):
+   - Carrega lead completo (nome, telefone, imovel_interesse_codigo, cidade/bairro/tipo/finalidade, orcamento_max, ia_handoff_motivo).
+   - Se `imovel_interesse_codigo` existir, busca `imoveis_proprios` para enriquecer (tipo/bairro/cidade/valor real do imóvel).
+   - Destinatário fixo: `id = 5703f01d-c06a-4cda-9562-e136fdde7a8f` (Eder). Lê `profiles.telefone`, normaliza para E.164 (`+5515981767268`).
+   - POST `https://app.ziontalk.com/api/send_message/` com `ZIONTALK_API_KEY` (mesmo formato que `send-whatsapp-ziontalk`).
+   - Retorna 200 mesmo em falha de envio (loga erro) para não travar o trigger.
 
-**Frontend (`src/crm/pages/Configuracoes.tsx`)**:
-- Novo componente `NovoUsuarioDialog` na mesma pasta de páginas (ou inline).
-- Botão "Novo usuário" no header da aba Usuários, com `disabled={!isAdmin}`.
-- Chama `supabase.functions.invoke('crm-create-user', { body: {...} })`.
-- Após sucesso → fecha dialog, mostra toast com botão "Copiar credenciais", chama `loadUsers()`.
+3. **Config**: adicionar bloco em `supabase/config.toml` para `notify-handoff` com `verify_jwt = false`.
 
-**Segurança**:
-- Function valida role server-side (não confia em flag do client).
-- Senha nunca é logada.
-- `service_role` só dentro da edge function.
+4. **Sem alterações em UI**: `InteracaoIA.tsx` continua só dando UPDATE em `ia_handoff` — o trigger faz o resto. Mesmo vale para `ia-whatsapp-inbound`.
 
-## Fora do escopo
+## Fora de escopo
 
-- Envio de email de boas-vindas com as credenciais (admin copia/cola manualmente).
-- Edição de email/senha de usuário existente (fica pra depois — hoje a aba já permite trocar role e ativar/desativar).
-- Reset de senha pelo admin.
+- Configurar Eder como destinatário variável (hardcoded no edge function por enquanto).
+- Notificar quando handoff for revertido (reativar IA).
+- Email paralelo — só WhatsApp.
