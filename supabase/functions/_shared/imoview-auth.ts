@@ -1,6 +1,8 @@
 // Shared helper for Imoview App_* endpoints that require login (codigoacesso header).
-// Login is done via /Usuario/App_ValidarAcesso using email + senha. The returned
-// codigoacesso is cached in worker memory and refreshed on 401.
+// Login: GET /Usuario/App_ValidarAcesso?email=...&senha=<MD5> with header `chave`.
+// codigoacesso is cached in worker memory and refreshed on 401/403.
+
+import { crypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
 
 const IMOVIEW_BASE = "https://api.imoview.com.br";
 
@@ -14,18 +16,24 @@ function requireEnv(name: string): string {
   return v;
 }
 
+async function md5Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("MD5", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export async function loginImoview(): Promise<string> {
   const chave = requireEnv("IMOVIEW_API_KEY");
   const email = requireEnv("IMOVIEW_USER_EMAIL");
-  const senha = requireEnv("IMOVIEW_USER_PASSWORD");
+  const senhaPlain = requireEnv("IMOVIEW_USER_PASSWORD");
+  const senhaMd5 = await md5Hex(senhaPlain);
 
-  const res = await fetch(`${IMOVIEW_BASE}/Usuario/App_ValidarAcesso`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      chave,
-    },
-    body: JSON.stringify({ email, senha }),
+  const url = new URL(`${IMOVIEW_BASE}/Usuario/App_ValidarAcesso`);
+  url.searchParams.set("email", email);
+  url.searchParams.set("senha", senhaMd5);
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    headers: { chave },
   });
 
   const text = await res.text();
@@ -36,7 +44,6 @@ export async function loginImoview(): Promise<string> {
     throw new Error(`App_ValidarAcesso ${res.status}: ${text.slice(0, 300)}`);
   }
 
-  // Try common field names the Imoview API might use
   const codigo =
     json?.codigoacesso ??
     json?.codigoAcesso ??
