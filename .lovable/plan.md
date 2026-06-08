@@ -1,66 +1,127 @@
-# Integração de Leads — Grupo OLX (sem token ainda)
 
-Vou deixar tudo pronto. O secret `GRUPOZAP_LEAD_TOKEN` fica **opcional**: enquanto não existir, a function aceita qualquer requisição (modo "homologação aberta") e mostra um aviso no CRM dizendo que o webhook está sem proteção. Assim você consegue validar com o [validador oficial do Grupo OLX](https://developers.grupozap.com/webhooks/endpoint_validator.html) antes mesmo de gerar o token.
+# Atendente IA WhatsApp (ZionTalk) — Implementação
 
-## Endpoint
+Implementação completa em 3 fases. Fase 1 já roda sozinha; Fase 2 fica "armada" esperando você confirmar o webhook com a ZionTalk.
 
-`POST https://qozlwzgesezsygmnuzky.supabase.co/functions/v1/portal-lead-grupozap`
+## Migration (uma SQL única)
 
-- Público (`verify_jwt = false`).
-- **Sem token configurado** → aceita qualquer POST (com aviso visível no CRM).
-- **Com token** → exige `?token=XXX` na URL; se errado, responde 401.
+- **Tabela `ia_conversas`** — id, lead_id (FK leads, cascade), role (system/user/assistant/tool), content, imovel_codigo, created_at, updated_at. Índices em `(lead_id, created_at desc)` e `(lead_id, imovel_codigo)`. RLS: SELECT pra `is_crm_user`. GRANTs pra `authenticated` (select/insert) e `service_role` (all).
+- **Colunas em `leads`**: `ia_handoff bool default false`, `ia_handoff_at`, `ia_handoff_motivo text`, `ia_last_message_at timestamptz`.
+- **Defaults em `app_config`**: `ia_whatsapp_enabled=false`, `ia_whatsapp_persona`, `ia_whatsapp_handoff_keywords`, `ia_whatsapp_truncate_chars=600`.
+- **Trigger `disparar_ia_whatsapp()`** AFTER INSERT em `leads`. Usa `pg_net.http_post` (extension habilitada) com URL hardcoded do projeto e timeout 5s. Skip se telefone < 10 dígitos. Só dispara quando `ia_whatsapp_enabled='true'` (lido dentro da função).
 
-## Fluxo da function
+## Edge Function `ia-whatsapp-greeting`
 
-1. Lê JSON do corpo.
-2. Valida obrigatórios: `name`, telefone (`phone`/`phoneNumber`), `clientListingId`. Faltou → 400 (Grupo OLX reentenga).
-3. Normaliza telefone (`ddd + phone` → dígitos BR).
-4. Idempotência: se `originLeadId` já existe (coluna nova `portal_origin_lead_id`), responde 200 sem fazer nada.
-5. Mapeia `transactionType`: `SELL`→`venda`, `RENT`→`aluguel`.
-6. Busca imóvel pelo `clientListingId`:
-   - `codigo_imoview` (numérico) → `codigo_interno` → `codigo_auxiliar`.
-   - Achou: preenche `imovel_interesse_codigo`, `cidade_interesse`, `bairro_interesse`, `tipo_imovel`, `orcamento_max` = preço.
-7. Deduplica por telefone/email com `find_duplicate_lead` (30 dias). Duplicado → grava `lead_interacoes` (tipo `outro`) com a mensagem + originLeadId + leadType + temperatura; **não cria lead novo**, mas grava `portal_origin_lead_id` no lead existente pra travar reenvios.
-8. Senão, insere em `leads`:
-   - `origem = 'portal'`, `portal_origin = 'grupo_olx'`, `portal_origin_lead_id = originLeadId`
-   - `origem_url`: `https://www.zapimoveis.com.br/imovel/{originListingId}` se tiver
-   - `observacoes`: bloco com `message`, `temperature`, `leadType`, `originLeadId`, `originListingId`, links IZI/feedback
-   - `tags`: `['grupo-olx', leadType, temperature]` + `'lead-certo'` quando aplicável
-9. Trigger existente `vincular_interessado_de_lead` cuida do vínculo cliente↔imóvel.
-10. Responde 200.
+`verify_jwt = false` (chamada pelo trigger via pg_net sem JWT de usuário).
 
-Service role no insert (bypass RLS), CORS liberado, todos erros internos retornam 500 (Grupo OLX reentenga 3x e armazena 14 dias).
+1. Recebe `{lead_id}`, valida.
+2. Carrega lead. Se `imovel_interesse_codigo` existe, busca imóvel por `codigo_imoview` (numérico). Tolera ausência.
+3. Skip se já existe interação tipo `whatsapp_ia` pro lead (idempotência).
+4. Skip se `app_config.ia_whatsapp_enabled != 'true'`.
+5. Chama **Lovable AI Gateway** (`google/gemini-3-flash-preview`) com persona + dados do imóvel + link `https://vipsevenimoveis.com.br/imovel/{codigo}`. Pede saudação 2-3 linhas.
+6. Envia via helper `enviarWhatsApp()` (com retry 2x backoff exponencial).
+7. Grava 2 linhas em `ia_conversas` (system + assistant) com `imovel_codigo`.
+8. Grava em `lead_interacoes` (tipo `outro` — o enum atual não tem `whatsapp_ia`, usamos `outro` + prefixo `[IA WhatsApp]` no descricao).
+9. Atualiza `leads.ia_last_message_at`.
 
-## Idempotência (migration já aprovada)
+## Edge Function `ia-whatsapp-inbound`
 
-Já adicionei na migration anterior:
-- `leads.portal_origin text`
-- `leads.portal_origin_lead_id text`
-- índice único parcial `(portal_origin, portal_origin_lead_id)`
+`verify_jwt = false`. Autenticação via **Bearer header** (`Authorization: Bearer <ZIONTALK_INBOUND_TOKEN>`). Sem token configurado = modo aberto com aviso (mesmo padrão do `portal-lead-grupozap`).
 
-## UI no CRM (`/crm/portais`)
+Fluxo:
+1. Parse `{phone, message}` (ajustável quando souber o payload real da ZionTalk).
+2. `normalizarTelefone()` — só dígitos, strip `55`.
+3. Acha lead mais recente pelo telefone (últimos 90 dias). Não achou → 200 skip.
+4. Se `ia_handoff = true` → skip.
+5. **Rate limit**: se `ia_last_message_at` < 2s → 200 skip.
+6. **Resposta imediata**: dispara "⏳ Um momento, consultando os imóveis..." em paralelo (não bloqueia).
+7. **Fallback rápido por keyword** (lido de `app_config.ia_whatsapp_handoff_keywords`) — se bater, pula classificação por IA e vai pra handoff.
+8. Senão, **classifica intent** com Gemini (`temperature: 0`, prompt restritivo, retry 2x).
+9. Se intent ∈ {`agendar_visita`, `falar_humano`}: marca handoff, responde "Perfeito! Já chamei o corretor...", cria tarefa pro `corretor_id` (ou notifica admin se não tem) via `notifyHandoff()`.
+10. Senão: carrega últimas 20 trocas de `ia_conversas` filtradas por `imovel_codigo` do lead (contexto por imóvel). Monta mensagens + persona. Chama Gemini com tools (`buscar_imoveis`, `detalhes_imovel`, `pedir_handoff`).
+11. Loop de tool calling manual (máx 5 iterações). Executa tools no servidor (queries em `imoveis_proprios`), devolve resultados ao modelo.
+12. Trunca resposta final ao limite configurado e envia via ZionTalk.
+13. Grava user+assistant em `ia_conversas`, atualiza `ia_last_message_at`.
 
-Novo bloco "Webhook de leads (Grupo OLX)" no topo:
+## Shared helpers `supabase/functions/_shared/ia.ts`
 
-- URL completa com botão copiar. Se token existir, URL inclui `?token=…` (busco o token via edge function `get-webhook-url` pra não expor secret no client; alternativa simples: gero a URL no servidor e a página chama a function pra pegar).
-  - **Mais simples**: a página chama a function `portal-lead-grupozap?action=get-url` (GET) que devolve a URL pronta com token mascarado/completo só para usuários admin. Vou nessa.
-- Badge de status:
-  - 🟡 "Sem token — webhook aberto" enquanto `GRUPOZAP_LEAD_TOKEN` não estiver setado
-  - 🟢 "Protegido por token" quando estiver
-- Links: validador oficial, formulário de homologação, doc do Grupo OLX.
-- Tabela "Últimos leads recebidos via portal" (filtro `portal_origin = 'grupo_olx'`, 20 mais recentes, com tipo de lead, temperatura, imóvel).
+- `normalizarTelefone(tel)` — `.replace(/\D/g,"").replace(/^55/,"")`.
+- `comRetry(fn, max=2, label)` — backoff exponencial com `console.error` estruturado.
+- `enviarWhatsApp(phoneBR, msg)` — Basic Auth ZionTalk, retry embutido. Telefone no formato `+55{phoneBR}`.
+- `callLovableAI(messages, opts)` — POST pra `https://ai.gateway.lovable.dev/v1/chat/completions` com header `Authorization: Bearer ${LOVABLE_API_KEY}`. Trata 429 (rate limit) e 402 (créditos) com log claro. Suporta `tools` e parsing de `tool_calls`.
+- `classificarIntencao(msg)` — usa `callLovableAI` com prompt fixo.
+- `buscarImoveis(filtros)` — query em `imoveis_proprios` (ativo=true, status disponivel), retorna até 5 com título/preço/cidade/bairro/quartos/link.
 
-## Quando você tiver o token
+## Config (`supabase/config.toml`)
 
-Você gera qualquer string aleatória (eu sugiro uma na UI com botão "gerar token"), salva em **Lovable Cloud → Secrets** como `GRUPOZAP_LEAD_TOKEN`, e cola a nova URL no painel do Grupo OLX. Function passa a exigir o token automaticamente.
+```toml
+[functions.ia-whatsapp-greeting]
+verify_jwt = false
 
-## Arquivos
+[functions.ia-whatsapp-inbound]
+verify_jwt = false
+```
 
-- `supabase/functions/portal-lead-grupozap/index.ts` (novo)
-- `supabase/config.toml` (bloco `verify_jwt = false`)
-- `src/crm/pages/Portais.tsx` (bloco webhook + tabela últimos leads)
+## UI no CRM
 
-## Fora deste plano
+### `Configuracoes.tsx` — nova aba **"Atendente IA"**
+- Switch global (`ia_whatsapp_enabled`).
+- Textarea Persona (salva onBlur).
+- Input Keywords handoff (salva onBlur).
+- Bloco "Webhook ZionTalk":
+  - URL: `https://qozlwzgesezsygmnuzky.supabase.co/functions/v1/ia-whatsapp-inbound`
+  - Badge status do token: 🟡 Sem token / 🟢 Protegido (lido via GET na própria function como no `portal-lead-grupozap`)
+  - Instrução: "No painel ZionTalk, configure o header `Authorization: Bearer <token>`"
+- Métricas últimos 7 dias: total mensagens IA, intents classificados, handoffs.
 
-- Webhook de outros portais (cada um tem contrato próprio; estrutura `portal_origin` já está pronta).
-- Reenvio sob demanda (precisa abrir chamado no Grupo OLX).
+### `LeadDetail.tsx` — nova aba **"Conversa IA"**
+- Componente `InteracaoIA` (novo): timeline de bolhas (user direita / assistant esquerda), agrupada por dia. Poll a cada 3s.
+- Badge no header do lead: 🤖 IA atendendo / 👤 Em handoff.
+- Botão "Assumir conversa" (AlertDialog) → seta `ia_handoff=true` + motivo "Corretor assumiu manualmente".
+- Botão "Reativar IA" (só admin/gestor) → limpa handoff.
+
+## Logging estruturado
+
+Todos os logs com prefixo `[ia-greeting]`, `[ia-inbound]`, `[intent]`, `[handoff]`, `[rate-limit]`, `[ziontalk-send]`, `[gemini-tools]` pra facilitar grep.
+
+## Secrets
+
+| Nome | Status |
+|---|---|
+| `ZIONTALK_API_KEY` | ✅ já existe |
+| `LOVABLE_API_KEY` | ✅ já existe |
+| `ZIONTALK_INBOUND_TOKEN` | 🆕 opcional — peço quando você quiser proteger a Fase 2 |
+
+## Arquivos criados/editados
+
+- `supabase/migrations/<ts>_ia_whatsapp.sql` (novo)
+- `supabase/functions/_shared/ia.ts` (novo)
+- `supabase/functions/ia-whatsapp-greeting/index.ts` (novo)
+- `supabase/functions/ia-whatsapp-inbound/index.ts` (novo)
+- `supabase/config.toml` (2 blocos novos)
+- `src/crm/pages/Configuracoes.tsx` (nova aba)
+- `src/crm/pages/LeadDetail.tsx` (nova aba)
+- `src/crm/components/InteracaoIA.tsx` (novo)
+
+## Notas técnicas importantes
+
+- **Uso Lovable AI Gateway diretamente via fetch** (não SDK), porque edge functions Deno têm restrições com alguns pacotes npm. Modelo padrão `google/gemini-3-flash-preview` (grátis até início de 2026).
+- **Não uso `@google/generative-ai`** — pra não depender de SDK externo + ter custos via Lovable AI Gateway transparentes.
+- **`pg_net` extension** precisa estar habilitada — confirmo na migration com `CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions`.
+- **Tipo `lead_interacoes.tipo`** é enum sem `whatsapp_ia` — uso `outro` + prefixo no `descricao`. Se quiser, em outra rodada eu adiciono o valor ao enum.
+- **Tipos `tarefas`** (`tipo`, `prioridade`, `status`) seguem o que já existe no schema.
+
+## Fora de escopo (v1)
+
+- Áudio/imagem do cliente.
+- Múltiplas linhas WhatsApp.
+- Agendamento automático no Google Calendar.
+- Dashboard analítico avançado (só métricas básicas em Configurações).
+
+## Próximos passos
+
+1. ✅ Aprovar plano.
+2. Eu implemento tudo (Fase 1 + Fase 2 + UI).
+3. Você liga o switch em **Configurações → Atendente IA** quando quiser começar a disparar a 1ª mensagem.
+4. Você fala com o suporte ZionTalk pra configurar o webhook deles apontando pro `ia-whatsapp-inbound` com Bearer token.
+5. Se o payload da ZionTalk for diferente do esperado (`{phone, message}`), você me passa um exemplo real e eu ajusto o parser em 2 minutos.
