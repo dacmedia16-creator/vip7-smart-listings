@@ -209,10 +209,42 @@ export default function SincronizacaoImoview() {
               <Button
                 onClick={() => trigger('desativados')}
                 disabled={loading || !!running}
+                variant="outline"
+              >
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                Reconciliar via API (marca sumiços)
+              </Button>
+            </div>
+
+            <div className="border-t border-[#E8E4D9] pt-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-[#1A1A1F]">
+                <FileSpreadsheet className="h-4 w-4" /> Importar por planilha (.xls da Imoview)
+              </div>
+              <p className="text-xs text-[#4A4A52]">
+                Exporte a lista de desativados no Imoview (Relatórios → Imóveis → filtrar Situação = Desativado → Exportar XLS) e suba aqui. Vou buscar os detalhes e as fotos de cada código e marcar como inativo no CRM.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  type="file"
+                  accept=".xls,.html,.htm,.csv,.xlsx"
+                  disabled={parsing || loading || !!running}
+                  onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                  className="max-w-sm"
+                />
+                {parsing && <Loader2 className="h-4 w-4 animate-spin text-[#C9A24C]" />}
+                {inativosCodes.length > 0 && (
+                  <Badge className="bg-[#FBF3DC] text-[#7A5A14] border border-[#E8D9A8]">
+                    {inativosCodes.length} códigos · {inativosExistentes ?? 0} já no banco · {inativosCodes.length - (inativosExistentes ?? 0)} novos
+                  </Badge>
+                )}
+              </div>
+              <Button
+                onClick={importarInativos}
+                disabled={loading || !!running || inativosCodes.length === 0}
                 className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
               >
-                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-                Sincronizar desativados (API)
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                Importar {inativosCodes.length > 0 ? `${inativosCodes.length} inativos` : 'inativos'}
               </Button>
             </div>
           </CardContent>
