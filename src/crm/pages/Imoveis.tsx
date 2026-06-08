@@ -156,6 +156,8 @@ export default function Imoveis() {
         query = query.eq('finalidade', finalidadeDb);
       }
       if (f.status !== 'todos') query = query.eq('status', f.status as any);
+      if (f.ativo === 'ativos') query = query.eq('ativo', true);
+      else if (f.ativo === 'inativos') query = query.eq('ativo', false);
       if (f.tipo !== 'todos') query = query.eq('tipo', f.tipo);
       if (f.etiqueta !== 'todos') query = query.contains('etiquetas', [f.etiqueta]);
 
