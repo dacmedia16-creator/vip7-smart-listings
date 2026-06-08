@@ -300,6 +300,16 @@ export default function Imoveis() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>{N('Visibilidade')}
+                <Select value={filters.ativo} onValueChange={(v) => update('ativo', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativos">Apenas ativos</SelectItem>
+                    <SelectItem value="inativos">Apenas inativos / desativados</SelectItem>
+                    <SelectItem value="todos">Todos (ativos + inativos)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>{N('Tipo de imóvel')}
                 <Select value={filters.tipo} onValueChange={(v) => update('tipo', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
