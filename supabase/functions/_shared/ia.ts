@@ -65,11 +65,11 @@ export async function enviarWhatsApp(phoneBR: string, msg: string): Promise<void
         headers: { Authorization: `Basic ${btoa(`${ZIONTALK_API_KEY}:`)}` },
         body: form,
       });
+      const txt = await res.text().catch(() => "");
       if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`ZionTalk ${res.status}: ${txt.slice(0, 200)}`);
+        throw new Error(`ZionTalk ${res.status}: ${txt.slice(0, 300)}`);
       }
-      console.log(`[ziontalk-send] ok phone=${phoneBR} len=${msg.length}`);
+      console.log(`[ziontalk-send] ok phone=${phoneBR} len=${msg.length} resp=${txt.slice(0, 500)}`);
     },
     2,
     "ziontalk-send",
