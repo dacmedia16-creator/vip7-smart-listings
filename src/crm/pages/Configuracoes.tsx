@@ -25,6 +25,7 @@ export default function Configuracoes() {
   const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [me, setMe] = useState<any>(null);
+  const [novoUserOpen, setNovoUserOpen] = useState(false);
 
   // IA state
   const [iaEnabled, setIaEnabled] = useState(false);
