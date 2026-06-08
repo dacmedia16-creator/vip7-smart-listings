@@ -919,6 +919,8 @@ export type Database = {
           origem: Database["public"]["Enums"]["lead_origem"]
           origem_url: string | null
           perfil_busca: string | null
+          portal_origin: string | null
+          portal_origin_lead_id: string | null
           status_funil: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
           telefone: string
@@ -946,6 +948,8 @@ export type Database = {
           origem?: Database["public"]["Enums"]["lead_origem"]
           origem_url?: string | null
           perfil_busca?: string | null
+          portal_origin?: string | null
+          portal_origin_lead_id?: string | null
           status_funil?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           telefone: string
@@ -973,6 +977,8 @@ export type Database = {
           origem?: Database["public"]["Enums"]["lead_origem"]
           origem_url?: string | null
           perfil_busca?: string | null
+          portal_origin?: string | null
+          portal_origin_lead_id?: string | null
           status_funil?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           telefone?: string
