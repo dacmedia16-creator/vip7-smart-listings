@@ -1,12 +1,16 @@
-## Problema
-Hoje o `lookupCep()` em `ImovelForm.tsx` só preenche `endereco`, `bairro`, `cidade` e `estado` se o campo estiver vazio. Quando o usuário digita um CEP novo após já ter algo preenchido (ex.: corrigindo um endereço errado), nada é atualizado.
+## Objetivo
+Fazer a IA gerar também o **Título para anúncio** junto com Descrição e Meta description, no mesmo botão "✨ Gerar descrição com IA" da aba final.
 
-## Mudança
-Em `src/crm/pages/ImovelForm.tsx`, na função `lookupCep`:
+## Mudanças
 
-- Remover as checagens `if (!form.getValues('endereco'))`, `if (!form.getValues('bairro'))`, etc.
-- Sempre sobrescrever `endereco` (logradouro), `bairro`, `cidade` (localidade) e `estado` (uf) com o retorno da API, usando `shouldDirty: true`.
-- Manter o foco automático no campo `numero` após preencher.
-- Manter o `lastCepRef` para não refazer a mesma busca enquanto o CEP não muda.
+### 1. Edge function `supabase/functions/gerar-descricao-imovel/index.ts`
+- Atualizar o prompt do system para pedir um terceiro campo `titulo`:
+  - Curto (até 80 caracteres), comercial, sem emojis, sem preço, destacando tipo + bairro + diferencial principal (ex.: "Casa térrea com piscina no Alphaville Nova Esplanada").
+- Atualizar o JSON retornado: `{ titulo, descricao, meta_description }`.
 
-Sem alterações em backend, schema ou outras abas.
+### 2. Front `src/crm/pages/ImovelForm.tsx`
+- No handler `gerarDescricaoIA`, após receber a resposta, fazer também:
+  - `form.setValue('titulo_anuncio', d.titulo, { shouldDirty: true })` quando vier.
+- Ajustar o texto do botão para "✨ Gerar título + descrição com IA" e o helper acima para refletir que título também é gerado.
+
+Sem mudança em schema, RLS ou outras telas.
