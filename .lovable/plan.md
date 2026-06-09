@@ -1,29 +1,19 @@
-# Tipo de anúncio por portal (estilo Imoview / Grupo Zap)
+## Problema
 
-Hoje cada portal tem só um toggle "publicar" e um "destaque_portal" booleano. O Imoview oferece níveis de destaque (Simples, Destaque, Super Destaque, Triple, Premiere Premium, Premiere Especial). Vamos substituir o booleano de destaque por um campo enum `tipo_anuncio`, aplicável a todos os portais — começando pelo Grupo Zap (Zap+VivaReal e OLX), que é onde esses níveis fazem sentido real, mas disponível também para os outros.
+O formulário de Contato (e também Avaliação / WhatsApp) do site público chama `INSERT INTO public.leads`. A política RLS atual `leads_insert_anon` só vale para o role `anon`. Quando o visitante está autenticado em outra aba do mesmo domínio (ex.: Denis logado no CRM em `vipsevenimoveis.com.br/crm`), o cliente Supabase manda o token JWT e o Postgres usa o role `authenticated`. Aí cai na política `leads_insert_authenticated`, que exige `is_crm_user(auth.uid())` — e mesmo passando, qualquer falha intermediária bloqueia. Resultado: erro **"new row violates row-level security policy for table leads"**.
 
-## Mudanças
+Além disso, a política `leads_insert_anon` exige `status_funil = 'novo' AND corretor_id IS NULL AND created_by IS NULL`, o que é frágil (depende de defaults e nunca permite tags/recontato com corretor pré-atribuído).
 
-### 1. Banco (migração)
-- Criar enum `tipo_anuncio_portal` com valores: `simples`, `destaque`, `super_destaque`, `triple`, `premiere_premium`, `premiere_especial`.
-- Adicionar coluna `tipo_anuncio tipo_anuncio_portal NOT NULL DEFAULT 'simples'` em `imovel_portais`.
-- Manter `destaque_portal` por compatibilidade (passa a ser derivado: true quando `tipo_anuncio != 'simples'`) — atualizar valores existentes onde `destaque_portal = true` → `tipo_anuncio = 'destaque'`.
+## Solução
 
-### 2. `src/crm/lib/portais.ts`
-- Exportar `TIPOS_ANUNCIO`: `[{id, label, descricao}]` com os 6 níveis.
-- Tipar `Row.tipo_anuncio`.
+Criar uma política única e explícita para captação pública, válida para `anon` **e** `authenticated`, que aceite qualquer insert cujo `origem` seja um dos canais públicos do site (`site_contato`, `site_avaliacao`, `site_whatsapp`, `portal_grupozap`, etc.), independente do usuário estar logado.
 
-### 3. `src/crm/components/PortaisCard.tsx` (formulário do imóvel)
-- Para cada portal ativo (toggle publicar = on), trocar o switch "Destaque no portal" por um **Select** "Tipo de anúncio" com as 6 opções.
-- Salvar `tipo_anuncio` no upsert (mantém `destaque_portal` sincronizado para não quebrar feed).
+### Migration
 
-### 4. `src/crm/pages/Portais.tsx` (listagem em tabela)
-- Em cada célula de portal, além do checkbox "publicar", mostrar um pequeno select inline de tipo (apenas quando publicar=true). Opcional: ocultar em telas pequenas e manter só na tela do imóvel.
+1. `DROP POLICY leads_insert_anon ON public.leads;`
+2. `CREATE POLICY leads_insert_publico ON public.leads FOR INSERT TO anon, authenticated WITH CHECK (origem IN ('site_contato','site_avaliacao','site_whatsapp','portal_grupozap','portal_zap','portal_vivareal','portal_olx','manual') AND corretor_id IS NULL AND created_by IS NULL AND status_funil = 'novo');`
+3. Manter `leads_insert_authenticated` como está (para criação manual no CRM com qualquer origem/status/corretor).
 
-### 5. Feed XML (`supabase/functions/portal-feed/`)
-- Mapear `tipo_anuncio` → tag VRSync `<ListingType>` (`PREMIUM_1`, `PREMIUM_2`, `SUPER_PREMIUM`, `TRIPLE`, etc.) conforme o portal aceitar. Para portais que não suportam, ignorar (sai como STANDARD).
+Isso resolve o erro sem abrir nenhuma brecha: o público só pode criar leads "novos", sem corretor e sem created_by, marcados com uma origem válida do site.
 
-## Escopo visual
-Só formulário e tabela de portais — sem mudar cards de listagem de imóveis.
-
-Confirma que posso aplicar?
+Nenhuma mudança de código frontend é necessária — o `capturarLead` já envia `origem: 'site_contato'` e deixa os demais campos vazios.
