@@ -799,11 +799,36 @@ export default function ImovelForm() {
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-between">
+          {/* Navegação entre etapas */}
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-[#E8E4D9] bg-white px-4 py-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => goToTab(-1)}
+              disabled={isFirstTab}
+              className="gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" /> Anterior
+            </Button>
+            <span className="text-xs text-[#7A7A80] hidden sm:block">
+              Etapa {tabIndex + 1} de {TABS.length} · {TABS[tabIndex]?.label}
+            </span>
+            {isLastTab ? (
+              <Button type="submit" disabled={saving || (!!currentId && !canEditThisRecord)} className="gap-1">
+                {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</> : <><Check className="h-4 w-4" /> Finalizar e salvar</>}
+              </Button>
+            ) : (
+              <Button type="button" onClick={() => goToTab(1)} className="gap-1">
+                Próximo: {TABS[tabIndex + 1]?.label} <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2">
             {currentId && canDeleteThisRecord ? (
               <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Excluir</Button>
             ) : <div />}
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               {currentId && canEditThisRecord && (
                 loadedRecord?.ativo && loadedRecord?.status !== 'inativo' ? (
                   <Button type="button" variant="outline" onClick={handleToggleAtivo}>
@@ -819,6 +844,7 @@ export default function ImovelForm() {
               <Button type="submit" disabled={saving || (!!currentId && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
           </div>
+
         </form>
       </Form>
     </CrmLayout>
