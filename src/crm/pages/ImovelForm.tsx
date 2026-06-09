@@ -426,30 +426,47 @@ export default function ImovelForm() {
     )} />
   );
 
+  const statusLabel = (() => {
+    if (autoSaveStatus === 'saving') return { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, text: 'Salvando…', cls: 'text-[#7A5A14] bg-[#FBF3DC] border-[#E8D9A8]' };
+    if (autoSaveStatus === 'saved') return { icon: <Check className="h-3.5 w-3.5" />, text: lastSavedAt ? `Salvo às ${lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Salvo', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    if (autoSaveStatus === 'dirty') return { icon: <span className="h-2 w-2 rounded-full bg-amber-500" />, text: 'Alterações não salvas', cls: 'text-amber-700 bg-amber-50 border-amber-200' };
+    if (autoSaveStatus === 'error') return { icon: <CloudOff className="h-3.5 w-3.5" />, text: 'Falha ao salvar', cls: 'text-red-700 bg-red-50 border-red-200' };
+    return null;
+  })();
+
   return (
     <CrmLayout>
       <Button variant="ghost" onClick={() => navigate('/crm/imoveis')} className="mb-4">
         <ArrowLeft className="h-4 w-4 mr-2" />Voltar
       </Button>
-      <h1 className="text-2xl font-bold mb-6">{id ? 'Editar' : 'Inclusão de'} Imóvel</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold">{currentId ? 'Editar' : 'Inclusão de'} Imóvel</h1>
+        {statusLabel && (
+          <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${statusLabel.cls}`}>
+            {statusLabel.icon}{statusLabel.text}
+          </span>
+        )}
+      </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {id && (
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-6">
+          {currentId && (
             <ProprietariosCard
-              imovelId={id}
+              imovelId={currentId}
               codigoImoview={(loadedRecord?.codigo_imoview as number | null) ?? null}
               onVincularClick={() => setTab('relacionamentos')}
             />
           )}
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-5 w-full max-w-3xl">
-              <TabsTrigger value="endereco">Endereço</TabsTrigger>
-              <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-              <TabsTrigger value="relacionamentos">Relacionamentos</TabsTrigger>
-              <TabsTrigger value="anotacoes">Anotações</TabsTrigger>
-              <TabsTrigger value="fotos">Fotos</TabsTrigger>
+            <TabsList className="flex w-full overflow-x-auto md:grid md:grid-cols-5 md:max-w-3xl no-scrollbar">
+              {TABS.map((t, i) => (
+                <TabsTrigger key={t.key} value={t.key} className="flex-shrink-0 md:flex-shrink gap-1.5">
+                  <span className="text-[10px] opacity-60 md:hidden">{i + 1}/{TABS.length}</span>
+                  {t.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
+
 
             {/* ENDEREÇO */}
             <TabsContent value="endereco">
