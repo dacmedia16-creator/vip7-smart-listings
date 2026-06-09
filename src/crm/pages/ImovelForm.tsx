@@ -168,6 +168,7 @@ export default function ImovelForm() {
 
   useEffect(() => {
     if (!id) return;
+    skipNextAutoSaveRef.current = true;
     (async () => {
       const { data } = await supabase.from('imoveis_proprios').select('*').eq('id', id).maybeSingle();
       if (data) {
@@ -180,10 +181,117 @@ export default function ImovelForm() {
         form.reset(reset);
         setFotos(data.fotos ?? []);
         setCaracteristicas(data.caracteristicas ?? []);
+        setLastSavedAt(new Date(data.updated_at ?? Date.now()));
+        setAutoSaveStatus('saved');
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Restaurar rascunho do localStorage (apenas em /novo)
+  useEffect(() => {
+    if (id || !draftKey || hasOfferedRestoreRef.current) return;
+    hasOfferedRestoreRef.current = true;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (!draft || !draft.values) return;
+      toast({
+        title: 'Rascunho encontrado',
+        description: 'Você tem um cadastro de imóvel não finalizado. Restaurar?',
+        action: (
+          <Button size="sm" variant="outline" onClick={() => {
+            skipNextAutoSaveRef.current = true;
+            form.reset(draft.values);
+            setFotos(draft.fotos ?? []);
+            setCaracteristicas(draft.caracteristicas ?? []);
+            setLastSavedAt(draft.savedAt ? new Date(draft.savedAt) : null);
+            setAutoSaveStatus('saved');
+          }}>Restaurar</Button>
+        ) as any,
+      });
+    } catch { /* ignore */ }
+  }, [id, draftKey, form, toast]);
+
+  // Auto-save com debounce
+  useEffect(() => {
+    if (rolesLoading) return;
+    const sub = form.watch(() => {
+      if (skipNextAutoSaveRef.current) { skipNextAutoSaveRef.current = false; return; }
+      setAutoSaveStatus('dirty');
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => { void runAutoSave(); }, 2000);
+    });
+    return () => sub.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rolesLoading, currentId, fotos, caracteristicas, corretorId]);
+
+  // Auto-save também quando fotos / características / corretor mudam
+  useEffect(() => {
+    if (skipNextAutoSaveRef.current) return;
+    setAutoSaveStatus('dirty');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { void runAutoSave(); }, 2000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fotos, caracteristicas, corretorId]);
+
+  // Aviso ao sair com alterações pendentes
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autoSaveStatus === 'dirty' || autoSaveStatus === 'saving') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [autoSaveStatus]);
+
+  const runAutoSave = async () => {
+    if (!user) return;
+    const values = form.getValues();
+    const payload: any = { ...values, fotos, caracteristicas };
+    Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
+    if (isManager) payload.corretor_id = corretorId || null;
+    else if (isCorretor) payload.corretor_id = loadedRecord?.corretor_id ?? user.id;
+
+    setAutoSaveStatus('saving');
+    try {
+      if (currentId) {
+        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
+        if (error) throw error;
+      } else {
+        const hasMin = values.titulo && values.titulo.length >= 3 && values.tipo && values.finalidade && Number(values.preco) > 0;
+        if (!hasMin) {
+          // salva em localStorage
+          if (draftKey) localStorage.setItem(draftKey, JSON.stringify({
+            values, fotos, caracteristicas, savedAt: new Date().toISOString(),
+          }));
+          setLastSavedAt(new Date());
+          setAutoSaveStatus('saved');
+          return;
+        }
+        // INSERT em rascunho (inativo)
+        const draftPayload = { ...payload, status: 'inativo', ativo: false };
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(draftPayload).select('id').single();
+        if (error) throw error;
+        const newId = (ins as { id: string }).id;
+        setCurrentId(newId);
+        setLoadedRecord({ ...draftPayload, id: newId });
+        if (draftKey) localStorage.removeItem(draftKey);
+        // muda URL silenciosamente
+        window.history.replaceState(null, '', `/crm/imoveis/${newId}`);
+      }
+      setLastSavedAt(new Date());
+      setAutoSaveStatus('saved');
+    } catch (e) {
+      console.error('auto-save erro', e);
+      setAutoSaveStatus('error');
+    }
+  };
+
+
 
   const canEditThisRecord = isManager || (isCorretor && (!loadedRecord || loadedRecord.corretor_id === user?.id));
   const canDeleteThisRecord = isManager || (isCorretor && loadedRecord?.corretor_id === user?.id);
