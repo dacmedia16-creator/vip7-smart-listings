@@ -683,7 +683,7 @@ serve(async (req) => {
       cursor = { finalidadeIdx: 0, pagina: 1 };
 
       // resposta imediata; processamento continua em background
-      const taskBody = { mode, sync_id: activeSyncId, internal_cursor: cursor };
+      const taskBody = { mode, sync_id: activeSyncId, internal_cursor: cursor, skip_inactive };
       const selfUrl = `${SUPABASE_URL}/functions/v1/imoview-sync`;
       (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil(
         fetch(selfUrl, {
