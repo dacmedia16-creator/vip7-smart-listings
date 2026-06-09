@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
 
     const { data: pubs, error: pubErr } = await supabase
       .from('imovel_portais')
-      .select('imovel_id, destaque_portal')
+      .select('imovel_id, destaque_portal, tipo_anuncio')
       .eq('portal', portal)
       .eq('publicar', true);
     if (pubErr) throw pubErr;
@@ -377,6 +377,7 @@ Deno.serve(async (req) => {
 
     const ids = pubs.map((p: any) => p.imovel_id);
     const destaqueMap = new Map<string, boolean>(pubs.map((p: any) => [p.imovel_id, !!p.destaque_portal]));
+    const tipoMap = new Map<string, string>(pubs.map((p: any) => [p.imovel_id, p.tipo_anuncio ?? 'simples']));
 
     const { data: imoveis, error: imErr } = await supabase
       .from('imoveis_proprios')
