@@ -610,7 +610,24 @@ export default function ImovelForm() {
                     {T('num_controles', 'Nº de controles', 'number')}
                     {T('horario_visita', 'Horário de visita')}
                     {T('edificio', 'Edifício')}
-                    {T('condominio_nome', 'Condomínio (nome)')}
+                    <FormField control={form.control} name="condominio_nome" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Condomínio (nome)</FormLabel>
+                        <FormControl>
+                          <CondominioAutocomplete
+                            nome={(field.value as string) ?? ''}
+                            codigo={form.watch('codigo_condominio_imoview') as number | null}
+                            onChange={({ nome, codigo, cidade }) => {
+                              field.onChange(nome);
+                              form.setValue('codigo_condominio_imoview', (codigo ?? null) as any, { shouldDirty: true });
+                              if (cidade && !form.getValues('cidade')) {
+                                form.setValue('cidade', cidade, { shouldDirty: true });
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )} />
                     {T('identificador_imovel', 'Identificador do imóvel')}
                   </div>
                 </TabsContent>
