@@ -28,6 +28,7 @@ import { CaracteristicasToggleGrid } from '../components/CaracteristicasToggleGr
 import { ProprietariosSection } from '../components/ProprietariosSection';
 import { ProprietariosCard } from '../components/ProprietariosCard';
 import { addVinculo, type Cliente } from '../lib/clientes';
+import { CondominioAutocomplete } from '../components/CondominioAutocomplete';
 
 const num = z.coerce.number().optional().nullable();
 const int = z.coerce.number().int().optional().nullable();
@@ -47,7 +48,7 @@ const schema = z.object({
   codigo_interno: str, codigo_auxiliar: str, destinacao: str, segundo_tipo: str,
   local_chaves: str, identificador_chaves: str, num_chaves: int, num_controles: int,
   horario_visita: str, edificio: str, identificador_imovel: str,
-  condominio_nome: str,
+  condominio_nome: str, codigo_condominio_imoview: int,
 
   // Endereço
   cep: str, endereco: str, numero: str, bairro: str, segundo_bairro: str,
@@ -610,7 +611,24 @@ export default function ImovelForm() {
                     {T('num_controles', 'Nº de controles', 'number')}
                     {T('horario_visita', 'Horário de visita')}
                     {T('edificio', 'Edifício')}
-                    {T('condominio_nome', 'Condomínio (nome)')}
+                    <FormField control={form.control} name="condominio_nome" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Condomínio (nome)</FormLabel>
+                        <FormControl>
+                          <CondominioAutocomplete
+                            nome={(field.value as string) ?? ''}
+                            codigo={form.watch('codigo_condominio_imoview') as number | null}
+                            onChange={({ nome, codigo, cidade }) => {
+                              field.onChange(nome);
+                              form.setValue('codigo_condominio_imoview', (codigo ?? null) as any, { shouldDirty: true });
+                              if (cidade && !form.getValues('cidade')) {
+                                form.setValue('cidade', cidade, { shouldDirty: true });
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )} />
                     {T('identificador_imovel', 'Identificador do imóvel')}
                   </div>
                 </TabsContent>
