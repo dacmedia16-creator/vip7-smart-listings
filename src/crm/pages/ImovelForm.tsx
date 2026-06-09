@@ -591,11 +591,11 @@ export default function ImovelForm() {
                   <TabsTrigger value="valores" className="flex-shrink-0">Valores</TabsTrigger>
                   <TabsTrigger value="flags" className="flex-shrink-0">Situação</TabsTrigger>
                   <TabsTrigger value="areas" className="flex-shrink-0">Áreas & Dimensões</TabsTrigger>
-                  <TabsTrigger value="textos" className="flex-shrink-0">Anúncio & SEO</TabsTrigger>
                   <TabsTrigger value="cartorio" className="flex-shrink-0">Cartório</TabsTrigger>
                   <TabsTrigger value="internas" className="flex-shrink-0">Internas</TabsTrigger>
                   <TabsTrigger value="externas" className="flex-shrink-0">Externas</TabsTrigger>
                   <TabsTrigger value="lazer" className="flex-shrink-0">Lazer</TabsTrigger>
+                  <TabsTrigger value="textos" className="flex-shrink-0">Anúncio & SEO</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="ident" className="border rounded-md bg-white px-4 py-4">
