@@ -598,9 +598,6 @@ export default function ImovelForm() {
             {/* DETALHES */}
             <TabsContent value="detalhes" className="space-y-4">
               <Card className="p-6 space-y-4">
-                <FormField control={form.control} name="titulo" render={({ field }) => (
-                  <FormItem><FormLabel>Título *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
                 <FormField control={form.control} name="status" render={({ field }) => (
                   <FormItem><FormLabel>Status *</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
@@ -610,6 +607,7 @@ export default function ImovelForm() {
                   </FormItem>
                 )} />
               </Card>
+
 
               <Tabs defaultValue="ident" className="w-full">
                 <TabsList className="flex w-full overflow-x-auto justify-start h-auto flex-wrap gap-1 bg-muted/60 p-1 no-scrollbar">
@@ -800,9 +798,13 @@ export default function ImovelForm() {
                     {T('ano_construcao', 'Ano construção', 'number')}
                     {T('venc_autorizacao_venda', 'Vencimento autorização de venda', 'date')}
                   </div>
+                  <FormField control={form.control} name="titulo" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Título *</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                   <FormField control={form.control} name="descricao" render={({ field }) => (
                     <FormItem className="mt-4"><FormLabel>Descrição</FormLabel><FormControl><Textarea rows={8} {...field} value={field.value ?? ''} /></FormControl></FormItem>
                   )} />
+
                   <FormField control={form.control} name="meta_description" render={({ field }) => (
                     <FormItem className="mt-4"><FormLabel>Meta description (SEO)</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
                   )} />
