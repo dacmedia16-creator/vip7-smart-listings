@@ -397,6 +397,7 @@ Deno.serve(async (req) => {
       const erro = validar(im);
       if (erro) { erros.push({ id: im.id, erro }); continue; }
       im.destaque_portal = destaqueMap.get(im.id) ?? false;
+      im.tipo_anuncio = tipoMap.get(im.id) ?? 'simples';
       validos.push(im);
     }
 
