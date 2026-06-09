@@ -109,6 +109,32 @@ export default function ImovelForm() {
   const [loadedRecord, setLoadedRecord] = useState<any>(null);
   const [tab, setTab] = useState('endereco');
   const [pendingProprietarios, setPendingProprietarios] = useState<{ cliente: Cliente; percentual: number | null }[]>([]);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'dirty' | 'error'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [currentId, setCurrentId] = useState<string | undefined>(id);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextAutoSaveRef = useRef(true);
+  const hasOfferedRestoreRef = useRef(false);
+
+  const TABS = useMemo(() => [
+    { key: 'endereco', label: 'Endereço' },
+    { key: 'detalhes', label: 'Detalhes' },
+    { key: 'relacionamentos', label: 'Relacionamentos' },
+    { key: 'anotacoes', label: 'Anotações' },
+    { key: 'fotos', label: 'Fotos' },
+  ], []);
+  const tabIndex = TABS.findIndex((t) => t.key === tab);
+  const isLastTab = tabIndex === TABS.length - 1;
+  const isFirstTab = tabIndex === 0;
+  const draftKey = user ? `imovel-rascunho:${user.id}` : null;
+
+  const goToTab = (dir: 1 | -1) => {
+    const next = TABS[tabIndex + dir];
+    if (!next) return;
+    setTab(next.key);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
 
 
   const form = useForm<FormData>({
