@@ -131,15 +131,14 @@ export default function ImovelForm() {
         return;
       }
       const d: any = data;
-      const setIfEmpty = (name: any, value: string) => {
+      const setField = (name: any, value: string) => {
         if (!value) return;
-        const cur = form.getValues(name);
-        if (!cur || String(cur).trim() === '') form.setValue(name, value, { shouldDirty: true });
+        form.setValue(name, value, { shouldDirty: true, shouldValidate: true });
       };
-      setIfEmpty('endereco', d.logradouro || '');
-      setIfEmpty('bairro', d.bairro || '');
-      setIfEmpty('cidade', d.localidade || '');
-      setIfEmpty('estado', (d.uf || '').toUpperCase());
+      setField('endereco', d.logradouro || '');
+      setField('bairro', d.bairro || '');
+      setField('cidade', d.localidade || '');
+      setField('estado', (d.uf || '').toUpperCase());
       setTimeout(() => {
         const el = document.querySelector<HTMLInputElement>('input[name="numero"]');
         el?.focus();
