@@ -51,7 +51,7 @@ export async function capturarLead(input: CapturarLeadInput): Promise<CapturarLe
       : (input.observacoes ?? null);
 
     // 3) SEMPRE insere novo lead
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('leads')
       .insert({
         nome: input.nome,
@@ -71,15 +71,13 @@ export async function capturarLead(input: CapturarLeadInput): Promise<CapturarLe
         observacoes,
         imovel_interesse_codigo: input.imovel_interesse_codigo ?? null,
         tags,
-      })
-      .select('id')
-      .single();
+      });
 
     if (error) {
       console.error('capturarLead insert error:', error);
       return { ok: false, error: error.message };
     }
-    return { ok: true, id: data?.id, duplicate: !!duplicateId };
+    return { ok: true, duplicate: !!duplicateId };
   } catch (e: any) {
     console.error('capturarLead error:', e);
     return { ok: false, error: e?.message ?? 'erro desconhecido' };
