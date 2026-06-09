@@ -459,7 +459,7 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const { mode = "full", sync_id, codigo, codigos, internal_cursor, skip_inactive = false } = body as {
-      mode?: "full" | "incremental" | "single" | "desativados" | "inativos_por_codigos";
+      mode?: "full" | "incremental" | "single" | "desativados" | "inativos_por_codigos" | "ativos_por_codigos";
       sync_id?: string;
       codigo?: number;
       codigos?: number[];
