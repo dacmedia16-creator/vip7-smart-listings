@@ -12,6 +12,23 @@ export const PORTAIS: { id: PortalId; nome: string; descricao: string }[] = [
   { id: 'chavesnamao', nome: 'Chaves na Mão', descricao: 'XML Chaves na Mão' },
 ];
 
+export type TipoAnuncio =
+  | 'simples'
+  | 'destaque'
+  | 'super_destaque'
+  | 'triple'
+  | 'premiere_premium'
+  | 'premiere_especial';
+
+export const TIPOS_ANUNCIO: { id: TipoAnuncio; label: string; descricao: string }[] = [
+  { id: 'simples', label: 'Simples', descricao: 'Anúncio padrão' },
+  { id: 'destaque', label: 'Destaque', descricao: 'Maior visibilidade' },
+  { id: 'super_destaque', label: 'Super Destaque', descricao: 'Aparece no topo das buscas' },
+  { id: 'triple', label: 'Triple', descricao: 'Triple boost de visualizações' },
+  { id: 'premiere_premium', label: 'Premiere (Destaque premium)', descricao: 'Posição premium' },
+  { id: 'premiere_especial', label: 'Premiere (Destaque especial)', descricao: 'Máxima exposição' },
+];
+
 export interface ImovelParaValidacao {
   titulo?: string | null;
   descricao?: string | null;

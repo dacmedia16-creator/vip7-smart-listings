@@ -689,6 +689,7 @@ export type Database = {
           imovel_id: string
           portal: Database["public"]["Enums"]["portal_imobiliario"]
           publicar: boolean
+          tipo_anuncio: Database["public"]["Enums"]["tipo_anuncio_portal"]
           ultimo_envio_em: string | null
           updated_at: string
         }
@@ -700,6 +701,7 @@ export type Database = {
           imovel_id: string
           portal: Database["public"]["Enums"]["portal_imobiliario"]
           publicar?: boolean
+          tipo_anuncio?: Database["public"]["Enums"]["tipo_anuncio_portal"]
           ultimo_envio_em?: string | null
           updated_at?: string
         }
@@ -711,6 +713,7 @@ export type Database = {
           imovel_id?: string
           portal?: Database["public"]["Enums"]["portal_imobiliario"]
           publicar?: boolean
+          tipo_anuncio?: Database["public"]["Enums"]["tipo_anuncio_portal"]
           ultimo_envio_em?: string | null
           updated_at?: string
         }
@@ -1349,6 +1352,13 @@ export type Database = {
         | "visita"
         | "reuniao"
         | "outro"
+      tipo_anuncio_portal:
+        | "simples"
+        | "destaque"
+        | "super_destaque"
+        | "triple"
+        | "premiere_premium"
+        | "premiere_especial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1521,6 +1531,14 @@ export const Constants = {
         "visita",
         "reuniao",
         "outro",
+      ],
+      tipo_anuncio_portal: [
+        "simples",
+        "destaque",
+        "super_destaque",
+        "triple",
+        "premiere_premium",
+        "premiere_especial",
       ],
     },
   },

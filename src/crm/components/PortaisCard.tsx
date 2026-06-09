@@ -5,7 +5,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Globe, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PORTAIS, type PortalId, validarImovelParaPortais, type ImovelParaValidacao } from '../lib/portais';
+import { PORTAIS, type PortalId, TIPOS_ANUNCIO, type TipoAnuncio, validarImovelParaPortais, type ImovelParaValidacao } from '../lib/portais';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Props {
   imovelId: string;
@@ -16,6 +17,7 @@ interface Row {
   portal: PortalId;
   publicar: boolean;
   destaque_portal: boolean;
+  tipo_anuncio: TipoAnuncio;
   erro_validacao: string | null;
   ultimo_envio_em: string | null;
 }
@@ -31,12 +33,12 @@ export function PortaisCard({ imovelId, imovel }: Props) {
     setLoading(true);
     const { data } = await (supabase as any)
       .from('imovel_portais')
-      .select('portal, publicar, destaque_portal, erro_validacao, ultimo_envio_em')
+      .select('portal, publicar, destaque_portal, tipo_anuncio, erro_validacao, ultimo_envio_em')
       .eq('imovel_id', imovelId);
     const map = {} as Record<PortalId, Row>;
     for (const p of PORTAIS) {
       const found = (data ?? []).find((r: any) => r.portal === p.id);
-      map[p.id] = found ?? { portal: p.id, publicar: false, destaque_portal: false, erro_validacao: null, ultimo_envio_em: null };
+      map[p.id] = found ?? { portal: p.id, publicar: false, destaque_portal: false, tipo_anuncio: 'simples', erro_validacao: null, ultimo_envio_em: null };
     }
     setRows(map);
     setLoading(false);
@@ -46,6 +48,8 @@ export function PortaisCard({ imovelId, imovel }: Props) {
 
   async function update(portal: PortalId, patch: Partial<Row>) {
     const next = { ...rows[portal], ...patch };
+    // Mantém destaque_portal sincronizado com tipo_anuncio para compatibilidade com feed.
+    next.destaque_portal = next.tipo_anuncio !== 'simples';
     setRows({ ...rows, [portal]: next });
     const { error } = await (supabase as any)
       .from('imovel_portais')
@@ -55,6 +59,7 @@ export function PortaisCard({ imovelId, imovel }: Props) {
           portal,
           publicar: next.publicar,
           destaque_portal: next.destaque_portal,
+          tipo_anuncio: next.tipo_anuncio,
         },
         { onConflict: 'imovel_id,portal' },
       );
@@ -113,13 +118,25 @@ export function PortaisCard({ imovelId, imovel }: Props) {
                   />
                 </div>
                 {row?.publicar && (
-                  <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Switch
-                      checked={row.destaque_portal}
-                      onCheckedChange={(v) => update(p.id, { destaque_portal: v })}
-                    />
-                    Destaque no portal (pode ter custo extra)
-                  </label>
+                  <div className="mt-3">
+                    <label className="text-xs text-muted-foreground block mb-1">Tipo de anúncio</label>
+                    <Select
+                      value={row.tipo_anuncio ?? 'simples'}
+                      onValueChange={(v) => update(p.id, { tipo_anuncio: v as TipoAnuncio })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIPOS_ANUNCIO.map((t) => (
+                          <SelectItem key={t.id} value={t.id} className="text-xs">{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {row.tipo_anuncio && row.tipo_anuncio !== 'simples' && (
+                      <p className="text-[10px] text-muted-foreground mt-1">Pode ter custo extra no portal.</p>
+                    )}
+                  </div>
                 )}
               </div>
             );

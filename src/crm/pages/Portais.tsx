@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Copy, AlertCircle, CheckCircle2, Webhook, ShieldCheck, ShieldAlert, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PORTAIS, type PortalId, validarImovelParaPortais } from '../lib/portais';
+import { PORTAIS, type PortalId, TIPOS_ANUNCIO, type TipoAnuncio, validarImovelParaPortais } from '../lib/portais';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -33,6 +34,7 @@ interface PortalRow {
   imovel_id: string;
   portal: PortalId;
   publicar: boolean;
+  tipo_anuncio?: TipoAnuncio;
 }
 
 const PROJECT_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -58,7 +60,7 @@ export default function Portais() {
         .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos')
         .eq('ativo', true)
         .order('titulo'),
-      (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar'),
+      (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),
     ]);
     setImoveis((imRes.data ?? []) as ImovelLite[]);
     setPortais((pRes.data ?? []) as PortalRow[]);
@@ -103,6 +105,27 @@ export default function Portais() {
     const { error } = await (supabase as any)
       .from('imovel_portais')
       .upsert({ imovel_id: imovelId, portal, publicar: value }, { onConflict: 'imovel_id,portal' });
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      load();
+    }
+  }
+
+  const tipoOf = (imovelId: string, portal: PortalId): TipoAnuncio =>
+    (portais.find((p) => p.imovel_id === imovelId && p.portal === portal)?.tipo_anuncio ?? 'simples') as TipoAnuncio;
+
+  async function setTipo(imovelId: string, portal: PortalId, tipo: TipoAnuncio) {
+    setPortais((prev) => {
+      const ex = prev.find((p) => p.imovel_id === imovelId && p.portal === portal);
+      if (ex) return prev.map((p) => (p === ex ? { ...p, tipo_anuncio: tipo } : p));
+      return [...prev, { imovel_id: imovelId, portal, publicar: true, tipo_anuncio: tipo }];
+    });
+    const { error } = await (supabase as any)
+      .from('imovel_portais')
+      .upsert(
+        { imovel_id: imovelId, portal, publicar: true, tipo_anuncio: tipo, destaque_portal: tipo !== 'simples' },
+        { onConflict: 'imovel_id,portal' },
+      );
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
       load();
@@ -330,15 +353,32 @@ export default function Portais() {
                         </Badge>
                       )}
                     </td>
-                    {PORTAIS.map((p) => (
-                      <td key={p.id} className="text-center p-2">
-                        <Checkbox
-                          checked={isPub(im.id, p.id)}
-                          disabled={erros.length > 0}
-                          onCheckedChange={(v) => toggle(im.id, p.id, !!v)}
-                        />
-                      </td>
-                    ))}
+                    {PORTAIS.map((p) => {
+                      const pub = isPub(im.id, p.id);
+                      return (
+                        <td key={p.id} className="text-center p-2">
+                          <div className="flex flex-col items-center gap-1">
+                            <Checkbox
+                              checked={pub}
+                              disabled={erros.length > 0}
+                              onCheckedChange={(v) => toggle(im.id, p.id, !!v)}
+                            />
+                            {pub && (
+                              <Select value={tipoOf(im.id, p.id)} onValueChange={(v) => setTipo(im.id, p.id, v as TipoAnuncio)}>
+                                <SelectTrigger className="h-7 text-[11px] px-2 w-28">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TIPOS_ANUNCIO.map((t) => (
+                                    <SelectItem key={t.id} value={t.id} className="text-xs">{t.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}

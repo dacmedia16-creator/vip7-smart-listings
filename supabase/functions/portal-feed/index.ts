@@ -90,6 +90,20 @@ interface ImovelRow {
   video_url: string | null;
   tour_virtual_url: string | null;
   destaque_portal?: boolean;
+  tipo_anuncio?: string;
+}
+
+// VRSync PublicationType: STANDARD | PREMIUM | SUPER_PREMIUM | TRIPLE | PREMIERE_1 | PREMIERE_2
+function mapPublicationType(tipo?: string, destaque?: boolean): string {
+  switch (tipo) {
+    case 'destaque': return 'PREMIUM';
+    case 'super_destaque': return 'SUPER_PREMIUM';
+    case 'triple': return 'TRIPLE';
+    case 'premiere_premium': return 'PREMIERE_1';
+    case 'premiere_especial': return 'PREMIERE_2';
+    case 'simples': return 'STANDARD';
+    default: return destaque ? 'SUPER_PREMIUM' : 'STANDARD';
+  }
 }
 
 function validar(im: ImovelRow): string | null {
@@ -155,7 +169,7 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
       <ListingID>${esc(listingId)}</ListingID>
       <Title>${cdata(im.titulo)}</Title>
       <TransactionType>${mapTransactionType(im.finalidade)}</TransactionType>
-      <PublicationType>${im.destaque_portal ? 'SUPER_PREMIUM' : 'STANDARD'}</PublicationType>
+      <PublicationType>${mapPublicationType(im.tipo_anuncio, im.destaque_portal)}</PublicationType>
       <DetailViewUrl>${esc(detailUrl(im))}</DetailViewUrl>
       ${media}
       <Details>
@@ -346,7 +360,7 @@ Deno.serve(async (req) => {
 
     const { data: pubs, error: pubErr } = await supabase
       .from('imovel_portais')
-      .select('imovel_id, destaque_portal')
+      .select('imovel_id, destaque_portal, tipo_anuncio')
       .eq('portal', portal)
       .eq('publicar', true);
     if (pubErr) throw pubErr;
@@ -363,6 +377,7 @@ Deno.serve(async (req) => {
 
     const ids = pubs.map((p: any) => p.imovel_id);
     const destaqueMap = new Map<string, boolean>(pubs.map((p: any) => [p.imovel_id, !!p.destaque_portal]));
+    const tipoMap = new Map<string, string>(pubs.map((p: any) => [p.imovel_id, p.tipo_anuncio ?? 'simples']));
 
     const { data: imoveis, error: imErr } = await supabase
       .from('imoveis_proprios')
@@ -382,6 +397,7 @@ Deno.serve(async (req) => {
       const erro = validar(im);
       if (erro) { erros.push({ id: im.id, erro }); continue; }
       im.destaque_portal = destaqueMap.get(im.id) ?? false;
+      im.tipo_anuncio = tipoMap.get(im.id) ?? 'simples';
       validos.push(im);
     }
 

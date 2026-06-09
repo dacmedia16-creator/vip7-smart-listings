@@ -1,33 +1,29 @@
-## Mostrar Descrição junto do Título nos cards de listagem
+# Tipo de anúncio por portal (estilo Imoview / Grupo Zap)
 
-Hoje, em `src/crm/pages/Imoveis.tsx` (linhas 466–474), cada card mostra:
+Hoje cada portal tem só um toggle "publicar" e um "destaque_portal" booleano. O Imoview oferece níveis de destaque (Simples, Destaque, Super Destaque, Triple, Premiere Premium, Premiere Especial). Vamos substituir o booleano de destaque por um campo enum `tipo_anuncio`, aplicável a todos os portais — começando pelo Grupo Zap (Zap+VivaReal e OLX), que é onde esses níveis fazem sentido real, mas disponível também para os outros.
 
-```
-código · tipo
-Título
-bairro, cidade
-preço          quartos · área
-```
+## Mudanças
 
-A Descrição não aparece. Vou adicioná-la imediatamente abaixo do Título, para refletir o agrupamento que acabamos de fazer no formulário.
+### 1. Banco (migração)
+- Criar enum `tipo_anuncio_portal` com valores: `simples`, `destaque`, `super_destaque`, `triple`, `premiere_premium`, `premiere_especial`.
+- Adicionar coluna `tipo_anuncio tipo_anuncio_portal NOT NULL DEFAULT 'simples'` em `imovel_portais`.
+- Manter `destaque_portal` por compatibilidade (passa a ser derivado: true quando `tipo_anuncio != 'simples'`) — atualizar valores existentes onde `destaque_portal = true` → `tipo_anuncio = 'destaque'`.
 
-### Mudança
+### 2. `src/crm/lib/portais.ts`
+- Exportar `TIPOS_ANUNCIO`: `[{id, label, descricao}]` com os 6 níveis.
+- Tipar `Row.tipo_anuncio`.
 
-No bloco do card (linha ~468), após o `<h3>` do título, adicionar:
+### 3. `src/crm/components/PortaisCard.tsx` (formulário do imóvel)
+- Para cada portal ativo (toggle publicar = on), trocar o switch "Destaque no portal" por um **Select** "Tipo de anúncio" com as 6 opções.
+- Salvar `tipo_anuncio` no upsert (mantém `destaque_portal` sincronizado para não quebrar feed).
 
-```tsx
-{im.descricao && (
-  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-    {im.descricao}
-  </p>
-)}
-```
+### 4. `src/crm/pages/Portais.tsx` (listagem em tabela)
+- Em cada célula de portal, além do checkbox "publicar", mostrar um pequeno select inline de tipo (apenas quando publicar=true). Opcional: ocultar em telas pequenas e manter só na tela do imóvel.
 
-- `line-clamp-2` para limitar a 2 linhas e manter o card compacto.
-- Só renderiza quando há descrição.
-- Usa o campo `descricao` já carregado pelo `select('*')` (linha 138).
+### 5. Feed XML (`supabase/functions/portal-feed/`)
+- Mapear `tipo_anuncio` → tag VRSync `<ListingType>` (`PREMIUM_1`, `PREMIUM_2`, `SUPER_PREMIUM`, `TRIPLE`, etc.) conforme o portal aceitar. Para portais que não suportam, ignorar (sai como STANDARD).
 
-### Sem alterações
+## Escopo visual
+Só formulário e tabela de portais — sem mudar cards de listagem de imóveis.
 
-- Query, paginação, filtros, ações do card.
-- Demais campos exibidos (código, tipo, bairro, cidade, preço, quartos, área) permanecem iguais.
+Confirma que posso aplicar?
