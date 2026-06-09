@@ -28,6 +28,7 @@ import { CaracteristicasToggleGrid } from '../components/CaracteristicasToggleGr
 import { ProprietariosSection } from '../components/ProprietariosSection';
 import { ProprietariosCard } from '../components/ProprietariosCard';
 import { addVinculo, type Cliente } from '../lib/clientes';
+import { CondominioAutocomplete } from '../components/CondominioAutocomplete';
 
 const num = z.coerce.number().optional().nullable();
 const int = z.coerce.number().int().optional().nullable();
