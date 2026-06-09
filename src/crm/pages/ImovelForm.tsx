@@ -512,7 +512,30 @@ export default function ImovelForm() {
               <Card className="p-6 space-y-4">
                 <h2 className="font-semibold">Endereço</h2>
                 <div className="grid md:grid-cols-3 gap-4">
-                  {T('cep', 'CEP')}
+                  <FormField control={form.control} name="cep" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="00000-000"
+                            maxLength={9}
+                            onChange={(e) => {
+                              const masked = formatCep(e.target.value);
+                              field.onChange(masked);
+                              if (masked.replace(/\D/g, '').length === 8) void lookupCep(masked);
+                            }}
+                            onBlur={(e) => { field.onBlur(); void lookupCep(e.target.value); }}
+                          />
+                          {cepLoading && (
+                            <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )} />
                   {T('endereco', 'Endereço')}
                   {T('numero', 'Nº')}
                   {T('bairro', 'Bairro')}
