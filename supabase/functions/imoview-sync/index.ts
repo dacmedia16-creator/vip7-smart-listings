@@ -470,7 +470,7 @@ serve(async (req) => {
     // ===== modo single =====
     if (mode === "single") {
       if (!codigo) return new Response(JSON.stringify({ error: "codigo obrigatório" }), { status: 400, headers: corsHeaders });
-      const detail = await fetchDetails(codigo);
+      const detail = await getDetalhes(codigo);
       if (!detail) return new Response(JSON.stringify({ error: "não encontrado" }), { status: 404, headers: corsHeaders });
       const stats = { inserted: 0, updated: 0, unchanged: 0, photos: 0, errors: 0 };
       await syncOne(sb, detail, stats, null);
