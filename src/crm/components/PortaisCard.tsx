@@ -5,7 +5,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Globe, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PORTAIS, type PortalId, validarImovelParaPortais, type ImovelParaValidacao } from '../lib/portais';
+import { PORTAIS, type PortalId, TIPOS_ANUNCIO, type TipoAnuncio, validarImovelParaPortais, type ImovelParaValidacao } from '../lib/portais';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Props {
   imovelId: string;
