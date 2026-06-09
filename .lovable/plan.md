@@ -1,23 +1,27 @@
-# Sync Imoview — usar endpoint App como primário
+# Full sync Imoview com flag para desativar marcação de inativos
 
-## Problema
-A conta Imoview atual retorna 404 no endpoint `RetornarDetalhesImovel`. Só funciona o `App_RetornarDetalhesImovel` (login via app, já configurado nos secrets `IMOVIEW_APP_EMAIL` / `IMOVIEW_APP_SENHA`). Hoje o sync chama o método clássico primeiro e ignora o 404 silenciosamente, então imóveis existentes não recebem refresh de detalhes (fotos, descrição, características).
+## Objetivo
+Disparar um full sync agora, mas SEM marcar como inativo nada que não vier na rodada. Apenas inserir novos e atualizar existentes.
 
-## Mudanças
-Arquivo único: `supabase/functions/imoview-sync/index.ts`
+## Mudança no código
+Arquivo: `supabase/functions/imoview-sync/index.ts`
 
-1. Criar helper `getDetalhes(codigo)` que chama `fetchDetailsApp` primeiro e cai para `fetchDetails` apenas se o App falhar.
-2. Substituir todas as chamadas diretas a `fetchDetails` pelo helper:
-   - caminho principal de update em lote (~linha 460)
-   - caminho de novos imóveis (~linha 511)
-   - caminho de detalhe individual (~linha 718)
-3. Logar apenas quando ambos os métodos falharem (elimina ruído de 404 esperado).
-4. Registrar em `imoview_sync_log` a contagem de detalhes atualizados via App vs fallback.
+1. Aceitar um parâmetro `skip_inactive` (boolean) no body da requisição.
+2. Propagar esse parâmetro nos auto re-invokes (senão só o primeiro chunk respeita).
+3. No bloco final (quando `done=true`), pular o `UPDATE ... SET ativo=false` se `skip_inactive` for `true`. Continuar setando `status` e `finished_at` normalmente.
 
-Sem mudança de schema, RLS ou outras telas.
+## Disparo
+Após o ajuste, invocar a edge function:
+```
+POST /functions/v1/imoview-sync
+{ "mode": "full", "skip_inactive": true }
+```
 
-## Validação
-- Rodar sync manual em `/crm/configuracoes/imoview`
-- Conferir `imoview_sync_log`: detalhes atualizados > 0
-- Edge function logs sem 404 em massa
-- Um imóvel existente com `updated_at` recente e fotos/descrição refrescados
+## Monitoramento
+- Acompanhar `imoview_sync_log` (última linha) até `status` virar `ok` ou `partial`.
+- Reportar números finais: `inserted`, `updated`, `unchanged`, `photos`, `errors`, e `removed=0` (esperado).
+- Verificar nos edge function logs as contagens `detalhes.app` vs `detalhes.fallback`.
+
+## Sem mudanças
+- Sem alteração de schema, RLS, ou outras telas.
+- Comportamento padrão (sem a flag) continua marcando inativos como antes.
