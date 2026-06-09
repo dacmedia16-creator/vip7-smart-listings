@@ -111,6 +111,27 @@ export default function Portais() {
     }
   }
 
+  const tipoOf = (imovelId: string, portal: PortalId): TipoAnuncio =>
+    (portais.find((p) => p.imovel_id === imovelId && p.portal === portal)?.tipo_anuncio ?? 'simples') as TipoAnuncio;
+
+  async function setTipo(imovelId: string, portal: PortalId, tipo: TipoAnuncio) {
+    setPortais((prev) => {
+      const ex = prev.find((p) => p.imovel_id === imovelId && p.portal === portal);
+      if (ex) return prev.map((p) => (p === ex ? { ...p, tipo_anuncio: tipo } : p));
+      return [...prev, { imovel_id: imovelId, portal, publicar: true, tipo_anuncio: tipo }];
+    });
+    const { error } = await (supabase as any)
+      .from('imovel_portais')
+      .upsert(
+        { imovel_id: imovelId, portal, publicar: true, tipo_anuncio: tipo, destaque_portal: tipo !== 'simples' },
+        { onConflict: 'imovel_id,portal' },
+      );
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      load();
+    }
+  }
+
   function copiarUrl(portal: PortalId) {
     const slugMap: Record<PortalId, string> = {
       zap_vivareal: 'zap',
