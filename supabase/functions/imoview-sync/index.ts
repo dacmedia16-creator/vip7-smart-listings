@@ -788,7 +788,7 @@ serve(async (req) => {
         fetch(selfUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-          body: JSON.stringify({ mode, sync_id: activeSyncId, internal_cursor: { finalidadeIdx, pagina } }),
+          body: JSON.stringify({ mode, sync_id: activeSyncId, internal_cursor: { finalidadeIdx, pagina }, skip_inactive }),
         }).then((r) => r.text()).catch((e) => console.error("[sync] self-invoke chunk:", e)),
       );
     }
