@@ -753,6 +753,32 @@ export default function ImovelForm() {
                     />
                   </div>
                 </TabsContent>
+
+                <TabsContent value="textos" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-2 gap-4 pt-2">
+                    {T('ponto_referencia', 'Ponto de referência')}
+                    {T('melhor_acesso', 'Melhor acesso')}
+                    {T('titulo_anuncio', 'Título para anúncio')}
+                    {T('construtora', 'Construtora')}
+                    {T('ano_construcao', 'Ano construção', 'number')}
+                    {T('venc_autorizacao_venda', 'Vencimento autorização de venda', 'date')}
+                  </div>
+                  <div className="mt-4 flex items-center justify-between gap-2 p-3 rounded-md border bg-muted/40">
+                    <div className="text-sm text-muted-foreground">
+                      Preencha os outros campos primeiro e gere a descrição automaticamente com IA.
+                    </div>
+                    <Button type="button" variant="default" size="sm" disabled={aiLoading} onClick={gerarDescricaoIA}>
+                      {aiLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      ✨ Gerar descrição com IA
+                    </Button>
+                  </div>
+                  <FormField control={form.control} name="descricao" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Descrição</FormLabel><FormControl><Textarea rows={8} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="meta_description" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Meta description (SEO)</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                  )} />
+                </TabsContent>
               </Tabs>
             </TabsContent>
 
