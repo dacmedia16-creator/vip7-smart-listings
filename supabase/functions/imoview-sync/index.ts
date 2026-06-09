@@ -725,7 +725,7 @@ serve(async (req) => {
       const conc = 3;
       for (let i = 0; i < codigos.length; i += conc) {
         const slice = codigos.slice(i, i + conc);
-        const details = await Promise.all(slice.map((c) => fetchDetails(c)));
+        const details = await Promise.all(slice.map((c) => getDetalhes(c)));
         for (const d of details) {
           if (d) await syncOne(sb, d, stats, activeSyncId!, false);
         }
