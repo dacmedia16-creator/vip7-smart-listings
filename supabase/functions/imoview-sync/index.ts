@@ -789,7 +789,8 @@ serve(async (req) => {
       );
     }
 
-    return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, done, stats, cursor: { finalidadeIdx, pagina } }), {
+    console.log(`[sync] chunk done — detalhes via App=${__detailsAppCount} fallback=${__detailsFallbackCount}`);
+    return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, done, stats, cursor: { finalidadeIdx, pagina }, detalhes: { app: __detailsAppCount, fallback: __detailsFallbackCount } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
