@@ -353,15 +353,32 @@ export default function Portais() {
                         </Badge>
                       )}
                     </td>
-                    {PORTAIS.map((p) => (
-                      <td key={p.id} className="text-center p-2">
-                        <Checkbox
-                          checked={isPub(im.id, p.id)}
-                          disabled={erros.length > 0}
-                          onCheckedChange={(v) => toggle(im.id, p.id, !!v)}
-                        />
-                      </td>
-                    ))}
+                    {PORTAIS.map((p) => {
+                      const pub = isPub(im.id, p.id);
+                      return (
+                        <td key={p.id} className="text-center p-2">
+                          <div className="flex flex-col items-center gap-1">
+                            <Checkbox
+                              checked={pub}
+                              disabled={erros.length > 0}
+                              onCheckedChange={(v) => toggle(im.id, p.id, !!v)}
+                            />
+                            {pub && (
+                              <Select value={tipoOf(im.id, p.id)} onValueChange={(v) => setTipo(im.id, p.id, v as TipoAnuncio)}>
+                                <SelectTrigger className="h-7 text-[11px] px-2 w-28">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TIPOS_ANUNCIO.map((t) => (
+                                    <SelectItem key={t.id} value={t.id} className="text-xs">{t.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}
