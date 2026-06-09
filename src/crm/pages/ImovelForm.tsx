@@ -150,6 +150,31 @@ export default function ImovelForm() {
     }
   };
 
+  const [aiLoading, setAiLoading] = useState(false);
+  const gerarDescricaoIA = async () => {
+    setAiLoading(true);
+    try {
+      const values = form.getValues() as Record<string, any>;
+      const imovel: Record<string, any> = {};
+      for (const [k, v] of Object.entries(values)) {
+        if (v === null || v === undefined) continue;
+        if (typeof v === 'string' && v.trim() === '') continue;
+        imovel[k] = v;
+      }
+      imovel.caracteristicas = caracteristicas;
+      const { data, error } = await supabase.functions.invoke('gerar-descricao-imovel', { body: { imovel } });
+      if (error) throw error;
+      const d: any = data || {};
+      if (d.descricao) form.setValue('descricao', d.descricao, { shouldDirty: true });
+      if (d.meta_description) form.setValue('meta_description', d.meta_description, { shouldDirty: true });
+      toast({ title: 'Descrição gerada com IA' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar descrição', description: e.message, variant: 'destructive' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const formatCep = (v: string) => {
     const d = v.replace(/\D/g, '').slice(0, 8);
     return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
