@@ -1,4 +1,4 @@
-// Edge function: gerar descrição imobiliária com IA via Lovable AI Gateway
+// Edge function: gerar título + descrição + meta description via Lovable AI Gateway
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -22,7 +22,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Filtra somente campos preenchidos para reduzir contexto
     const filtered: Record<string, any> = {};
     for (const [k, v] of Object.entries(imovel)) {
       if (v === null || v === undefined) continue;
@@ -32,17 +31,16 @@ Deno.serve(async (req) => {
     }
 
     const system = `Você é um redator publicitário especialista em imóveis de alto padrão no Brasil.
-Escreva descrições comerciais profissionais, em português do Brasil, com tom sofisticado, claro e persuasivo.
+Escreva em português do Brasil, com tom sofisticado, claro e persuasivo.
 REGRAS:
 - Use APENAS as informações fornecidas. NÃO invente metragens, características, vagas, lazer, localização ou preço.
-- Não cite valores monetários.
-- Não use emojis.
-- Texto corrido em 3 a 6 parágrafos curtos, fluído, sem listas com bullets.
-- Destaque diferenciais reais: tipo, localização, áreas, dormitórios/suítes, vagas, lazer e características.
-Retorne JSON com:
-{ "descricao": "texto completo...", "meta_description": "até 155 caracteres, SEO." }`;
+- Não cite valores monetários. Não use emojis.
+- "titulo": até 80 caracteres, comercial, destacando tipo + bairro/condomínio + diferencial principal. Ex.: "Casa térrea com piscina no Alphaville Nova Esplanada".
+- "descricao": texto corrido em 3 a 6 parágrafos curtos, sem bullets, destacando diferenciais reais (tipo, localização, áreas, dormitórios/suítes, vagas, lazer, características).
+- "meta_description": até 155 caracteres, SEO, atrativa para Google.
+Retorne JSON: { "titulo": "...", "descricao": "...", "meta_description": "..." }`;
 
-    const userMsg = `Gere a descrição para este imóvel (campos preenchidos):\n${JSON.stringify(filtered, null, 2)}`;
+    const userMsg = `Gere para este imóvel (campos preenchidos):\n${JSON.stringify(filtered, null, 2)}`;
 
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -74,6 +72,7 @@ Retorne JSON com:
     try { parsed = JSON.parse(content); } catch { parsed = { descricao: String(content) }; }
 
     return new Response(JSON.stringify({
+      titulo: String(parsed.titulo || '').trim().slice(0, 100),
       descricao: String(parsed.descricao || '').trim(),
       meta_description: String(parsed.meta_description || '').trim().slice(0, 160),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
