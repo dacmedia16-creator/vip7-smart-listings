@@ -56,6 +56,10 @@ export default function SincronizacaoImoview() {
   const [inativosCodes, setInativosCodes] = useState<number[]>([]);
   const [inativosExistentes, setInativosExistentes] = useState<number | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [ativosFile, setAtivosFile] = useState<File | null>(null);
+  const [ativosCodes, setAtivosCodes] = useState<number[]>([]);
+  const [ativosExistentes, setAtivosExistentes] = useState<number | null>(null);
+  const [parsingAtivos, setParsingAtivos] = useState(false);
 
   const fetchLogs = async () => {
     const { data } = await supabase
@@ -117,6 +121,53 @@ export default function SincronizacaoImoview() {
       toast.error('Erro lendo planilha: ' + (e as Error).message);
     } finally {
       setParsing(false);
+    }
+  };
+
+  const handleAtivosFileChange = async (file: File | null) => {
+    setAtivosFile(file);
+    setAtivosCodes([]);
+    setAtivosExistentes(null);
+    if (!file) return;
+    setParsingAtivos(true);
+    try {
+      const codes = await parseImoviewXls(file);
+      if (codes.length === 0) {
+        toast.error('Nenhum código encontrado na planilha. Confirme que é a exportação .xls da Imoview.');
+        return;
+      }
+      setAtivosCodes(codes);
+      const { count } = await supabase
+        .from('imoveis_proprios')
+        .select('id', { count: 'exact', head: true })
+        .in('codigo_imoview', codes);
+      setAtivosExistentes(count ?? 0);
+      toast.success(`${codes.length} códigos detectados (${count ?? 0} já no banco)`);
+    } catch (e) {
+      toast.error('Erro lendo planilha: ' + (e as Error).message);
+    } finally {
+      setParsingAtivos(false);
+    }
+  };
+
+  const importarAtivos = async () => {
+    if (ativosCodes.length === 0) return;
+    if (!confirm(`Importar ${ativosCodes.length} imóveis como ATIVOS (aparecem no site)? Pode levar 20–40 min em background. Pode fechar a aba — a importação continua.`)) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('imoview-sync', {
+        body: { mode: 'ativos_por_codigos', codigos: ativosCodes },
+      });
+      if (error) throw error;
+      toast.success(`Importação iniciada: ${(data as { sync_id?: string })?.sync_id?.slice(0, 8)}`);
+      setAtivosFile(null);
+      setAtivosCodes([]);
+      setAtivosExistentes(null);
+      fetchLogs();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -198,6 +249,42 @@ export default function SincronizacaoImoview() {
         </Card>
 
         <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" /> Importar imóveis ATIVOS por planilha</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-[#4A4A52]">
+              Use isto quando o Imoview tiver <strong>mais imóveis ativos do que o sync completo trouxe</strong>. A API esconde imóveis sem foto principal, sem "exibir no site" ou sem CEP — mas eles existem.
+              Exporte no Imoview <em>Imóveis → filtro Situação = Vago/Disponível → Exportar XLS</em> e suba aqui. Eles entram como <strong>ativos</strong> (aparecem no site) e fotos são baixadas.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                type="file"
+                accept=".xls,.html,.htm,.csv,.xlsx"
+                disabled={parsingAtivos || loading || !!running}
+                onChange={(e) => handleAtivosFileChange(e.target.files?.[0] || null)}
+                className="max-w-sm"
+              />
+              {parsingAtivos && <Loader2 className="h-4 w-4 animate-spin text-[#C9A24C]" />}
+              {ativosCodes.length > 0 && (
+                <Badge className="bg-[#FBF3DC] text-[#7A5A14] border border-[#E8D9A8]">
+                  {ativosCodes.length} códigos · {ativosExistentes ?? 0} já no banco · {ativosCodes.length - (ativosExistentes ?? 0)} novos
+                </Badge>
+              )}
+            </div>
+            <Button
+              onClick={importarAtivos}
+              disabled={loading || !!running || ativosCodes.length === 0}
+              className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+            >
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+              Importar {ativosCodes.length > 0 ? `${ativosCodes.length} ativos` : 'ativos'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2"><Archive className="h-4 w-4" /> Imóveis desativados / inativos</CardTitle>
           </CardHeader>
