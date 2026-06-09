@@ -34,6 +34,7 @@ interface PortalRow {
   imovel_id: string;
   portal: PortalId;
   publicar: boolean;
+  tipo_anuncio?: TipoAnuncio;
 }
 
 const PROJECT_URL = import.meta.env.VITE_SUPABASE_URL as string;
