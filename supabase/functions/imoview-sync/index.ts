@@ -220,6 +220,19 @@ async function fetchDetails(codigo: number): Promise<Record<string, unknown> | n
   return null;
 }
 
+// Tenta endpoint App primeiro (que funciona para a conta atual), com fallback ao clássico.
+// Só loga quando AMBOS falharem — elimina o ruído de 404 esperado do endpoint clássico.
+let __detailsAppCount = 0;
+let __detailsFallbackCount = 0;
+async function getDetalhes(codigo: number): Promise<Record<string, unknown> | null> {
+  const viaApp = await fetchDetailsApp(codigo);
+  if (viaApp) { __detailsAppCount++; return viaApp; }
+  const viaClassic = await fetchDetails(codigo);
+  if (viaClassic) { __detailsFallbackCount++; return viaClassic; }
+  console.warn(`[sync] getDetalhes cod=${codigo}: ambos endpoints falharam`);
+  return null;
+}
+
 // ---------- mapeamento ----------
 type Mapped = {
   codigo: number;
