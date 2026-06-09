@@ -298,6 +298,7 @@ export default function ImovelForm() {
 
   const onSubmit = async (values: FormData) => {
     setSaving(true);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     try {
       const payload: any = { ...values, fotos, caracteristicas };
       Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
@@ -308,8 +309,8 @@ export default function ImovelForm() {
         payload.corretor_id = loadedRecord?.corretor_id ?? user!.id;
       }
 
-      if (id) {
-        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', id);
+      if (currentId) {
+        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
         if (error) throw error;
       } else {
         const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id').single();
@@ -320,6 +321,8 @@ export default function ImovelForm() {
           catch (e) { console.error('vinculo proprietario falhou', e); }
         }
       }
+      if (draftKey) localStorage.removeItem(draftKey);
+      setAutoSaveStatus('saved');
       toast({ title: 'Imóvel salvo' });
       navigate('/crm/imoveis');
     } catch (e: any) {
@@ -328,6 +331,7 @@ export default function ImovelForm() {
       setSaving(false);
     }
   };
+
 
   const handleUpload = async (files: FileList | null) => {
     if (!files) return;
