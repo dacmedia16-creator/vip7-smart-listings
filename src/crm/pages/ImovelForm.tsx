@@ -523,189 +523,174 @@ export default function ImovelForm() {
                 )} />
               </Card>
 
-              <Accordion type="multiple" defaultValue={['ident', 'valores', 'areas']} className="space-y-2">
-                <AccordionItem value="ident" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Identificação & Comercial</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-3 gap-4 pt-2">
-                      {T('codigo_interno', 'Código interno')}
-                      {T('codigo_auxiliar', 'Código auxiliar')}
-                      {Sel('destinacao', 'Destinação', DESTINACAO)}
-                      {T('segundo_tipo', 'Segundo tipo')}
-                      {Sel('local_chaves', 'Local das chaves', LOCAL_CHAVES)}
-                      {T('identificador_chaves', 'Identificador de chaves')}
-                      {T('num_chaves', 'Nº de chaves', 'number')}
-                      {T('num_controles', 'Nº de controles', 'number')}
-                      {T('horario_visita', 'Horário de visita')}
-                      {T('edificio', 'Edifício')}
-                      {T('condominio_nome', 'Condomínio (nome)')}
-                      {T('identificador_imovel', 'Identificador do imóvel')}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+              <Tabs defaultValue="ident" className="w-full">
+                <TabsList className="flex w-full overflow-x-auto justify-start h-auto flex-wrap gap-1 bg-muted/60 p-1 no-scrollbar">
+                  <TabsTrigger value="ident" className="flex-shrink-0">Identificação & Comercial</TabsTrigger>
+                  <TabsTrigger value="valores" className="flex-shrink-0">Valores</TabsTrigger>
+                  <TabsTrigger value="flags" className="flex-shrink-0">Situação</TabsTrigger>
+                  <TabsTrigger value="areas" className="flex-shrink-0">Áreas & Dimensões</TabsTrigger>
+                  <TabsTrigger value="textos" className="flex-shrink-0">Anúncio & SEO</TabsTrigger>
+                  <TabsTrigger value="cartorio" className="flex-shrink-0">Cartório</TabsTrigger>
+                  <TabsTrigger value="internas" className="flex-shrink-0">Internas</TabsTrigger>
+                  <TabsTrigger value="externas" className="flex-shrink-0">Externas</TabsTrigger>
+                  <TabsTrigger value="lazer" className="flex-shrink-0">Lazer</TabsTrigger>
+                </TabsList>
 
-                <AccordionItem value="valores" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Valores</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-3 gap-4 pt-2">
-                      <FormField control={form.control} name="preco" render={({ field }) => (
-                        <FormItem><FormLabel>Venda (R$) *</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      {T('valor_anterior', 'Valor anterior', 'number')}
-                      {T('condominio', 'Condomínio (R$)', 'number')}
-                      {T('iptu_mensal', 'IPTU (mensal)', 'number')}
-                      {T('iptu_anual', 'IPTU (anual)', 'number')}
-                      {T('rentabilidade_pct', 'Rentabilidade %', 'number')}
-                      {T('comissao_venda_pct', 'Comissão venda %', 'number')}
-                      {T('valor_avaliacao', 'Valor avaliação', 'number')}
-                      <FormField control={form.control} name="valor_sob_consulta" render={({ field }) => (
-                        <div className="flex items-center justify-between gap-3 rounded-md border border-[#E8E4D9] bg-white px-3 py-2">
-                          <Label className="text-sm">Valor sob consulta</Label>
-                          <Switch checked={!!field.value} onCheckedChange={field.onChange} />
-                        </div>
-                      )} />
-                    </div>
-                    <FormField control={form.control} name="descricao_avaliacao" render={({ field }) => (
-                      <FormItem className="mt-4"><FormLabel>Descrição avaliação</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                <TabsContent value="ident" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-3 gap-4 pt-2">
+                    {T('codigo_interno', 'Código interno')}
+                    {T('codigo_auxiliar', 'Código auxiliar')}
+                    {Sel('destinacao', 'Destinação', DESTINACAO)}
+                    {T('segundo_tipo', 'Segundo tipo')}
+                    {Sel('local_chaves', 'Local das chaves', LOCAL_CHAVES)}
+                    {T('identificador_chaves', 'Identificador de chaves')}
+                    {T('num_chaves', 'Nº de chaves', 'number')}
+                    {T('num_controles', 'Nº de controles', 'number')}
+                    {T('horario_visita', 'Horário de visita')}
+                    {T('edificio', 'Edifício')}
+                    {T('condominio_nome', 'Condomínio (nome)')}
+                    {T('identificador_imovel', 'Identificador do imóvel')}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="valores" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-3 gap-4 pt-2">
+                    <FormField control={form.control} name="preco" render={({ field }) => (
+                      <FormItem><FormLabel>Venda (R$) *</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="flags" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Situação do imóvel</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-3 gap-3 pt-2">
-                      {Sw('exclusivo', 'Exclusivo')}
-                      {Sw('imovel_ocupado', 'Imóvel ocupado')}
-                      {Sw('imovel_alugado', 'Imóvel alugado')}
-                      {Sw('aceita_financiamento', 'Aceita financiamento')}
-                      {Sw('aceita_permuta', 'Aceita permuta')}
-                      {Sw('na_planta', 'Na planta')}
-                      {Sw('permite_animais', 'Permite animais')}
-                      {Sel('placa_faixa', 'Placa / Faixa', PLACA_FAIXA)}
-                      {T('cib', 'CIB')}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="areas" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Áreas | Dimensões | Zoneamento</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-3 gap-4 pt-2">
-                      {T('area', 'Área interna (m²)', 'number')}
-                      {T('area_externa', 'Área externa (m²)', 'number')}
-                      {T('area_total', 'Área lote/terreno', 'number')}
-                      {Sel('tipo_medida', 'Tipo medida', TIPO_MEDIDA)}
-                      {T('m_frente', 'M. frente', 'number')}
-                      {T('m_fundo', 'M. fundo', 'number')}
-                      {T('m_direito', 'M. direito', 'number')}
-                      {T('m_esquerdo', 'M. esquerdo', 'number')}
-                      {T('confront_frente', 'Confrontação frente')}
-                      {T('confront_fundo', 'Confrontação fundo')}
-                      {T('confront_dir', 'Confrontação lado direito')}
-                      {T('confront_esq', 'Confrontação lado esquerdo')}
-                      {T('zona_uso', 'Zona de uso')}
-                      {T('coef_aproveitamento', 'Coeficiente de aproveitamento', 'number')}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="textos" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Anúncio & SEO</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-2 gap-4 pt-2">
-                      {T('ponto_referencia', 'Ponto de referência')}
-                      {T('melhor_acesso', 'Melhor acesso')}
-                      {T('titulo_anuncio', 'Título para anúncio')}
-                      {T('construtora', 'Construtora')}
-                      {T('ano_construcao', 'Ano construção', 'number')}
-                      {T('venc_autorizacao_venda', 'Vencimento autorização de venda', 'date')}
-                    </div>
-                    <FormField control={form.control} name="descricao" render={({ field }) => (
-                      <FormItem className="mt-4"><FormLabel>Descrição</FormLabel><FormControl><Textarea rows={5} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                    {T('valor_anterior', 'Valor anterior', 'number')}
+                    {T('condominio', 'Condomínio (R$)', 'number')}
+                    {T('iptu_mensal', 'IPTU (mensal)', 'number')}
+                    {T('iptu_anual', 'IPTU (anual)', 'number')}
+                    {T('rentabilidade_pct', 'Rentabilidade %', 'number')}
+                    {T('comissao_venda_pct', 'Comissão venda %', 'number')}
+                    {T('valor_avaliacao', 'Valor avaliação', 'number')}
+                    <FormField control={form.control} name="valor_sob_consulta" render={({ field }) => (
+                      <div className="flex items-center justify-between gap-3 rounded-md border border-[#E8E4D9] bg-white px-3 py-2">
+                        <Label className="text-sm">Valor sob consulta</Label>
+                        <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                      </div>
                     )} />
-                    <FormField control={form.control} name="meta_description" render={({ field }) => (
-                      <FormItem className="mt-4"><FormLabel>Meta description (SEO)</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
-                    )} />
-                  </AccordionContent>
-                </AccordionItem>
+                  </div>
+                  <FormField control={form.control} name="descricao_avaliacao" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Descrição avaliação</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                  )} />
+                </TabsContent>
 
-                <AccordionItem value="cartorio" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Cartório</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-2 gap-4 pt-2">
-                      {T('cartorio', 'Cartório')}
-                      {T('matricula', 'Matrícula')}
-                      {T('livro_cartorio', 'Livro cartório')}
-                      {T('folha_cartorio', 'Folha cartório')}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                <TabsContent value="flags" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-3 gap-3 pt-2">
+                    {Sw('exclusivo', 'Exclusivo')}
+                    {Sw('imovel_ocupado', 'Imóvel ocupado')}
+                    {Sw('imovel_alugado', 'Imóvel alugado')}
+                    {Sw('aceita_financiamento', 'Aceita financiamento')}
+                    {Sw('aceita_permuta', 'Aceita permuta')}
+                    {Sw('na_planta', 'Na planta')}
+                    {Sw('permite_animais', 'Permite animais')}
+                    {Sel('placa_faixa', 'Placa / Faixa', PLACA_FAIXA)}
+                    {T('cib', 'CIB')}
+                  </div>
+                </TabsContent>
 
-                <AccordionItem value="internas" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Características internas</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-4 gap-4 pt-2">
-                      {T('andar', 'Andar')}
-                      {T('banheiros', 'Banheiros', 'number')}
-                      {T('piso_acabamento', 'Piso / acabamento')}
-                      {Sel('posicao_imovel', 'Posição imóvel', POSICAO_IMOVEL)}
-                      {T('quartos', 'Quartos', 'number')}
-                      {T('salas', 'Salas', 'number')}
-                      {T('suites', 'Suítes', 'number')}
-                      {T('varandas', 'Varandas', 'number')}
-                    </div>
-                    <div className="mt-4">
-                      <CaracteristicasToggleGrid
-                        items={CARACT_INTERNAS}
-                        prefix="interna"
-                        value={caracteristicas}
-                        onChange={setCaracteristicas}
-                        columns={3}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                <TabsContent value="areas" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-3 gap-4 pt-2">
+                    {T('area', 'Área interna (m²)', 'number')}
+                    {T('area_externa', 'Área externa (m²)', 'number')}
+                    {T('area_total', 'Área lote/terreno', 'number')}
+                    {Sel('tipo_medida', 'Tipo medida', TIPO_MEDIDA)}
+                    {T('m_frente', 'M. frente', 'number')}
+                    {T('m_fundo', 'M. fundo', 'number')}
+                    {T('m_direito', 'M. direito', 'number')}
+                    {T('m_esquerdo', 'M. esquerdo', 'number')}
+                    {T('confront_frente', 'Confrontação frente')}
+                    {T('confront_fundo', 'Confrontação fundo')}
+                    {T('confront_dir', 'Confrontação lado direito')}
+                    {T('confront_esq', 'Confrontação lado esquerdo')}
+                    {T('zona_uso', 'Zona de uso')}
+                    {T('coef_aproveitamento', 'Coeficiente de aproveitamento', 'number')}
+                  </div>
+                </TabsContent>
 
-                <AccordionItem value="externas" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Características externas</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid md:grid-cols-4 gap-4 pt-2">
-                      {T('vagas', 'Vagas de garagem', 'number')}
-                      {Sel('tipo_vaga', 'Tipo de vaga', TIPO_VAGA)}
-                      {T('elevadores', 'Elevadores', 'number')}
-                      {T('num_torres', 'Nº torres / blocos', 'number')}
-                      {T('num_andares', 'Nº andares', 'number')}
-                      {T('unidades_por_andar', 'Unidades por andar', 'number')}
-                      {T('total_unidades', 'Total unidades', 'number')}
-                    </div>
-                    <div className="mt-4">
-                      <CaracteristicasToggleGrid
-                        items={CARACT_EXTERNAS}
-                        prefix="externa"
-                        value={caracteristicas}
-                        onChange={setCaracteristicas}
-                        columns={3}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                <TabsContent value="textos" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-2 gap-4 pt-2">
+                    {T('ponto_referencia', 'Ponto de referência')}
+                    {T('melhor_acesso', 'Melhor acesso')}
+                    {T('titulo_anuncio', 'Título para anúncio')}
+                    {T('construtora', 'Construtora')}
+                    {T('ano_construcao', 'Ano construção', 'number')}
+                    {T('venc_autorizacao_venda', 'Vencimento autorização de venda', 'date')}
+                  </div>
+                  <FormField control={form.control} name="descricao" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Descrição</FormLabel><FormControl><Textarea rows={5} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="meta_description" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Meta description (SEO)</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                  )} />
+                </TabsContent>
 
-                <AccordionItem value="lazer" className="border rounded-md bg-white px-4">
-                  <AccordionTrigger>Lazer</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="pt-2">
-                      <CaracteristicasToggleGrid
-                        items={LAZER}
-                        prefix="lazer"
-                        value={caracteristicas}
-                        onChange={setCaracteristicas}
-                        columns={3}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                <TabsContent value="cartorio" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-2 gap-4 pt-2">
+                    {T('cartorio', 'Cartório')}
+                    {T('matricula', 'Matrícula')}
+                    {T('livro_cartorio', 'Livro cartório')}
+                    {T('folha_cartorio', 'Folha cartório')}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="internas" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-4 gap-4 pt-2">
+                    {T('andar', 'Andar')}
+                    {T('banheiros', 'Banheiros', 'number')}
+                    {T('piso_acabamento', 'Piso / acabamento')}
+                    {Sel('posicao_imovel', 'Posição imóvel', POSICAO_IMOVEL)}
+                    {T('quartos', 'Quartos', 'number')}
+                    {T('salas', 'Salas', 'number')}
+                    {T('suites', 'Suítes', 'number')}
+                    {T('varandas', 'Varandas', 'number')}
+                  </div>
+                  <div className="mt-4">
+                    <CaracteristicasToggleGrid
+                      items={CARACT_INTERNAS}
+                      prefix="interna"
+                      value={caracteristicas}
+                      onChange={setCaracteristicas}
+                      columns={3}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="externas" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-4 gap-4 pt-2">
+                    {T('vagas', 'Vagas de garagem', 'number')}
+                    {Sel('tipo_vaga', 'Tipo de vaga', TIPO_VAGA)}
+                    {T('elevadores', 'Elevadores', 'number')}
+                    {T('num_torres', 'Nº torres / blocos', 'number')}
+                    {T('num_andares', 'Nº andares', 'number')}
+                    {T('unidades_por_andar', 'Unidades por andar', 'number')}
+                    {T('total_unidades', 'Total unidades', 'number')}
+                  </div>
+                  <div className="mt-4">
+                    <CaracteristicasToggleGrid
+                      items={CARACT_EXTERNAS}
+                      prefix="externa"
+                      value={caracteristicas}
+                      onChange={setCaracteristicas}
+                      columns={3}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="lazer" className="border rounded-md bg-white px-4 py-4">
+                  <div className="pt-2">
+                    <CaracteristicasToggleGrid
+                      items={LAZER}
+                      prefix="lazer"
+                      value={caracteristicas}
+                      onChange={setCaracteristicas}
+                      columns={3}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
             {/* RELACIONAMENTOS */}
