@@ -90,6 +90,7 @@ interface ImovelRow {
   video_url: string | null;
   tour_virtual_url: string | null;
   destaque_portal?: boolean;
+  tipo_anuncio?: string;
 }
 
 function validar(im: ImovelRow): string | null {
