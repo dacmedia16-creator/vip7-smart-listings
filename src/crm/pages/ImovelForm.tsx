@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Upload, X, Trash2, EyeOff, Eye } from 'lucide-react';
+import { ArrowLeft, Upload, X, Trash2, EyeOff, Eye, ChevronLeft, ChevronRight, Check, Loader2, CloudOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
 import { Button } from '@/components/ui/button';
@@ -109,6 +109,32 @@ export default function ImovelForm() {
   const [loadedRecord, setLoadedRecord] = useState<any>(null);
   const [tab, setTab] = useState('endereco');
   const [pendingProprietarios, setPendingProprietarios] = useState<{ cliente: Cliente; percentual: number | null }[]>([]);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'dirty' | 'error'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [currentId, setCurrentId] = useState<string | undefined>(id);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextAutoSaveRef = useRef(true);
+  const hasOfferedRestoreRef = useRef(false);
+
+  const TABS = useMemo(() => [
+    { key: 'endereco', label: 'Endereço' },
+    { key: 'detalhes', label: 'Detalhes' },
+    { key: 'relacionamentos', label: 'Relacionamentos' },
+    { key: 'anotacoes', label: 'Anotações' },
+    { key: 'fotos', label: 'Fotos' },
+  ], []);
+  const tabIndex = TABS.findIndex((t) => t.key === tab);
+  const isLastTab = tabIndex === TABS.length - 1;
+  const isFirstTab = tabIndex === 0;
+  const draftKey = user ? `imovel-rascunho:${user.id}` : null;
+
+  const goToTab = (dir: 1 | -1) => {
+    const next = TABS[tabIndex + dir];
+    if (!next) return;
+    setTab(next.key);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
 
 
   const form = useForm<FormData>({
@@ -142,6 +168,7 @@ export default function ImovelForm() {
 
   useEffect(() => {
     if (!id) return;
+    skipNextAutoSaveRef.current = true;
     (async () => {
       const { data } = await supabase.from('imoveis_proprios').select('*').eq('id', id).maybeSingle();
       if (data) {
@@ -154,16 +181,124 @@ export default function ImovelForm() {
         form.reset(reset);
         setFotos(data.fotos ?? []);
         setCaracteristicas(data.caracteristicas ?? []);
+        setLastSavedAt(new Date(data.updated_at ?? Date.now()));
+        setAutoSaveStatus('saved');
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Restaurar rascunho do localStorage (apenas em /novo)
+  useEffect(() => {
+    if (id || !draftKey || hasOfferedRestoreRef.current) return;
+    hasOfferedRestoreRef.current = true;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (!draft || !draft.values) return;
+      toast({
+        title: 'Rascunho encontrado',
+        description: 'Você tem um cadastro de imóvel não finalizado. Restaurar?',
+        action: (
+          <Button size="sm" variant="outline" onClick={() => {
+            skipNextAutoSaveRef.current = true;
+            form.reset(draft.values);
+            setFotos(draft.fotos ?? []);
+            setCaracteristicas(draft.caracteristicas ?? []);
+            setLastSavedAt(draft.savedAt ? new Date(draft.savedAt) : null);
+            setAutoSaveStatus('saved');
+          }}>Restaurar</Button>
+        ) as any,
+      });
+    } catch { /* ignore */ }
+  }, [id, draftKey, form, toast]);
+
+  // Auto-save com debounce
+  useEffect(() => {
+    if (rolesLoading) return;
+    const sub = form.watch(() => {
+      if (skipNextAutoSaveRef.current) { skipNextAutoSaveRef.current = false; return; }
+      setAutoSaveStatus('dirty');
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => { void runAutoSave(); }, 2000);
+    });
+    return () => sub.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rolesLoading, currentId, fotos, caracteristicas, corretorId]);
+
+  // Auto-save também quando fotos / características / corretor mudam
+  useEffect(() => {
+    if (skipNextAutoSaveRef.current) return;
+    setAutoSaveStatus('dirty');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { void runAutoSave(); }, 2000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fotos, caracteristicas, corretorId]);
+
+  // Aviso ao sair com alterações pendentes
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (autoSaveStatus === 'dirty' || autoSaveStatus === 'saving') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [autoSaveStatus]);
+
+  const runAutoSave = async () => {
+    if (!user) return;
+    const values = form.getValues();
+    const payload: any = { ...values, fotos, caracteristicas };
+    Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
+    if (isManager) payload.corretor_id = corretorId || null;
+    else if (isCorretor) payload.corretor_id = loadedRecord?.corretor_id ?? user.id;
+
+    setAutoSaveStatus('saving');
+    try {
+      if (currentId) {
+        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
+        if (error) throw error;
+      } else {
+        const hasMin = values.titulo && values.titulo.length >= 3 && values.tipo && values.finalidade && Number(values.preco) > 0;
+        if (!hasMin) {
+          // salva em localStorage
+          if (draftKey) localStorage.setItem(draftKey, JSON.stringify({
+            values, fotos, caracteristicas, savedAt: new Date().toISOString(),
+          }));
+          setLastSavedAt(new Date());
+          setAutoSaveStatus('saved');
+          return;
+        }
+        // INSERT em rascunho (inativo)
+        const draftPayload = { ...payload, status: 'inativo', ativo: false };
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(draftPayload).select('id').single();
+        if (error) throw error;
+        const newId = (ins as { id: string }).id;
+        setCurrentId(newId);
+        setLoadedRecord({ ...draftPayload, id: newId });
+        if (draftKey) localStorage.removeItem(draftKey);
+        // muda URL silenciosamente
+        window.history.replaceState(null, '', `/crm/imoveis/${newId}`);
+      }
+      setLastSavedAt(new Date());
+      setAutoSaveStatus('saved');
+    } catch (e) {
+      console.error('auto-save erro', e);
+      setAutoSaveStatus('error');
+    }
+  };
+
+
 
   const canEditThisRecord = isManager || (isCorretor && (!loadedRecord || loadedRecord.corretor_id === user?.id));
   const canDeleteThisRecord = isManager || (isCorretor && loadedRecord?.corretor_id === user?.id);
 
   const onSubmit = async (values: FormData) => {
     setSaving(true);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     try {
       const payload: any = { ...values, fotos, caracteristicas };
       Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
@@ -174,8 +309,8 @@ export default function ImovelForm() {
         payload.corretor_id = loadedRecord?.corretor_id ?? user!.id;
       }
 
-      if (id) {
-        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', id);
+      if (currentId) {
+        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
         if (error) throw error;
       } else {
         const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id').single();
@@ -186,6 +321,8 @@ export default function ImovelForm() {
           catch (e) { console.error('vinculo proprietario falhou', e); }
         }
       }
+      if (draftKey) localStorage.removeItem(draftKey);
+      setAutoSaveStatus('saved');
       toast({ title: 'Imóvel salvo' });
       navigate('/crm/imoveis');
     } catch (e: any) {
@@ -194,6 +331,7 @@ export default function ImovelForm() {
       setSaving(false);
     }
   };
+
 
   const handleUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -229,15 +367,15 @@ export default function ImovelForm() {
   };
 
   const handleDelete = async () => {
-    if (!id || !confirm('Excluir este imóvel?')) return;
-    const { error } = await supabase.from('imoveis_proprios').delete().eq('id', id);
+    if (!currentId || !confirm('Excluir este imóvel?')) return;
+    const { error } = await supabase.from('imoveis_proprios').delete().eq('id', currentId);
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     toast({ title: 'Excluído' });
     navigate('/crm/imoveis');
   };
 
   const handleToggleAtivo = async () => {
-    if (!id) return;
+    if (!currentId) return;
     const currentlyAtivo = !!loadedRecord?.ativo && loadedRecord?.status !== 'inativo';
     const msg = currentlyAtivo
       ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
@@ -246,7 +384,7 @@ export default function ImovelForm() {
     const updates = currentlyAtivo
       ? { ativo: false, status: 'inativo' as const }
       : { ativo: true, status: 'disponivel' as const };
-    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', id);
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', currentId);
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     toast({ title: currentlyAtivo ? 'Imóvel desativado' : 'Imóvel reativado' });
     form.setValue('ativo', updates.ativo);
@@ -288,30 +426,47 @@ export default function ImovelForm() {
     )} />
   );
 
+  const statusLabel = (() => {
+    if (autoSaveStatus === 'saving') return { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, text: 'Salvando…', cls: 'text-[#7A5A14] bg-[#FBF3DC] border-[#E8D9A8]' };
+    if (autoSaveStatus === 'saved') return { icon: <Check className="h-3.5 w-3.5" />, text: lastSavedAt ? `Salvo às ${lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Salvo', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    if (autoSaveStatus === 'dirty') return { icon: <span className="h-2 w-2 rounded-full bg-amber-500" />, text: 'Alterações não salvas', cls: 'text-amber-700 bg-amber-50 border-amber-200' };
+    if (autoSaveStatus === 'error') return { icon: <CloudOff className="h-3.5 w-3.5" />, text: 'Falha ao salvar', cls: 'text-red-700 bg-red-50 border-red-200' };
+    return null;
+  })();
+
   return (
     <CrmLayout>
       <Button variant="ghost" onClick={() => navigate('/crm/imoveis')} className="mb-4">
         <ArrowLeft className="h-4 w-4 mr-2" />Voltar
       </Button>
-      <h1 className="text-2xl font-bold mb-6">{id ? 'Editar' : 'Inclusão de'} Imóvel</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold">{currentId ? 'Editar' : 'Inclusão de'} Imóvel</h1>
+        {statusLabel && (
+          <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${statusLabel.cls}`}>
+            {statusLabel.icon}{statusLabel.text}
+          </span>
+        )}
+      </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {id && (
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-6">
+          {currentId && (
             <ProprietariosCard
-              imovelId={id}
+              imovelId={currentId}
               codigoImoview={(loadedRecord?.codigo_imoview as number | null) ?? null}
               onVincularClick={() => setTab('relacionamentos')}
             />
           )}
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-5 w-full max-w-3xl">
-              <TabsTrigger value="endereco">Endereço</TabsTrigger>
-              <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-              <TabsTrigger value="relacionamentos">Relacionamentos</TabsTrigger>
-              <TabsTrigger value="anotacoes">Anotações</TabsTrigger>
-              <TabsTrigger value="fotos">Fotos</TabsTrigger>
+            <TabsList className="flex w-full overflow-x-auto md:grid md:grid-cols-5 md:max-w-3xl no-scrollbar">
+              {TABS.map((t, i) => (
+                <TabsTrigger key={t.key} value={t.key} className="flex-shrink-0 md:flex-shrink gap-1.5">
+                  <span className="text-[10px] opacity-60 md:hidden">{i + 1}/{TABS.length}</span>
+                  {t.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
+
 
             {/* ENDEREÇO */}
             <TabsContent value="endereco">
@@ -583,7 +738,7 @@ export default function ImovelForm() {
                 </div>
               </Card>
 
-              <ProprietariosSection imovelId={id ?? null} onPendingChange={setPendingProprietarios} />
+              <ProprietariosSection imovelId={currentId ?? null} onPendingChange={setPendingProprietarios} />
             </TabsContent>
 
             {/* ANOTAÇÕES */}
@@ -644,12 +799,37 @@ export default function ImovelForm() {
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-between">
-            {id && canDeleteThisRecord ? (
+          {/* Navegação entre etapas */}
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-[#E8E4D9] bg-white px-4 py-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => goToTab(-1)}
+              disabled={isFirstTab}
+              className="gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" /> Anterior
+            </Button>
+            <span className="text-xs text-[#7A7A80] hidden sm:block">
+              Etapa {tabIndex + 1} de {TABS.length} · {TABS[tabIndex]?.label}
+            </span>
+            {isLastTab ? (
+              <Button type="submit" disabled={saving || (!!currentId && !canEditThisRecord)} className="gap-1">
+                {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</> : <><Check className="h-4 w-4" /> Finalizar e salvar</>}
+              </Button>
+            ) : (
+              <Button type="button" onClick={() => goToTab(1)} className="gap-1">
+                Próximo: {TABS[tabIndex + 1]?.label} <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2">
+            {currentId && canDeleteThisRecord ? (
               <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Excluir</Button>
             ) : <div />}
-            <div className="flex gap-2">
-              {id && canEditThisRecord && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              {currentId && canEditThisRecord && (
                 loadedRecord?.ativo && loadedRecord?.status !== 'inativo' ? (
                   <Button type="button" variant="outline" onClick={handleToggleAtivo}>
                     <EyeOff className="h-4 w-4 mr-2" />Desativar (ocultar do site)
@@ -661,9 +841,10 @@ export default function ImovelForm() {
                 )
               )}
               <Button type="button" variant="outline" onClick={() => navigate('/crm/imoveis')}>Cancelar</Button>
-              <Button type="submit" disabled={saving || (!!id && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+              <Button type="submit" disabled={saving || (!!currentId && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
           </div>
+
         </form>
       </Form>
     </CrmLayout>
