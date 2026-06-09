@@ -115,6 +115,45 @@ export default function ImovelForm() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextAutoSaveRef = useRef(true);
   const hasOfferedRestoreRef = useRef(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const lastCepRef = useRef<string>('');
+
+  const lookupCep = async (rawCep: string) => {
+    const digits = rawCep.replace(/\D/g, '');
+    if (digits.length !== 8 || digits === lastCepRef.current) return;
+    lastCepRef.current = digits;
+    setCepLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cep-lookup', { body: { cep: digits } });
+      if (error || !data || (data as any).erro) {
+        toast({ title: 'CEP não encontrado', variant: 'destructive' });
+        return;
+      }
+      const d: any = data;
+      const setIfEmpty = (name: any, value: string) => {
+        if (!value) return;
+        const cur = form.getValues(name);
+        if (!cur || String(cur).trim() === '') form.setValue(name, value, { shouldDirty: true });
+      };
+      setIfEmpty('endereco', d.logradouro || '');
+      setIfEmpty('bairro', d.bairro || '');
+      setIfEmpty('cidade', d.localidade || '');
+      setIfEmpty('estado', (d.uf || '').toUpperCase());
+      setTimeout(() => {
+        const el = document.querySelector<HTMLInputElement>('input[name="numero"]');
+        el?.focus();
+      }, 50);
+    } catch (e: any) {
+      toast({ title: 'Erro ao consultar CEP', description: e.message, variant: 'destructive' });
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const formatCep = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 8);
+    return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+  };
 
   const TABS = useMemo(() => [
     { key: 'endereco', label: 'Endereço' },
