@@ -458,12 +458,13 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { mode = "full", sync_id, codigo, codigos, internal_cursor } = body as {
+    const { mode = "full", sync_id, codigo, codigos, internal_cursor, skip_inactive = false } = body as {
       mode?: "full" | "incremental" | "single" | "desativados" | "inativos_por_codigos";
       sync_id?: string;
       codigo?: number;
       codigos?: number[];
       internal_cursor?: { finalidadeIdx?: number; pagina?: number; idx?: number; codigos?: number[] };
+      skip_inactive?: boolean;
     };
     const isDesat = mode === "desativados";
 
@@ -682,7 +683,7 @@ serve(async (req) => {
       cursor = { finalidadeIdx: 0, pagina: 1 };
 
       // resposta imediata; processamento continua em background
-      const taskBody = { mode, sync_id: activeSyncId, internal_cursor: cursor };
+      const taskBody = { mode, sync_id: activeSyncId, internal_cursor: cursor, skip_inactive };
       const selfUrl = `${SUPABASE_URL}/functions/v1/imoview-sync`;
       (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil(
         fetch(selfUrl, {
@@ -761,7 +762,7 @@ serve(async (req) => {
     if (done) {
       const startedAtRes = await sb.from("imoview_sync_log").select("started_at, errors_count").eq("id", activeSyncId).single();
       const startedAt = startedAtRes.data?.started_at as string | undefined;
-      if (startedAt) {
+      if (startedAt && !skip_inactive) {
         const { data: stale, count } = await sb
           .from("imoveis_proprios")
           .update({ ativo: false, status: "inativo" }, { count: "exact" })
@@ -769,6 +770,9 @@ serve(async (req) => {
           .or(`imoview_sync_at.is.null,imoview_sync_at.lt.${startedAt}`)
           .select("id");
         update.removed = (stale?.length ?? count) || 0;
+      } else if (skip_inactive) {
+        update.removed = 0;
+        console.log(`[sync] skip_inactive=true — pulando marca\u00e7\u00e3o de inativos`);
       }
       update.status = (startedAtRes.data?.errors_count || 0) > 0 ? "partial" : "ok";
       update.finished_at = new Date().toISOString();
@@ -784,7 +788,7 @@ serve(async (req) => {
         fetch(selfUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-          body: JSON.stringify({ mode, sync_id: activeSyncId, internal_cursor: { finalidadeIdx, pagina } }),
+          body: JSON.stringify({ mode, sync_id: activeSyncId, internal_cursor: { finalidadeIdx, pagina }, skip_inactive }),
         }).then((r) => r.text()).catch((e) => console.error("[sync] self-invoke chunk:", e)),
       );
     }
