@@ -56,6 +56,10 @@ export default function SincronizacaoImoview() {
   const [inativosCodes, setInativosCodes] = useState<number[]>([]);
   const [inativosExistentes, setInativosExistentes] = useState<number | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [ativosFile, setAtivosFile] = useState<File | null>(null);
+  const [ativosCodes, setAtivosCodes] = useState<number[]>([]);
+  const [ativosExistentes, setAtivosExistentes] = useState<number | null>(null);
+  const [parsingAtivos, setParsingAtivos] = useState(false);
 
   const fetchLogs = async () => {
     const { data } = await supabase
