@@ -150,6 +150,31 @@ export default function ImovelForm() {
     }
   };
 
+  const [aiLoading, setAiLoading] = useState(false);
+  const gerarDescricaoIA = async () => {
+    setAiLoading(true);
+    try {
+      const values = form.getValues() as Record<string, any>;
+      const imovel: Record<string, any> = {};
+      for (const [k, v] of Object.entries(values)) {
+        if (v === null || v === undefined) continue;
+        if (typeof v === 'string' && v.trim() === '') continue;
+        imovel[k] = v;
+      }
+      imovel.caracteristicas = caracteristicas;
+      const { data, error } = await supabase.functions.invoke('gerar-descricao-imovel', { body: { imovel } });
+      if (error) throw error;
+      const d: any = data || {};
+      if (d.descricao) form.setValue('descricao', d.descricao, { shouldDirty: true });
+      if (d.meta_description) form.setValue('meta_description', d.meta_description, { shouldDirty: true });
+      toast({ title: 'Descrição gerada com IA' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar descrição', description: e.message, variant: 'destructive' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const formatCep = (v: string) => {
     const d = v.replace(/\D/g, '').slice(0, 8);
     return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
@@ -591,11 +616,11 @@ export default function ImovelForm() {
                   <TabsTrigger value="valores" className="flex-shrink-0">Valores</TabsTrigger>
                   <TabsTrigger value="flags" className="flex-shrink-0">Situação</TabsTrigger>
                   <TabsTrigger value="areas" className="flex-shrink-0">Áreas & Dimensões</TabsTrigger>
-                  <TabsTrigger value="textos" className="flex-shrink-0">Anúncio & SEO</TabsTrigger>
                   <TabsTrigger value="cartorio" className="flex-shrink-0">Cartório</TabsTrigger>
                   <TabsTrigger value="internas" className="flex-shrink-0">Internas</TabsTrigger>
                   <TabsTrigger value="externas" className="flex-shrink-0">Externas</TabsTrigger>
                   <TabsTrigger value="lazer" className="flex-shrink-0">Lazer</TabsTrigger>
+                  <TabsTrigger value="textos" className="flex-shrink-0">Anúncio & SEO</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="ident" className="border rounded-md bg-white px-4 py-4">
@@ -689,22 +714,6 @@ export default function ImovelForm() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="textos" className="border rounded-md bg-white px-4 py-4">
-                  <div className="grid md:grid-cols-2 gap-4 pt-2">
-                    {T('ponto_referencia', 'Ponto de referência')}
-                    {T('melhor_acesso', 'Melhor acesso')}
-                    {T('titulo_anuncio', 'Título para anúncio')}
-                    {T('construtora', 'Construtora')}
-                    {T('ano_construcao', 'Ano construção', 'number')}
-                    {T('venc_autorizacao_venda', 'Vencimento autorização de venda', 'date')}
-                  </div>
-                  <FormField control={form.control} name="descricao" render={({ field }) => (
-                    <FormItem className="mt-4"><FormLabel>Descrição</FormLabel><FormControl><Textarea rows={5} {...field} value={field.value ?? ''} /></FormControl></FormItem>
-                  )} />
-                  <FormField control={form.control} name="meta_description" render={({ field }) => (
-                    <FormItem className="mt-4"><FormLabel>Meta description (SEO)</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
-                  )} />
-                </TabsContent>
 
                 <TabsContent value="cartorio" className="border rounded-md bg-white px-4 py-4">
                   <div className="grid md:grid-cols-2 gap-4 pt-2">
@@ -768,6 +777,32 @@ export default function ImovelForm() {
                       columns={3}
                     />
                   </div>
+                </TabsContent>
+
+                <TabsContent value="textos" className="border rounded-md bg-white px-4 py-4">
+                  <div className="grid md:grid-cols-2 gap-4 pt-2">
+                    {T('ponto_referencia', 'Ponto de referência')}
+                    {T('melhor_acesso', 'Melhor acesso')}
+                    {T('titulo_anuncio', 'Título para anúncio')}
+                    {T('construtora', 'Construtora')}
+                    {T('ano_construcao', 'Ano construção', 'number')}
+                    {T('venc_autorizacao_venda', 'Vencimento autorização de venda', 'date')}
+                  </div>
+                  <div className="mt-4 flex items-center justify-between gap-2 p-3 rounded-md border bg-muted/40">
+                    <div className="text-sm text-muted-foreground">
+                      Preencha os outros campos primeiro e gere a descrição automaticamente com IA.
+                    </div>
+                    <Button type="button" variant="default" size="sm" disabled={aiLoading} onClick={gerarDescricaoIA}>
+                      {aiLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      ✨ Gerar descrição com IA
+                    </Button>
+                  </div>
+                  <FormField control={form.control} name="descricao" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Descrição</FormLabel><FormControl><Textarea rows={8} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="meta_description" render={({ field }) => (
+                    <FormItem className="mt-4"><FormLabel>Meta description (SEO)</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                  )} />
                 </TabsContent>
               </Tabs>
             </TabsContent>
