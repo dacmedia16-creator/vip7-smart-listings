@@ -118,13 +118,25 @@ export function PortaisCard({ imovelId, imovel }: Props) {
                   />
                 </div>
                 {row?.publicar && (
-                  <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Switch
-                      checked={row.destaque_portal}
-                      onCheckedChange={(v) => update(p.id, { destaque_portal: v })}
-                    />
-                    Destaque no portal (pode ter custo extra)
-                  </label>
+                  <div className="mt-3">
+                    <label className="text-xs text-muted-foreground block mb-1">Tipo de anúncio</label>
+                    <Select
+                      value={row.tipo_anuncio ?? 'simples'}
+                      onValueChange={(v) => update(p.id, { tipo_anuncio: v as TipoAnuncio })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIPOS_ANUNCIO.map((t) => (
+                          <SelectItem key={t.id} value={t.id} className="text-xs">{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {row.tipo_anuncio && row.tipo_anuncio !== 'simples' && (
+                      <p className="text-[10px] text-muted-foreground mt-1">Pode ter custo extra no portal.</p>
+                    )}
+                  </div>
                 )}
               </div>
             );
