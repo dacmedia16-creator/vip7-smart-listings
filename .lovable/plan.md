@@ -1,17 +1,33 @@
-## Mover campo "Título" para junto da Descrição
+## Mostrar Descrição junto do Título nos cards de listagem
 
-Hoje o campo **Título \*** fica isolado no topo da aba **Detalhes**, acima do Status. A Descrição mora lá embaixo, na sub-aba **Anúncio & SEO**. Vou juntar os dois.
+Hoje, em `src/crm/pages/Imoveis.tsx` (linhas 466–474), cada card mostra:
 
-### O que muda em `src/crm/pages/ImovelForm.tsx`
+```
+código · tipo
+Título
+bairro, cidade
+preço          quartos · área
+```
 
-1. **Remover** o `FormField` do `titulo` do Card do topo da aba Detalhes (linhas 601–603). O Card passa a conter apenas o **Status**.
-2. **Adicionar** o mesmo `FormField` do `titulo` dentro da sub-aba **Anúncio & SEO**, logo antes do `FormField` da `descricao` (linha 803), para que apareçam juntos:
-   - Título \*  (input)
-   - Descrição (textarea)
-3. Manter `titulo_anuncio` (Título para anúncio) onde está, no grid de 2 colunas — é um campo diferente, usado pelo anúncio gerado por IA.
+A Descrição não aparece. Vou adicioná-la imediatamente abaixo do Título, para refletir o agrupamento que acabamos de fazer no formulário.
+
+### Mudança
+
+No bloco do card (linha ~468), após o `<h3>` do título, adicionar:
+
+```tsx
+{im.descricao && (
+  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+    {im.descricao}
+  </p>
+)}
+```
+
+- `line-clamp-2` para limitar a 2 linhas e manter o card compacto.
+- Só renderiza quando há descrição.
+- Usa o campo `descricao` já carregado pelo `select('*')` (linha 138).
 
 ### Sem alterações
 
-- Schema de validação (`titulo` continua obrigatório, min 3).
-- Lógica de salvamento, IA, status, navegação entre etapas.
-- Nenhum outro campo é movido.
+- Query, paginação, filtros, ações do card.
+- Demais campos exibidos (código, tipo, bairro, cidade, preço, quartos, área) permanecem iguais.
