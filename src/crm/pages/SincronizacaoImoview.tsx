@@ -124,6 +124,53 @@ export default function SincronizacaoImoview() {
     }
   };
 
+  const handleAtivosFileChange = async (file: File | null) => {
+    setAtivosFile(file);
+    setAtivosCodes([]);
+    setAtivosExistentes(null);
+    if (!file) return;
+    setParsingAtivos(true);
+    try {
+      const codes = await parseImoviewXls(file);
+      if (codes.length === 0) {
+        toast.error('Nenhum código encontrado na planilha. Confirme que é a exportação .xls da Imoview.');
+        return;
+      }
+      setAtivosCodes(codes);
+      const { count } = await supabase
+        .from('imoveis_proprios')
+        .select('id', { count: 'exact', head: true })
+        .in('codigo_imoview', codes);
+      setAtivosExistentes(count ?? 0);
+      toast.success(`${codes.length} códigos detectados (${count ?? 0} já no banco)`);
+    } catch (e) {
+      toast.error('Erro lendo planilha: ' + (e as Error).message);
+    } finally {
+      setParsingAtivos(false);
+    }
+  };
+
+  const importarAtivos = async () => {
+    if (ativosCodes.length === 0) return;
+    if (!confirm(`Importar ${ativosCodes.length} imóveis como ATIVOS (aparecem no site)? Pode levar 20–40 min em background. Pode fechar a aba — a importação continua.`)) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('imoview-sync', {
+        body: { mode: 'ativos_por_codigos', codigos: ativosCodes },
+      });
+      if (error) throw error;
+      toast.success(`Importação iniciada: ${(data as { sync_id?: string })?.sync_id?.slice(0, 8)}`);
+      setAtivosFile(null);
+      setAtivosCodes([]);
+      setAtivosExistentes(null);
+      fetchLogs();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const importarInativos = async () => {
     if (inativosCodes.length === 0) return;
     if (!confirm(`Importar ${inativosCodes.length} imóveis como inativos? Pode levar 15–25 min em background. Pode fechar a aba — a importação continua.`)) return;
