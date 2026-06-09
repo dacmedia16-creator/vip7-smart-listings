@@ -115,6 +115,45 @@ export default function ImovelForm() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextAutoSaveRef = useRef(true);
   const hasOfferedRestoreRef = useRef(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const lastCepRef = useRef<string>('');
+
+  const lookupCep = async (rawCep: string) => {
+    const digits = rawCep.replace(/\D/g, '');
+    if (digits.length !== 8 || digits === lastCepRef.current) return;
+    lastCepRef.current = digits;
+    setCepLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cep-lookup', { body: { cep: digits } });
+      if (error || !data || (data as any).erro) {
+        toast({ title: 'CEP não encontrado', variant: 'destructive' });
+        return;
+      }
+      const d: any = data;
+      const setIfEmpty = (name: any, value: string) => {
+        if (!value) return;
+        const cur = form.getValues(name);
+        if (!cur || String(cur).trim() === '') form.setValue(name, value, { shouldDirty: true });
+      };
+      setIfEmpty('endereco', d.logradouro || '');
+      setIfEmpty('bairro', d.bairro || '');
+      setIfEmpty('cidade', d.localidade || '');
+      setIfEmpty('estado', (d.uf || '').toUpperCase());
+      setTimeout(() => {
+        const el = document.querySelector<HTMLInputElement>('input[name="numero"]');
+        el?.focus();
+      }, 50);
+    } catch (e: any) {
+      toast({ title: 'Erro ao consultar CEP', description: e.message, variant: 'destructive' });
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const formatCep = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 8);
+    return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+  };
 
   const TABS = useMemo(() => [
     { key: 'endereco', label: 'Endereço' },
@@ -473,7 +512,30 @@ export default function ImovelForm() {
               <Card className="p-6 space-y-4">
                 <h2 className="font-semibold">Endereço</h2>
                 <div className="grid md:grid-cols-3 gap-4">
-                  {T('cep', 'CEP')}
+                  <FormField control={form.control} name="cep" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="00000-000"
+                            maxLength={9}
+                            onChange={(e) => {
+                              const masked = formatCep(e.target.value);
+                              field.onChange(masked);
+                              if (masked.replace(/\D/g, '').length === 8) void lookupCep(masked);
+                            }}
+                            onBlur={(e) => { field.onBlur(); void lookupCep(e.target.value); }}
+                          />
+                          {cepLoading && (
+                            <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )} />
                   {T('endereco', 'Endereço')}
                   {T('numero', 'Nº')}
                   {T('bairro', 'Bairro')}
