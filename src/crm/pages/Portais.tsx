@@ -60,7 +60,7 @@ export default function Portais() {
         .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos')
         .eq('ativo', true)
         .order('titulo'),
-      (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar'),
+      (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),
     ]);
     setImoveis((imRes.data ?? []) as ImovelLite[]);
     setPortais((pRes.data ?? []) as PortalRow[]);
