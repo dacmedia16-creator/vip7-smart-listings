@@ -1,46 +1,24 @@
-# Notificação de handoff para Eder via WhatsApp
+## Causa
 
-Sempre que um lead passar para handoff (IA para de responder e um humano precisa assumir), enviar mensagem WhatsApp para **Eder Francisco de Souza** (15 98176-7268) com nome do lead, imóvel de interesse e detalhes.
+O handoff do Denis foi gravado corretamente (`ia_handoff = true`, motivo "Cliente quer agendar visita") e o trigger `disparar_handoff_notify` chamou a edge function `notify-handoff` — mas a resposta foi **401 Unauthorized** (confirmado em `net._http_response` id 201, 23:56:50).
 
-## Comportamento
+Motivo: o trigger envia o header `x-internal-secret` com o valor de `app_config.cron_secret`, mas `notify-handoff` valida contra a env `CRON_SECRET`. Os dois valores estão diferentes. A função `cron-notifications` já trata isso aceitando os dois (app_config primeiro, env como fallback) — `notify-handoff` só olha a env.
 
-Disparo automático em **todos** os caminhos que setam `ia_handoff = true`:
-- IA decide transferir (`ia-whatsapp-inbound` — pedido do lead, fora de horário, falha repetida)
-- Corretor assume manualmente (botão "Assumir conversa" em `InteracaoIA.tsx`)
-- Qualquer UPDATE futuro que mude `ia_handoff` de false → true
+## Correção
 
-Mensagem (texto WhatsApp):
-```
-🚨 Lead em handoff — atenção necessária
+Atualizar `supabase/functions/notify-handoff/index.ts` para seguir o mesmo padrão de `cron-notifications`:
 
-Lead: {nome} ({telefone})
-Imóvel de interesse: #{codigo} — {tipo} em {bairro}/{cidade}
-Finalidade: {finalidade}
-Orçamento: {orcamento_max}
-Motivo do handoff: {ia_handoff_motivo}
+1. Buscar `app_config.cron_secret` no início (com service role).
+2. Comparar `x-internal-secret` contra `app_config.cron_secret` **ou** contra `Deno.env.get("CRON_SECRET")`. Aceita qualquer um dos dois.
+3. Resto da função (carga do lead, enriquecimento, envio ZionTalk para Eder) permanece igual.
 
-Abra no CRM: {url}/crm/leads/{id}
-```
+Depois disso, qualquer novo handoff dispara a mensagem para Eder normalmente.
 
-Campos ausentes aparecem como "—". Falha de envio é silenciosa (apenas log), não bloqueia o handoff.
+## Reenvio do handoff do Denis
 
-## Detalhes técnicos
-
-1. **Trigger no Postgres** sobre `public.leads`, AFTER UPDATE, condição `OLD.ia_handoff = false AND NEW.ia_handoff = true`. Usa `net.http_post` (mesmo padrão já em uso em `disparar_ia_whatsapp`) chamando uma nova edge function `notify-handoff` com `{ lead_id }` e header `X-Internal-Secret: CRON_SECRET`.
-
-2. **Nova edge function `notify-handoff`** (`verify_jwt = false`, valida `X-Internal-Secret` contra `CRON_SECRET`):
-   - Carrega lead completo (nome, telefone, imovel_interesse_codigo, cidade/bairro/tipo/finalidade, orcamento_max, ia_handoff_motivo).
-   - Se `imovel_interesse_codigo` existir, busca `imoveis_proprios` para enriquecer (tipo/bairro/cidade/valor real do imóvel).
-   - Destinatário fixo: `id = 5703f01d-c06a-4cda-9562-e136fdde7a8f` (Eder). Lê `profiles.telefone`, normaliza para E.164 (`+5515981767268`).
-   - POST `https://app.ziontalk.com/api/send_message/` com `ZIONTALK_API_KEY` (mesmo formato que `send-whatsapp-ziontalk`).
-   - Retorna 200 mesmo em falha de envio (loga erro) para não travar o trigger.
-
-3. **Config**: adicionar bloco em `supabase/config.toml` para `notify-handoff` com `verify_jwt = false`.
-
-4. **Sem alterações em UI**: `InteracaoIA.tsx` continua só dando UPDATE em `ia_handoff` — o trigger faz o resto. Mesmo vale para `ia-whatsapp-inbound`.
+Para não perder o handoff que já aconteceu (Denis pediu visita), após o deploy chamamos `notify-handoff` manualmente uma vez com `lead_id = 3fcd9863-01d2-42ac-8860-d44d6c9b3614` para o Eder receber a mensagem agora.
 
 ## Fora de escopo
 
-- Configurar Eder como destinatário variável (hardcoded no edge function por enquanto).
-- Notificar quando handoff for revertido (reativar IA).
-- Email paralelo — só WhatsApp.
+- Rotacionar/sincronizar a secret `CRON_SECRET` com `app_config.cron_secret` (a correção acima já elimina a necessidade).
+- Mudanças no trigger ou na UI.
