@@ -17,6 +17,7 @@ interface Row {
   portal: PortalId;
   publicar: boolean;
   destaque_portal: boolean;
+  tipo_anuncio: TipoAnuncio;
   erro_validacao: string | null;
   ultimo_envio_em: string | null;
 }
