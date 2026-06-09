@@ -29,11 +29,18 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const CRON_SECRET = Deno.env.get("CRON_SECRET");
+    const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
     const ZIONTALK_API_KEY = Deno.env.get("ZIONTALK_API_KEY");
 
-    const provided = req.headers.get("x-internal-secret");
-    if (!CRON_SECRET || provided !== CRON_SECRET) {
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    const { data: cfg } = await admin.from("app_config")
+      .select("value").eq("key", "cron_secret").maybeSingle();
+    const cfgSecret = (cfg as any)?.value ?? "";
+
+    const provided = req.headers.get("x-internal-secret") ?? "";
+    const ok = (cfgSecret && provided === cfgSecret) || (CRON_SECRET && provided === CRON_SECRET);
+    if (!ok) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -48,7 +55,6 @@ serve(async (req) => {
       });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const { data: lead } = await admin.from("leads")
       .select("id, nome, telefone, imovel_interesse_codigo, cidade_interesse, bairro_interesse, tipo_imovel, finalidade, orcamento_max, ia_handoff_motivo")
