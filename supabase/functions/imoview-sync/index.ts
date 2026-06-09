@@ -762,7 +762,7 @@ serve(async (req) => {
     if (done) {
       const startedAtRes = await sb.from("imoview_sync_log").select("started_at, errors_count").eq("id", activeSyncId).single();
       const startedAt = startedAtRes.data?.started_at as string | undefined;
-      if (startedAt) {
+      if (startedAt && !skip_inactive) {
         const { data: stale, count } = await sb
           .from("imoveis_proprios")
           .update({ ativo: false, status: "inativo" }, { count: "exact" })
@@ -770,6 +770,9 @@ serve(async (req) => {
           .or(`imoview_sync_at.is.null,imoview_sync_at.lt.${startedAt}`)
           .select("id");
         update.removed = (stale?.length ?? count) || 0;
+      } else if (skip_inactive) {
+        update.removed = 0;
+        console.log(`[sync] skip_inactive=true — pulando marca\u00e7\u00e3o de inativos`);
       }
       update.status = (startedAtRes.data?.errors_count || 0) > 0 ? "partial" : "ok";
       update.finished_at = new Date().toISOString();
