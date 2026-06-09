@@ -33,12 +33,12 @@ export function PortaisCard({ imovelId, imovel }: Props) {
     setLoading(true);
     const { data } = await (supabase as any)
       .from('imovel_portais')
-      .select('portal, publicar, destaque_portal, erro_validacao, ultimo_envio_em')
+      .select('portal, publicar, destaque_portal, tipo_anuncio, erro_validacao, ultimo_envio_em')
       .eq('imovel_id', imovelId);
     const map = {} as Record<PortalId, Row>;
     for (const p of PORTAIS) {
       const found = (data ?? []).find((r: any) => r.portal === p.id);
-      map[p.id] = found ?? { portal: p.id, publicar: false, destaque_portal: false, erro_validacao: null, ultimo_envio_em: null };
+      map[p.id] = found ?? { portal: p.id, publicar: false, destaque_portal: false, tipo_anuncio: 'simples', erro_validacao: null, ultimo_envio_em: null };
     }
     setRows(map);
     setLoading(false);
