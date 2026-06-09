@@ -458,12 +458,13 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { mode = "full", sync_id, codigo, codigos, internal_cursor } = body as {
+    const { mode = "full", sync_id, codigo, codigos, internal_cursor, skip_inactive = false } = body as {
       mode?: "full" | "incremental" | "single" | "desativados" | "inativos_por_codigos";
       sync_id?: string;
       codigo?: number;
       codigos?: number[];
       internal_cursor?: { finalidadeIdx?: number; pagina?: number; idx?: number; codigos?: number[] };
+      skip_inactive?: boolean;
     };
     const isDesat = mode === "desativados";
 
