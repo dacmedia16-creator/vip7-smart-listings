@@ -568,7 +568,101 @@ serve(async (req) => {
       });
     }
 
+    // ===== modo ativos_por_codigos =====
+    // Recebe uma lista de códigos (extraída de XLS da Imoview filtrado por Situação=Vago/Disponível)
+    // e importa/atualiza cada um como ATIVO (ativo=true, status=disponivel).
+    // Útil para trazer imóveis que a listagem da API esconde por flags internas (sem foto principal,
+    // sem exibir no site, etc.) mas que estão de fato disponíveis.
+    if (mode === "ativos_por_codigos") {
+      let activeSyncId = sync_id;
+      let codigosList: number[] = [];
+      let startIdx = 0;
+
+      if (!activeSyncId) {
+        const lista = (codigos || []).map((c) => Number(c)).filter((n) => Number.isFinite(n) && n > 0);
+        if (lista.length === 0) {
+          return new Response(JSON.stringify({ error: "codigos obrigatório (array)" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const auth = req.headers.get("Authorization") || "";
+        let userId: string | null = null;
+        if (auth.startsWith("Bearer ")) {
+          const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
+          const { data } = await userClient.auth.getUser();
+          userId = data.user?.id ?? null;
+        }
+        const { data: log, error } = await sb
+          .from("imoview_sync_log")
+          .insert({ status: "running", mode, triggered_by: userId, total: lista.length, cursor: { idx: 0, codigos: lista } })
+          .select("id").single();
+        if (error) throw error;
+        activeSyncId = log.id as string;
+        codigosList = lista;
+      } else {
+        codigosList = internal_cursor?.codigos || [];
+        startIdx = internal_cursor?.idx || 0;
+      }
+
+      const BATCH = 20;
+      const CONC = 4;
+      const endIdx = Math.min(startIdx + BATCH, codigosList.length);
+      const slice = codigosList.slice(startIdx, endIdx);
+      const stats = { inserted: 0, updated: 0, unchanged: 0, photos: 0, errors: 0 };
+
+      const runChunk = async () => {
+        for (let i = 0; i < slice.length; i += CONC) {
+          const sub = slice.slice(i, i + CONC);
+          const details = await Promise.all(sub.map(async (c) => {
+            try {
+              const d = await getDetalhes(c);
+              return { c, d };
+            } catch (e) {
+              console.warn(`[ativos] erro fetch ${c}:`, (e as Error).message);
+              return { c, d: null };
+            }
+          }));
+          for (const { c, d } of details) {
+            if (!d) {
+              stats.errors++;
+              await persistStats(sb, activeSyncId!, { errors: 1 });
+              console.warn(`[ativos] sem detalhe para codigo=${c}`);
+              continue;
+            }
+            if (!d.codigo) d.codigo = c;
+            // forceInativo=false → mantém/marca como ativo
+            await syncOne(sb, d, stats, activeSyncId!, false);
+          }
+        }
+        const nextIdx = endIdx;
+        const done = nextIdx >= codigosList.length;
+        const update: Record<string, unknown> = {
+          cursor: { idx: nextIdx, codigos: codigosList },
+          updated_at: new Date().toISOString(),
+        };
+        if (done) {
+          const cur = await sb.from("imoview_sync_log").select("errors_count").eq("id", activeSyncId!).single();
+          update.status = (cur.data?.errors_count || 0) > 0 ? "partial" : "ok";
+          update.finished_at = new Date().toISOString();
+        }
+        await sb.from("imoview_sync_log").update(update).eq("id", activeSyncId!);
+        if (!done) {
+          const selfUrl = `${SUPABASE_URL}/functions/v1/imoview-sync`;
+          await fetch(selfUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+            body: JSON.stringify({ mode: "ativos_por_codigos", sync_id: activeSyncId, internal_cursor: { idx: nextIdx, codigos: codigosList } }),
+          }).then((r) => r.text()).catch((e) => console.error("[ativos] self-invoke:", e));
+        }
+      };
+
+      (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil(runChunk());
+
+      return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, status: "running", total: codigosList.length, idx: startIdx }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ===== modo desativados (reconciliação em uma única invocação) =====
+
     if (isDesat) {
       const auth = req.headers.get("Authorization") || "";
       let userId: string | null = null;
