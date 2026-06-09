@@ -1,23 +1,15 @@
-## Objetivo
-Na aba "Detalhes" do formulário de imóveis (`src/crm/pages/ImovelForm.tsx`), os grupos de campos atualmente são apresentados em um `<Accordion type="multiple">` vertical (um abaixo do outro). O usuário quer que esses grupos fiquem como sub-abas horizontais (lado a lado).
+## Busca automática de endereço por CEP
 
-## Mudança
-- Substituir o bloco `<Accordion type="multiple" …>` (linhas ~526–708) por um componente `<Tabs>` aninhado.
-- Cada `<AccordionItem>` vira um par `<TabsTrigger>` + `<TabsContent>`.
-- A lista de tabs fica horizontal (scroll em mobile, quebra suave em desktop) logo abaixo do card de título/status.
-- Conteúdo de cada tab permanece exatamente o mesmo (mesmos campos, grids e componentes).
+No `src/crm/pages/ImovelForm.tsx`, aba **Endereço**, adicionar lookup automático ao preencher o CEP.
 
-## Tabs resultantes
-1. Identificação & Comercial  
-2. Valores  
-3. Situação do imóvel  
-4. Áreas | Dimensões | Zoneamento  
-5. Anúncio & SEO  
-6. Cartório  
-7. Características internas  
-8. Características externas  
-9. Lazer  
+### Comportamento
+- Ao digitar/colar no campo CEP, aplicar máscara `00000-000`.
+- Quando atingir 8 dígitos, chamar a edge function `cep-lookup` via `supabase.functions.invoke('cep-lookup', { body: { cep } })`.
+- Durante a chamada, mostrar spinner pequeno ao lado/dentro do input.
+- Em sucesso, preencher automaticamente: `endereco` (logradouro), `bairro`, `cidade` (localidade) e `estado` (uf) — apenas se o campo destino estiver vazio, para não sobrescrever edição manual. Foco vai para `numero`.
+- Em erro / CEP não encontrado, toast discreto "CEP não encontrado" e mantém o que foi digitado.
+- Não duplicar chamada para o mesmo CEP (cache do último consultado).
 
-## Nada muda além disso
-- Schema, validação, auto-save, fotos, relacionamentos e demais abas principais (Endereço, Relacionamentos, Anotações, Fotos) permanecem inalterados.
-- Sem alterações de banco, RLS ou backend.
+### Onde
+- Trocar o `T('cep','CEP')` da aba Endereço por um `FormField` customizado com `onChange` que dispara o lookup.
+- Sem mudanças no schema, no backend ou em outras abas. A edge function `cep-lookup` já existe e cobre 4 provedores.
