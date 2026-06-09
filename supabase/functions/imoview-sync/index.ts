@@ -220,6 +220,19 @@ async function fetchDetails(codigo: number): Promise<Record<string, unknown> | n
   return null;
 }
 
+// Tenta endpoint App primeiro (que funciona para a conta atual), com fallback ao clássico.
+// Só loga quando AMBOS falharem — elimina o ruído de 404 esperado do endpoint clássico.
+let __detailsAppCount = 0;
+let __detailsFallbackCount = 0;
+async function getDetalhes(codigo: number): Promise<Record<string, unknown> | null> {
+  const viaApp = await fetchDetailsApp(codigo);
+  if (viaApp) { __detailsAppCount++; return viaApp; }
+  const viaClassic = await fetchDetails(codigo);
+  if (viaClassic) { __detailsFallbackCount++; return viaClassic; }
+  console.warn(`[sync] getDetalhes cod=${codigo}: ambos endpoints falharam`);
+  return null;
+}
+
 // ---------- mapeamento ----------
 type Mapped = {
   codigo: number;
@@ -457,7 +470,7 @@ serve(async (req) => {
     // ===== modo single =====
     if (mode === "single") {
       if (!codigo) return new Response(JSON.stringify({ error: "codigo obrigatório" }), { status: 400, headers: corsHeaders });
-      const detail = await fetchDetails(codigo);
+      const detail = await getDetalhes(codigo);
       if (!detail) return new Response(JSON.stringify({ error: "não encontrado" }), { status: 404, headers: corsHeaders });
       const stats = { inserted: 0, updated: 0, unchanged: 0, photos: 0, errors: 0 };
       await syncOne(sb, detail, stats, null);
@@ -507,10 +520,7 @@ serve(async (req) => {
           const sub = slice.slice(i, i + CONC);
           const details = await Promise.all(sub.map(async (c) => {
             try {
-              // 1) tenta endpoint App_ (acessa inativos/vendidos/alugados)
-              let d = await fetchDetailsApp(c);
-              // 2) fallback: endpoint público (só disponíveis)
-              if (!d) d = await fetchDetails(c);
+              const d = await getDetalhes(c);
               return { c, d };
             } catch (e) {
               console.warn(`[inativos] erro fetch ${c}:`, (e as Error).message);
@@ -715,7 +725,7 @@ serve(async (req) => {
       const conc = 3;
       for (let i = 0; i < codigos.length; i += conc) {
         const slice = codigos.slice(i, i + conc);
-        const details = await Promise.all(slice.map((c) => fetchDetails(c)));
+        const details = await Promise.all(slice.map((c) => getDetalhes(c)));
         for (const d of details) {
           if (d) await syncOne(sb, d, stats, activeSyncId!, false);
         }
@@ -779,7 +789,8 @@ serve(async (req) => {
       );
     }
 
-    return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, done, stats, cursor: { finalidadeIdx, pagina } }), {
+    console.log(`[sync] chunk done — detalhes via App=${__detailsAppCount} fallback=${__detailsFallbackCount}`);
+    return new Response(JSON.stringify({ ok: true, sync_id: activeSyncId, done, stats, cursor: { finalidadeIdx, pagina }, detalhes: { app: __detailsAppCount, fallback: __detailsFallbackCount } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
