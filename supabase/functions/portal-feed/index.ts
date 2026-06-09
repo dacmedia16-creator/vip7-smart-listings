@@ -93,6 +93,19 @@ interface ImovelRow {
   tipo_anuncio?: string;
 }
 
+// VRSync PublicationType: STANDARD | PREMIUM | SUPER_PREMIUM | TRIPLE | PREMIERE_1 | PREMIERE_2
+function mapPublicationType(tipo?: string, destaque?: boolean): string {
+  switch (tipo) {
+    case 'destaque': return 'PREMIUM';
+    case 'super_destaque': return 'SUPER_PREMIUM';
+    case 'triple': return 'TRIPLE';
+    case 'premiere_premium': return 'PREMIERE_1';
+    case 'premiere_especial': return 'PREMIERE_2';
+    case 'simples': return 'STANDARD';
+    default: return destaque ? 'SUPER_PREMIUM' : 'STANDARD';
+  }
+}
+
 function validar(im: ImovelRow): string | null {
   if (!im.titulo || im.titulo.trim().length < 10) return 'Título precisa ter pelo menos 10 caracteres';
   if (im.titulo.length > 100) return 'Título excede 100 caracteres';
