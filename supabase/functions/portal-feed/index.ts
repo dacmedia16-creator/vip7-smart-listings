@@ -156,7 +156,7 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
       <ListingID>${esc(listingId)}</ListingID>
       <Title>${cdata(im.titulo)}</Title>
       <TransactionType>${mapTransactionType(im.finalidade)}</TransactionType>
-      <PublicationType>${im.destaque_portal ? 'SUPER_PREMIUM' : 'STANDARD'}</PublicationType>
+      <PublicationType>${mapPublicationType(im.tipo_anuncio, im.destaque_portal)}</PublicationType>
       <DetailViewUrl>${esc(detailUrl(im))}</DetailViewUrl>
       ${media}
       <Details>
