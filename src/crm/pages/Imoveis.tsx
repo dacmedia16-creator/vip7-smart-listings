@@ -466,7 +466,11 @@ export default function Imoveis() {
                     <div className="p-4">
                       <p className="text-xs text-muted-foreground mb-1">{im.codigo_interno || '—'} · {im.tipo}</p>
                       <h3 className="font-semibold line-clamp-1">{im.titulo}</h3>
+                      {im.descricao && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{im.descricao}</p>
+                      )}
                       <p className="text-sm text-muted-foreground mb-2">{im.bairro}{im.cidade ? `, ${im.cidade}` : ''}</p>
+
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-primary">{fmtMoney(Number(im.preco))}</span>
                         <span className="text-xs text-muted-foreground">{im.quartos ? `${im.quartos}Q` : ''} {im.area ? `· ${im.area}m²` : ''}</span>
