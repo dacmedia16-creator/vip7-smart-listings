@@ -520,10 +520,7 @@ serve(async (req) => {
           const sub = slice.slice(i, i + CONC);
           const details = await Promise.all(sub.map(async (c) => {
             try {
-              // 1) tenta endpoint App_ (acessa inativos/vendidos/alugados)
-              let d = await fetchDetailsApp(c);
-              // 2) fallback: endpoint público (só disponíveis)
-              if (!d) d = await fetchDetails(c);
+              const d = await getDetalhes(c);
               return { c, d };
             } catch (e) {
               console.warn(`[inativos] erro fetch ${c}:`, (e as Error).message);
