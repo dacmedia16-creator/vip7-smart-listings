@@ -55,7 +55,6 @@ serve(async (req) => {
       });
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const { data: lead } = await admin.from("leads")
       .select("id, nome, telefone, imovel_interesse_codigo, cidade_interesse, bairro_interesse, tipo_imovel, finalidade, orcamento_max, ia_handoff_motivo")
