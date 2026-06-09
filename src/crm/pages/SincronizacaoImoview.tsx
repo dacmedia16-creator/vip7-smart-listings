@@ -250,6 +250,42 @@ export default function SincronizacaoImoview() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" /> Importar imóveis ATIVOS por planilha</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-[#4A4A52]">
+              Use isto quando o Imoview tiver <strong>mais imóveis ativos do que o sync completo trouxe</strong>. A API esconde imóveis sem foto principal, sem "exibir no site" ou sem CEP — mas eles existem.
+              Exporte no Imoview <em>Imóveis → filtro Situação = Vago/Disponível → Exportar XLS</em> e suba aqui. Eles entram como <strong>ativos</strong> (aparecem no site) e fotos são baixadas.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                type="file"
+                accept=".xls,.html,.htm,.csv,.xlsx"
+                disabled={parsingAtivos || loading || !!running}
+                onChange={(e) => handleAtivosFileChange(e.target.files?.[0] || null)}
+                className="max-w-sm"
+              />
+              {parsingAtivos && <Loader2 className="h-4 w-4 animate-spin text-[#C9A24C]" />}
+              {ativosCodes.length > 0 && (
+                <Badge className="bg-[#FBF3DC] text-[#7A5A14] border border-[#E8D9A8]">
+                  {ativosCodes.length} códigos · {ativosExistentes ?? 0} já no banco · {ativosCodes.length - (ativosExistentes ?? 0)} novos
+                </Badge>
+              )}
+            </div>
+            <Button
+              onClick={importarAtivos}
+              disabled={loading || !!running || ativosCodes.length === 0}
+              className="bg-[#C9A24C] text-[#0F0F12] hover:bg-[#B08F3D]"
+            >
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+              Importar {ativosCodes.length > 0 ? `${ativosCodes.length} ativos` : 'ativos'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+
+          <CardHeader>
             <CardTitle className="text-base flex items-center gap-2"><Archive className="h-4 w-4" /> Imóveis desativados / inativos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
