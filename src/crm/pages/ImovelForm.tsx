@@ -367,15 +367,15 @@ export default function ImovelForm() {
   };
 
   const handleDelete = async () => {
-    if (!id || !confirm('Excluir este imóvel?')) return;
-    const { error } = await supabase.from('imoveis_proprios').delete().eq('id', id);
+    if (!currentId || !confirm('Excluir este imóvel?')) return;
+    const { error } = await supabase.from('imoveis_proprios').delete().eq('id', currentId);
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     toast({ title: 'Excluído' });
     navigate('/crm/imoveis');
   };
 
   const handleToggleAtivo = async () => {
-    if (!id) return;
+    if (!currentId) return;
     const currentlyAtivo = !!loadedRecord?.ativo && loadedRecord?.status !== 'inativo';
     const msg = currentlyAtivo
       ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
@@ -384,7 +384,7 @@ export default function ImovelForm() {
     const updates = currentlyAtivo
       ? { ativo: false, status: 'inativo' as const }
       : { ativo: true, status: 'disponivel' as const };
-    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', id);
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', currentId);
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     toast({ title: currentlyAtivo ? 'Imóvel desativado' : 'Imóvel reativado' });
     form.setValue('ativo', updates.ativo);
@@ -738,7 +738,7 @@ export default function ImovelForm() {
                 </div>
               </Card>
 
-              <ProprietariosSection imovelId={id ?? null} onPendingChange={setPendingProprietarios} />
+              <ProprietariosSection imovelId={currentId ?? null} onPendingChange={setPendingProprietarios} />
             </TabsContent>
 
             {/* ANOTAÇÕES */}
@@ -800,11 +800,11 @@ export default function ImovelForm() {
           </Tabs>
 
           <div className="flex justify-between">
-            {id && canDeleteThisRecord ? (
+            {currentId && canDeleteThisRecord ? (
               <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Excluir</Button>
             ) : <div />}
             <div className="flex gap-2">
-              {id && canEditThisRecord && (
+              {currentId && canEditThisRecord && (
                 loadedRecord?.ativo && loadedRecord?.status !== 'inativo' ? (
                   <Button type="button" variant="outline" onClick={handleToggleAtivo}>
                     <EyeOff className="h-4 w-4 mr-2" />Desativar (ocultar do site)
@@ -816,7 +816,7 @@ export default function ImovelForm() {
                 )
               )}
               <Button type="button" variant="outline" onClick={() => navigate('/crm/imoveis')}>Cancelar</Button>
-              <Button type="submit" disabled={saving || (!!id && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+              <Button type="submit" disabled={saving || (!!currentId && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
           </div>
         </form>
