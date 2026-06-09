@@ -48,6 +48,8 @@ export function PortaisCard({ imovelId, imovel }: Props) {
 
   async function update(portal: PortalId, patch: Partial<Row>) {
     const next = { ...rows[portal], ...patch };
+    // Mantém destaque_portal sincronizado com tipo_anuncio para compatibilidade com feed.
+    next.destaque_portal = next.tipo_anuncio !== 'simples';
     setRows({ ...rows, [portal]: next });
     const { error } = await (supabase as any)
       .from('imovel_portais')
@@ -57,6 +59,7 @@ export function PortaisCard({ imovelId, imovel }: Props) {
           portal,
           publicar: next.publicar,
           destaque_portal: next.destaque_portal,
+          tipo_anuncio: next.tipo_anuncio,
         },
         { onConflict: 'imovel_id,portal' },
       );
