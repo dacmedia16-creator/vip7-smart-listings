@@ -47,7 +47,7 @@ const schema = z.object({
   codigo_interno: str, codigo_auxiliar: str, destinacao: str, segundo_tipo: str,
   local_chaves: str, identificador_chaves: str, num_chaves: int, num_controles: int,
   horario_visita: str, edificio: str, identificador_imovel: str,
-  condominio_nome: str,
+  condominio_nome: str, codigo_condominio_imoview: int,
 
   // Endereço
   cep: str, endereco: str, numero: str, bairro: str, segundo_bairro: str,
