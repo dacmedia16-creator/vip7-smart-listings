@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.notify-handoff]
 verify_jwt = false
+
+[functions.busca-ia-site]
+verify_jwt = false
