@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash, BedDouble, Bath, Ruler, X } from 'lucide-react';
+import { Search, Home, MapPin, DollarSign, ArrowRight, ChevronDown, Hash, BedDouble, Bath, Ruler, X, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { CondominioMultiSelect } from '@/components/CondominioMultiSelect';
+import { HeroAiSearch } from '@/components/HeroAiSearch';
 import { useCidades, useBairros, useCondominiosSlimMultiCidade } from '@/hooks/useImoveis';
 import { getFinalidadeCode } from '@/services/imoviewApi';
 
@@ -15,6 +16,7 @@ const PRICE_STEP = 50000;
 
 export function HeroSection() {
   const navigate = useNavigate();
+  const [searchMode, setSearchMode] = useState<'ia' | 'filtros'>('ia');
   const [finalidade, setFinalidade] = useState<string>('venda');
   const [tipo, setTipo] = useState<string>('');
   const [cidade, setCidade] = useState<string>('');
