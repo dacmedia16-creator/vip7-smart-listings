@@ -196,9 +196,45 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Compact Search Panel */}
+        {/* Search Panel: IA ou Filtros */}
         <div className="max-w-4xl mx-auto animate-slide-up delay-400">
+          {/* Toggle de modo */}
+          <div className="flex justify-center mb-4">
+            <div className="inline-flex p-1 rounded-full bg-secondary/40 border border-border/50 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => setSearchMode('ia')}
+                className={cn(
+                  'flex items-center gap-2 px-4 md:px-5 py-2 rounded-full text-xs md:text-sm font-medium transition-all',
+                  searchMode === 'ia'
+                    ? 'bg-gradient-gold text-primary-foreground shadow-md'
+                    : 'text-foreground/70 hover:text-foreground',
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Busca com IA
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchMode('filtros')}
+                className={cn(
+                  'flex items-center gap-2 px-4 md:px-5 py-2 rounded-full text-xs md:text-sm font-medium transition-all',
+                  searchMode === 'filtros'
+                    ? 'bg-gradient-gold text-primary-foreground shadow-md'
+                    : 'text-foreground/70 hover:text-foreground',
+                )}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Filtros
+              </button>
+            </div>
+          </div>
+
+          {searchMode === 'ia' ? (
+            <HeroAiSearch />
+          ) : (
           <div className="glass-luxury-dark rounded-2xl p-6 md:p-8 border border-primary/10 max-h-[75vh] md:max-h-none overflow-y-auto">
+
             {/* Finalidade Tabs */}
             <div className="flex gap-2 mb-6">
               <button
