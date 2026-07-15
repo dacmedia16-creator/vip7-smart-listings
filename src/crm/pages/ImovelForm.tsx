@@ -103,6 +103,7 @@ export default function ImovelForm() {
   const { isManager, isCorretor, isAtendente, loading: rolesLoading } = useRoles();
   const [saving, setSaving] = useState(false);
   const [fotos, setFotos] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [caracteristicas, setCaracteristicas] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [corretorId, setCorretorId] = useState<string>('');
