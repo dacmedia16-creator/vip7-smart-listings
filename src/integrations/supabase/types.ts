@@ -319,14 +319,24 @@ export type Database = {
         Row: {
           aceita_financiamento: boolean
           aceita_permuta: boolean
+          administradora: string | null
+          administradora_email: string | null
+          administradora_telefone: string | null
+          agua_identificador: string | null
+          agua_matricula: string | null
           andar: string | null
           ano_construcao: number | null
           area: number | null
           area_externa: number | null
+          area_interna: number | null
+          area_lote: number | null
+          area_privativa: number | null
+          area_servico: number | null
           area_total: number | null
           ativo: boolean
           bairro: string | null
           banheiros: number | null
+          captadores: string | null
           caracteristicas: string[] | null
           cartorio: string | null
           cep: string | null
@@ -349,6 +359,8 @@ export type Database = {
           corretor_id: string | null
           created_at: string
           data_atualizacao_origem: string | null
+          data_entrega: string | null
+          data_vago_desde: string | null
           descricao: string | null
           descricao_avaliacao: string | null
           destaque: boolean
@@ -365,6 +377,7 @@ export type Database = {
           fotos: string[] | null
           horario_visita: string | null
           id: string
+          idade_edificacao: string | null
           identificador_chaves: string | null
           identificador_imovel: string | null
           imovel_alugado: boolean
@@ -372,13 +385,17 @@ export type Database = {
           imoview_hash: string | null
           imoview_raw: Json | null
           imoview_sync_at: string | null
+          indicado_por: string | null
           iptu: number | null
           iptu_anual: number | null
+          iptu_indice: string | null
           iptu_mensal: number | null
           latitude: number | null
           livro_cartorio: string | null
           local_chaves: string | null
           longitude: number | null
+          luz_numero_cliente: string | null
+          luz_numero_instalacao: string | null
           m_direito: number | null
           m_esquerdo: number | null
           m_frente: number | null
@@ -387,6 +404,7 @@ export type Database = {
           melhor_acesso: string | null
           meta_description: string | null
           mostrar_endereco: boolean
+          motivo_desativacao: string | null
           na_planta: boolean
           notas_privadas: string | null
           num_andares: number | null
@@ -394,12 +412,16 @@ export type Database = {
           num_controles: number | null
           num_torres: number | null
           numero: string | null
+          numero_controle: string | null
           observacoes_internas: string | null
           origem: string
+          padrao: string | null
           permite_animais: boolean
           piso_acabamento: string | null
           placa_faixa: string | null
           ponto_referencia: string | null
+          pontuacao: number | null
+          portais_publicados: Json | null
           posicao_imovel: string | null
           preco: number
           quartos: number | null
@@ -408,9 +430,17 @@ export type Database = {
           salas: number | null
           segundo_bairro: string | null
           segundo_tipo: string | null
+          seguro_incendio_parcela: number | null
+          seguro_incendio_valor: number | null
+          sindico: string | null
+          sindico_email: string | null
+          sindico_telefone: string | null
+          situacao_imoview: string | null
           status: Database["public"]["Enums"]["imovel_status"]
           sub_regiao: string | null
           suites: number | null
+          taxa_administracao_pct: number | null
+          taxa_intermediacao_pct: number | null
           tipo: string
           tipo_complemento: string | null
           tipo_medida: string | null
@@ -437,14 +467,24 @@ export type Database = {
         Insert: {
           aceita_financiamento?: boolean
           aceita_permuta?: boolean
+          administradora?: string | null
+          administradora_email?: string | null
+          administradora_telefone?: string | null
+          agua_identificador?: string | null
+          agua_matricula?: string | null
           andar?: string | null
           ano_construcao?: number | null
           area?: number | null
           area_externa?: number | null
+          area_interna?: number | null
+          area_lote?: number | null
+          area_privativa?: number | null
+          area_servico?: number | null
           area_total?: number | null
           ativo?: boolean
           bairro?: string | null
           banheiros?: number | null
+          captadores?: string | null
           caracteristicas?: string[] | null
           cartorio?: string | null
           cep?: string | null
@@ -467,6 +507,8 @@ export type Database = {
           corretor_id?: string | null
           created_at?: string
           data_atualizacao_origem?: string | null
+          data_entrega?: string | null
+          data_vago_desde?: string | null
           descricao?: string | null
           descricao_avaliacao?: string | null
           destaque?: boolean
@@ -483,6 +525,7 @@ export type Database = {
           fotos?: string[] | null
           horario_visita?: string | null
           id?: string
+          idade_edificacao?: string | null
           identificador_chaves?: string | null
           identificador_imovel?: string | null
           imovel_alugado?: boolean
@@ -490,13 +533,17 @@ export type Database = {
           imoview_hash?: string | null
           imoview_raw?: Json | null
           imoview_sync_at?: string | null
+          indicado_por?: string | null
           iptu?: number | null
           iptu_anual?: number | null
+          iptu_indice?: string | null
           iptu_mensal?: number | null
           latitude?: number | null
           livro_cartorio?: string | null
           local_chaves?: string | null
           longitude?: number | null
+          luz_numero_cliente?: string | null
+          luz_numero_instalacao?: string | null
           m_direito?: number | null
           m_esquerdo?: number | null
           m_frente?: number | null
@@ -505,6 +552,7 @@ export type Database = {
           melhor_acesso?: string | null
           meta_description?: string | null
           mostrar_endereco?: boolean
+          motivo_desativacao?: string | null
           na_planta?: boolean
           notas_privadas?: string | null
           num_andares?: number | null
@@ -512,12 +560,16 @@ export type Database = {
           num_controles?: number | null
           num_torres?: number | null
           numero?: string | null
+          numero_controle?: string | null
           observacoes_internas?: string | null
           origem?: string
+          padrao?: string | null
           permite_animais?: boolean
           piso_acabamento?: string | null
           placa_faixa?: string | null
           ponto_referencia?: string | null
+          pontuacao?: number | null
+          portais_publicados?: Json | null
           posicao_imovel?: string | null
           preco: number
           quartos?: number | null
@@ -526,9 +578,17 @@ export type Database = {
           salas?: number | null
           segundo_bairro?: string | null
           segundo_tipo?: string | null
+          seguro_incendio_parcela?: number | null
+          seguro_incendio_valor?: number | null
+          sindico?: string | null
+          sindico_email?: string | null
+          sindico_telefone?: string | null
+          situacao_imoview?: string | null
           status?: Database["public"]["Enums"]["imovel_status"]
           sub_regiao?: string | null
           suites?: number | null
+          taxa_administracao_pct?: number | null
+          taxa_intermediacao_pct?: number | null
           tipo: string
           tipo_complemento?: string | null
           tipo_medida?: string | null
@@ -555,14 +615,24 @@ export type Database = {
         Update: {
           aceita_financiamento?: boolean
           aceita_permuta?: boolean
+          administradora?: string | null
+          administradora_email?: string | null
+          administradora_telefone?: string | null
+          agua_identificador?: string | null
+          agua_matricula?: string | null
           andar?: string | null
           ano_construcao?: number | null
           area?: number | null
           area_externa?: number | null
+          area_interna?: number | null
+          area_lote?: number | null
+          area_privativa?: number | null
+          area_servico?: number | null
           area_total?: number | null
           ativo?: boolean
           bairro?: string | null
           banheiros?: number | null
+          captadores?: string | null
           caracteristicas?: string[] | null
           cartorio?: string | null
           cep?: string | null
@@ -585,6 +655,8 @@ export type Database = {
           corretor_id?: string | null
           created_at?: string
           data_atualizacao_origem?: string | null
+          data_entrega?: string | null
+          data_vago_desde?: string | null
           descricao?: string | null
           descricao_avaliacao?: string | null
           destaque?: boolean
@@ -601,6 +673,7 @@ export type Database = {
           fotos?: string[] | null
           horario_visita?: string | null
           id?: string
+          idade_edificacao?: string | null
           identificador_chaves?: string | null
           identificador_imovel?: string | null
           imovel_alugado?: boolean
@@ -608,13 +681,17 @@ export type Database = {
           imoview_hash?: string | null
           imoview_raw?: Json | null
           imoview_sync_at?: string | null
+          indicado_por?: string | null
           iptu?: number | null
           iptu_anual?: number | null
+          iptu_indice?: string | null
           iptu_mensal?: number | null
           latitude?: number | null
           livro_cartorio?: string | null
           local_chaves?: string | null
           longitude?: number | null
+          luz_numero_cliente?: string | null
+          luz_numero_instalacao?: string | null
           m_direito?: number | null
           m_esquerdo?: number | null
           m_frente?: number | null
@@ -623,6 +700,7 @@ export type Database = {
           melhor_acesso?: string | null
           meta_description?: string | null
           mostrar_endereco?: boolean
+          motivo_desativacao?: string | null
           na_planta?: boolean
           notas_privadas?: string | null
           num_andares?: number | null
@@ -630,12 +708,16 @@ export type Database = {
           num_controles?: number | null
           num_torres?: number | null
           numero?: string | null
+          numero_controle?: string | null
           observacoes_internas?: string | null
           origem?: string
+          padrao?: string | null
           permite_animais?: boolean
           piso_acabamento?: string | null
           placa_faixa?: string | null
           ponto_referencia?: string | null
+          pontuacao?: number | null
+          portais_publicados?: Json | null
           posicao_imovel?: string | null
           preco?: number
           quartos?: number | null
@@ -644,9 +726,17 @@ export type Database = {
           salas?: number | null
           segundo_bairro?: string | null
           segundo_tipo?: string | null
+          seguro_incendio_parcela?: number | null
+          seguro_incendio_valor?: number | null
+          sindico?: string | null
+          sindico_email?: string | null
+          sindico_telefone?: string | null
+          situacao_imoview?: string | null
           status?: Database["public"]["Enums"]["imovel_status"]
           sub_regiao?: string | null
           suites?: number | null
+          taxa_administracao_pct?: number | null
+          taxa_intermediacao_pct?: number | null
           tipo?: string
           tipo_complemento?: string | null
           tipo_medida?: string | null
