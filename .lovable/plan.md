@@ -1,36 +1,16 @@
-## Problema
+## Plano
 
-Os imóveis importados do Imoview não têm **complemento**, **número** nem **bloco/torre** — apesar de esses campos existirem no payload bruto da API (confirmei que `imoview_raw` contém `complemento`, `numero` e `bloco` preenchidos).
+1. **Corrigir a exibição no CRM**
+   - Ajustar a listagem de **Imóveis Próprios** e o detalhe do imóvel no CRM para converter qualquer caminho/URL salva em `fotos` para URL pública válida antes de renderizar a imagem.
+   - Adicionar fallback visual quando a imagem falhar, para não aparecer o ícone quebrado do navegador.
 
-Causa: a função `supabase/functions/imoview-sync/index.ts` (linhas 281-319) só mapeia `endereco`, `bairro`, `cidade`, etc. — os campos `complemento`, `numero` e `bloco` são ignorados na sincronização.
+2. **Corrigir a sincronização futura**
+   - Revisar a função de importação do Imoview para garantir que as fotos sejam salvas em um formato consistente e utilizável pelo CRM/site.
+   - Manter as URLs originais quando o download para o storage não for necessário ou falhar.
 
-## Correção
+3. **Verificar dados existentes**
+   - Conferir alguns imóveis importados que já têm `fotos` no banco e validar que o card passa a carregar a primeira foto corretamente.
 
-### 1. Atualizar o sync do Imoview
-Em `supabase/functions/imoview-sync/index.ts`, dentro do `payload` retornado por `mapProperty`, adicionar:
+## Detalhe técnico
 
-```ts
-numero: (raw.numero as string) || null,
-complemento: (raw.complemento as string) || null,
-torre_bloco: (raw.bloco as string) || null,
-```
-
-Assim, todas as próximas execuções de sync preencherão esses campos.
-
-### 2. Backfill dos imóveis já importados
-Rodar uma migration de dados (via insert tool) que, para todos os registros com `origem='imoview'` e `imoview_raw` presente, copia os campos do JSON bruto para as colunas correspondentes — só sobrescreve quando a coluna atual está nula/vazia, para não perder edições manuais:
-
-```sql
-UPDATE public.imoveis_proprios
-SET
-  numero      = COALESCE(NULLIF(numero,''),      imoview_raw->>'numero'),
-  complemento = COALESCE(NULLIF(complemento,''), imoview_raw->>'complemento'),
-  torre_bloco = COALESCE(NULLIF(torre_bloco,''), imoview_raw->>'bloco')
-WHERE origem = 'imoview'
-  AND imoview_raw IS NOT NULL;
-```
-
-## Verificação
-
-- Abrir o CRM em um imóvel importado → aba Endereço mostra Número, Complemento e Torre/Bloco preenchidos.
-- Próximas sincronizações Imoview trazem esses campos automaticamente.
+O banco já tem fotos importadas, mas o card do CRM usa `im.fotos[0]` diretamente. Se esse valor for caminho de storage, URL com caracteres/query problemática, ou uma URL que falha no navegador, a imagem quebra como no print. A correção centraliza a normalização da URL e adiciona tratamento de erro no `<img>`.
