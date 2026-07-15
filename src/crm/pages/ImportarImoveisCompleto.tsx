@@ -87,13 +87,15 @@ export default function ImportarImoveisCompleto() {
     const ext = file.name.toLowerCase().split('.').pop();
     try {
       if (ext === 'xls') {
-        // Imoview exporta HTML com extensão .xls
-        const text = await file.text().catch(async () => {
-          const buf = await file.arrayBuffer();
-          return new TextDecoder('latin1').decode(buf);
-        });
-        // Heurística: se começa com "<" trata como HTML
-        if (text.trimStart().startsWith('<')) {
+        // Imoview exporta HTML com extensão .xls, geralmente em latin-1
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        const head = new TextDecoder('utf-8', { fatal: false }).decode(bytes.slice(0, 200)).trimStart();
+        if (head.startsWith('<')) {
+          // Detecta encoding pelo cabeçalho, senão tenta latin-1
+          const utf = new TextDecoder('utf-8').decode(bytes);
+          const looksBroken = /�/.test(utf.slice(0, 5000));
+          const text = looksBroken ? new TextDecoder('latin1').decode(bytes) : utf;
           const parsed = parseImoviewHtml(text);
           if (!parsed.headers.length) throw new Error('Nenhuma tabela encontrada no HTML.');
           setHeaders(parsed.headers);
@@ -101,8 +103,6 @@ export default function ImportarImoveisCompleto() {
           toast.success(`${file.name}: ${parsed.rows.length} linhas`);
           return;
         }
-        // fallback binário
-        const buf = await file.arrayBuffer();
         const wb = XLSX.read(buf, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<Row>(ws, { defval: '', raw: false });
