@@ -1,20 +1,31 @@
 ## Problema
 
-Ao clicar em **"Finalizar e salvar"** no cadastro de imóvel, nada acontece — sem toast, sem redirecionamento.
+As fotos foram carregadas com sucesso (o upload salva no bucket `imoveis-fotos` e grava um **path** puro, ex.: `abc-123.jpg`, na coluna `fotos` do imóvel).
 
-Causa: o formulário usa `react-hook-form` + `zod` com campos obrigatórios (`titulo` ≥ 3, `tipo`, `finalidade`, `status`, `preco` > 0). Se algum estiver inválido, `handleSubmit` bloqueia o envio silenciosamente. Como o form é dividido em abas, o campo com erro pode estar numa aba que o usuário não vê, então parece que o botão "não faz nada".
+Mas o site público mostra imagem quebrada porque em `src/services/imoveisDb.ts` (linha 169) esses paths são passados direto como `url`:
+
+```ts
+fotos: (r.fotos ?? []).map((url) => ({ url })),
+```
+
+Como o `<img src="abc-123.jpg">` é uma referência relativa, o navegador tenta buscar `https://vipsevenimoveis.com.br/abc-123.jpg` — que não existe. Por isso as fotos "não aparecem".
 
 ## Correção
 
-Em `src/crm/pages/ImovelForm.tsx`:
+Em `src/services/imoveisDb.ts`, transformar cada valor de `fotos` em uma URL pública válida do bucket `imoveis-fotos` (que já está público):
 
-1. Passar um handler `onInvalid` para `form.handleSubmit(onSubmit, onInvalid)`.
-2. Em `onInvalid`, exibir um toast destrutivo listando os campos com erro (ex.: "Título, Preço") e **navegar automaticamente para a primeira aba** que contém o campo inválido, para o usuário ver o destaque de erro.
-3. Mapear cada campo do schema à sua aba (`TABS`) para saber para onde levar.
+1. Criar helper `toPublicPhotoUrl(value)`:
+   - Se já for `http(s)://…` → retornar como está (compatibilidade com fotos antigas importadas do Imoview).
+   - Caso contrário, tratar como path do bucket e retornar `supabase.storage.from('imoveis-fotos').getPublicUrl(path).data.publicUrl`.
+2. Substituir a linha 169 por:
+   ```ts
+   fotos: (r.fotos ?? []).map((v) => ({ url: toPublicPhotoUrl(v) })),
+   ```
 
-Nenhuma outra lógica de salvar é alterada — o `onSubmit` existente já grava corretamente quando os dados são válidos.
+Nada mais muda. O CRM continua funcionando (ele já gera signed URLs para preview interno).
 
 ## Verificação
 
-- Clicar em "Finalizar e salvar" com campos vazios → toast lista os campos faltantes e abre a aba correta.
-- Preencher tudo e clicar novamente → salva e redireciona para `/crm/imoveis` como antes.
+- Abrir o imóvel recém-cadastrado no site (`/imovel/:codigo`) → galeria carrega as fotos.
+- Card na listagem `/imoveis` também mostra a primeira foto.
+- Imóveis antigos (com URL completa) continuam funcionando.
