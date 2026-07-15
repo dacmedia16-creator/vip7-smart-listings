@@ -1,30 +1,33 @@
-## Problema
+## Situação
 
-No `/crm/imoveis/novo` → aba **Fotos**, as fotos aparecem quebradas (thumbnails vazios) após upload. A causa é uma incompatibilidade entre o bucket e o código:
+Você não encontrou a opção "Allow public buckets" em Privacy & Security — e faz sentido: a tela que você mostrou é de **Workspace → Privacy & security** (acessos e convites), não é lá que fica esse controle. Além disso, o workspace tem a policy `cloud_block_public_buckets` ativa, o que faz o tool `storage_update_bucket` recusar tornar o bucket público.
 
-- O bucket `imoveis-fotos` está marcado como **privado**.
-- O código em `src/crm/pages/ImovelForm.tsx` (linha 411) usa `getPublicUrl(...)` — URL que **só funciona em bucket público**. Em bucket privado a URL retorna 400/404 e a imagem quebra.
-- As policies RLS já liberam `SELECT` para `anon` e `authenticated` (na migration `20260606235730`), então a intenção original era o bucket ser público.
-- A função `imoview-sync` também depende de `getPublicUrl` e sofre do mesmo problema.
+Como tornar o bucket público **não é viável** agora, vou por outro caminho que resolve o problema sem depender dessa configuração.
 
-## Correção
+## Correção (sem precisar liberar bucket público)
 
-1. **Tornar o bucket `imoveis-fotos` público** via `supabase--storage_update_bucket` (sem migration — Lovable Cloud só aceita esse caminho para alterar buckets).
-   - As policies existentes já cobrem leitura pública, então nada de RLS muda.
-   - Uploads continuam restritos a usuários CRM autenticados (policy `imoveis_fotos_crm_insert`).
+Trocar `getPublicUrl` por **`createSignedUrl`** no formulário de fotos. Assim o bucket permanece **privado** e as miniaturas continuam funcionando — o Storage gera uma URL assinada temporária que qualquer usuário autenticado do CRM consegue abrir.
 
-2. **Robustecer o upload** em `src/crm/pages/ImovelForm.tsx`:
-   - Sanitizar a extensão (`.jpg`/`.jpeg`/`.png`/`.webp`) para evitar `path` inválido quando o arquivo não tem extensão.
-   - Passar `contentType: file.type` e `upsert: false` para o `upload(...)`.
-   - Logar `error.message` no console para diagnóstico futuro.
-   - Mostrar toast individual por arquivo que falhar, sem abortar os demais.
+### Passos
+
+1. **`src/crm/pages/ImovelForm.tsx`**
+   - No upload de fotos (~linha 411): depois do `upload(...)`, chamar `supabase.storage.from('imoveis-fotos').createSignedUrl(path, 60 * 60 * 24 * 7)` (7 dias) e salvar essa URL no state em vez de `getPublicUrl`.
+   - Ao **abrir** um imóvel existente para editar, gerar signed URLs em lote para as fotos já salvas (usando `createSignedUrls`) para os thumbnails renderizarem.
+   - Manter as melhorias de robustez já planejadas: sanitizar extensão (`jpg`/`jpeg`/`png`/`webp`), passar `contentType`, `upsert: false`, toast por arquivo com erro sem abortar os demais, log de `error.message`.
+
+2. **O que fica salvo no banco**: continua sendo o **path** do arquivo no bucket (ex.: `imovel-123/uuid.jpg`), **não** a URL assinada (que expira). Isso já é como o restante do sistema espera.
+
+3. **`imoview-sync`**: **não mexer agora**. Ela roda no servidor e o `getPublicUrl` lá é usado para gerar link público de fotos vindas do Imoview — é um fluxo separado do upload manual e não afeta o bug que você está enfrentando. Se aparecer o mesmo problema lá depois, tratamos em um plano próprio.
 
 ## Verificação
 
-- Após o ajuste do bucket, recarregar `/crm/imoveis/novo` → aba Fotos → **Adicionar fotos**: as miniaturas devem renderizar imediatamente.
-- Salvar o imóvel e reabrir para confirmar que as URLs persistem e continuam visíveis.
+- `/crm/imoveis/novo` → aba Fotos → Adicionar fotos: miniaturas aparecem imediatamente.
+- Salvar o imóvel, sair e reabrir em edição: miniaturas continuam visíveis (signed URLs regeradas no load).
+- Console sem 400/404 em requests para `/storage/v1/object/public/imoveis-fotos/...`.
 
-## Não faz parte deste plano
+## Fora do escopo
 
-- Não vou reescrever a lógica de reordenar/capa nem mexer nos outros passos do formulário.
-- Não vou mudar o esquema do banco.
+- Não tornar o bucket público (bloqueado pelo workspace).
+- Não alterar RLS / migrations.
+- Não refatorar reordenação/capa nem outros passos do formulário.
+- Não tocar em `imoview-sync`.
