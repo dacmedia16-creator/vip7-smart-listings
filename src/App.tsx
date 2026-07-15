@@ -44,6 +44,7 @@ import CrmImportarClientes from "./crm/pages/ImportarClientes";
 import CrmImportarProprietarios from "./crm/pages/ImportarProprietarios";
 import CrmImportarLeads from "./crm/pages/ImportarLeads";
 import CrmImportarImoveisDesativados from "./crm/pages/ImportarImoveisDesativados";
+import CrmImportarImoveisCompleto from "./crm/pages/ImportarImoveisCompleto";
 import CrmPortais from "./crm/pages/Portais";
 import { RequireAuth } from "./crm/components/RequireAuth";
 
@@ -85,6 +86,7 @@ const App = () => (
                 <Route path="/crm/imoveis" element={<RequireAuth><CrmImoveis /></RequireAuth>} />
                 <Route path="/crm/imoveis/importar-proprietarios" element={<RequireAuth roles={['admin','gestor']}><CrmImportarProprietarios /></RequireAuth>} />
                 <Route path="/crm/imoveis/importar-desativados" element={<RequireAuth roles={['admin','gestor']}><CrmImportarImoveisDesativados /></RequireAuth>} />
+                <Route path="/crm/imoveis/importar-completo" element={<RequireAuth roles={['admin','gestor']}><CrmImportarImoveisCompleto /></RequireAuth>} />
                 <Route path="/crm/imoveis/novo" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />
                 <Route path="/crm/imoveis/:id" element={<RequireAuth><CrmImovelDetail /></RequireAuth>} />
                 <Route path="/crm/imoveis/:id/editar" element={<RequireAuth roles={['admin','gestor','corretor']}><CrmImovelForm /></RequireAuth>} />

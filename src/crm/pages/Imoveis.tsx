@@ -250,6 +250,9 @@ export default function Imoveis() {
               <Button asChild variant="outline">
                 <Link to="/crm/imoveis/importar-desativados">Importar desativados</Link>
               </Button>
+              <Button asChild variant="outline">
+                <Link to="/crm/imoveis/importar-completo">Importar dados completos</Link>
+              </Button>
             </>
           )}
           {canCreate && (
