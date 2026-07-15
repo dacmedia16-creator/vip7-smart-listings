@@ -103,6 +103,7 @@ export default function ImovelForm() {
   const { isManager, isCorretor, isAtendente, loading: rolesLoading } = useRoles();
   const [saving, setSaving] = useState(false);
   const [fotos, setFotos] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [caracteristicas, setCaracteristicas] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [corretorId, setCorretorId] = useState<string>('');
@@ -398,11 +399,41 @@ export default function ImovelForm() {
   };
 
 
+  // Extrai o path dentro do bucket a partir de um valor salvo (que pode ser path puro ou uma URL antiga).
+  const extractStoragePath = (value: string): string | null => {
+    if (!value) return null;
+    if (!/^https?:\/\//i.test(value)) return value; // já é path
+    const m = value.match(/\/imoveis-fotos\/(.+?)(\?|$)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  };
+
+  // Sempre que a lista de fotos mudar, garante uma signed URL válida para cada item.
+  useEffect(() => {
+    const missing = fotos.filter((f) => !photoUrls[f]);
+    if (missing.length === 0) return;
+    (async () => {
+      const paths = missing.map(extractStoragePath).filter((p): p is string => !!p);
+      if (paths.length === 0) return;
+      const { data, error } = await supabase.storage
+        .from('imoveis-fotos')
+        .createSignedUrls(paths, 60 * 60 * 24 * 7);
+      if (error || !data) return;
+      const next: Record<string, string> = {};
+      missing.forEach((foto, i) => {
+        const signed = data[i]?.signedUrl;
+        if (signed) next[foto] = signed;
+        else if (/^https?:\/\//i.test(foto)) next[foto] = foto; // fallback: URL literal
+      });
+      setPhotoUrls((prev) => ({ ...prev, ...next }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fotos]);
+
   const handleUpload = async (files: FileList | null) => {
     if (!files) return;
     setUploading(true);
     const allowed = ['jpg', 'jpeg', 'png', 'webp'];
-    const urls: string[] = [];
+    const newPaths: string[] = [];
     for (const file of Array.from(files)) {
       try {
         const rawExt = (file.name.split('.').pop() ?? '').toLowerCase();
@@ -416,16 +447,16 @@ export default function ImovelForm() {
           toast({ title: `Falha em ${file.name}`, description: error.message, variant: 'destructive' });
           continue;
         }
-        const { data: pub } = supabase.storage.from('imoveis-fotos').getPublicUrl(path);
-        urls.push(pub.publicUrl);
+        newPaths.push(path);
       } catch (e: any) {
         console.error('[upload foto] exceção:', file.name, e);
         toast({ title: `Falha em ${file.name}`, description: e.message, variant: 'destructive' });
       }
     }
-    if (urls.length) setFotos((prev) => [...prev, ...urls]);
+    if (newPaths.length) setFotos((prev) => [...prev, ...newPaths]);
     setUploading(false);
   };
+
 
   const removeFoto = (url: string) => setFotos((p) => p.filter((u) => u !== url));
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -896,7 +927,7 @@ export default function ImovelForm() {
                         onDragEnd={() => setDragIndex(null)}
                         className={`relative aspect-square cursor-move transition-opacity ${dragIndex === idx ? 'opacity-40' : ''}`}
                       >
-                        <img src={url} className="w-full h-full object-cover rounded-md pointer-events-none" />
+                        <img src={photoUrls[url] || url} className="w-full h-full object-cover rounded-md pointer-events-none" />
                         {idx === 0 && (
                           <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground">Capa</span>
                         )}
