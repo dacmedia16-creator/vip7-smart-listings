@@ -7,6 +7,13 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 
+// Converte um valor da coluna `fotos` (path do bucket ou URL antiga) em URL pública.
+function toPublicPhotoUrl(value: string): string {
+  if (!value) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+  return supabase.storage.from('imoveis-fotos').getPublicUrl(value).data.publicUrl;
+}
+
 // ============== Types (same shape as imoviewApi.ts) =====================
 
 export interface ImoviewProperty {
