@@ -575,7 +575,7 @@ export default function ImovelForm() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-24 md:pb-6">
           {currentId && (
             <ProprietariosCard
               imovelId={currentId}
