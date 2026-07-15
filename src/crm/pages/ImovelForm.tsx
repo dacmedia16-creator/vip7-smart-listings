@@ -927,7 +927,7 @@ export default function ImovelForm() {
                         onDragEnd={() => setDragIndex(null)}
                         className={`relative aspect-square cursor-move transition-opacity ${dragIndex === idx ? 'opacity-40' : ''}`}
                       >
-                        <img src={url} className="w-full h-full object-cover rounded-md pointer-events-none" />
+                        <img src={photoUrls[url] || url} className="w-full h-full object-cover rounded-md pointer-events-none" />
                         {idx === 0 && (
                           <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground">Capa</span>
                         )}
