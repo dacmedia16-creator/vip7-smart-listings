@@ -1,31 +1,36 @@
 ## Problema
 
-As fotos foram carregadas com sucesso (o upload salva no bucket `imoveis-fotos` e grava um **path** puro, ex.: `abc-123.jpg`, na coluna `fotos` do imóvel).
+Os imóveis importados do Imoview não têm **complemento**, **número** nem **bloco/torre** — apesar de esses campos existirem no payload bruto da API (confirmei que `imoview_raw` contém `complemento`, `numero` e `bloco` preenchidos).
 
-Mas o site público mostra imagem quebrada porque em `src/services/imoveisDb.ts` (linha 169) esses paths são passados direto como `url`:
-
-```ts
-fotos: (r.fotos ?? []).map((url) => ({ url })),
-```
-
-Como o `<img src="abc-123.jpg">` é uma referência relativa, o navegador tenta buscar `https://vipsevenimoveis.com.br/abc-123.jpg` — que não existe. Por isso as fotos "não aparecem".
+Causa: a função `supabase/functions/imoview-sync/index.ts` (linhas 281-319) só mapeia `endereco`, `bairro`, `cidade`, etc. — os campos `complemento`, `numero` e `bloco` são ignorados na sincronização.
 
 ## Correção
 
-Em `src/services/imoveisDb.ts`, transformar cada valor de `fotos` em uma URL pública válida do bucket `imoveis-fotos` (que já está público):
+### 1. Atualizar o sync do Imoview
+Em `supabase/functions/imoview-sync/index.ts`, dentro do `payload` retornado por `mapProperty`, adicionar:
 
-1. Criar helper `toPublicPhotoUrl(value)`:
-   - Se já for `http(s)://…` → retornar como está (compatibilidade com fotos antigas importadas do Imoview).
-   - Caso contrário, tratar como path do bucket e retornar `supabase.storage.from('imoveis-fotos').getPublicUrl(path).data.publicUrl`.
-2. Substituir a linha 169 por:
-   ```ts
-   fotos: (r.fotos ?? []).map((v) => ({ url: toPublicPhotoUrl(v) })),
-   ```
+```ts
+numero: (raw.numero as string) || null,
+complemento: (raw.complemento as string) || null,
+torre_bloco: (raw.bloco as string) || null,
+```
 
-Nada mais muda. O CRM continua funcionando (ele já gera signed URLs para preview interno).
+Assim, todas as próximas execuções de sync preencherão esses campos.
+
+### 2. Backfill dos imóveis já importados
+Rodar uma migration de dados (via insert tool) que, para todos os registros com `origem='imoview'` e `imoview_raw` presente, copia os campos do JSON bruto para as colunas correspondentes — só sobrescreve quando a coluna atual está nula/vazia, para não perder edições manuais:
+
+```sql
+UPDATE public.imoveis_proprios
+SET
+  numero      = COALESCE(NULLIF(numero,''),      imoview_raw->>'numero'),
+  complemento = COALESCE(NULLIF(complemento,''), imoview_raw->>'complemento'),
+  torre_bloco = COALESCE(NULLIF(torre_bloco,''), imoview_raw->>'bloco')
+WHERE origem = 'imoview'
+  AND imoview_raw IS NOT NULL;
+```
 
 ## Verificação
 
-- Abrir o imóvel recém-cadastrado no site (`/imovel/:codigo`) → galeria carrega as fotos.
-- Card na listagem `/imoveis` também mostra a primeira foto.
-- Imóveis antigos (com URL completa) continuam funcionando.
+- Abrir o CRM em um imóvel importado → aba Endereço mostra Número, Complemento e Torre/Bloco preenchidos.
+- Próximas sincronizações Imoview trazem esses campos automaticamente.
