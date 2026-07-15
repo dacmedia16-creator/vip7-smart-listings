@@ -166,7 +166,7 @@ function mapRow(r: Row): ImoviewProperty {
     qtdeVagas: r.vagas ?? undefined,
     qtdeBanheiros: r.banheiros ?? undefined,
     destaque: r.destaque,
-    fotos: (r.fotos ?? []).map((url) => ({ url })),
+    fotos: (r.fotos ?? []).map((v) => ({ url: toPublicPhotoUrl(v) })),
     caracteristicas: r.caracteristicas ?? [],
     latitude: r.latitude ?? undefined,
     longitude: r.longitude ?? undefined,
