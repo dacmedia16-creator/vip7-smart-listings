@@ -398,6 +398,28 @@ export default function ImovelForm() {
     }
   };
 
+  const FIELD_LABELS: Record<string, string> = {
+    titulo: 'Título', tipo: 'Tipo', finalidade: 'Finalidade',
+    status: 'Status', preco: 'Preço',
+  };
+  const FIELD_TAB: Record<string, string> = {
+    titulo: 'detalhes', tipo: 'detalhes', finalidade: 'detalhes',
+    status: 'detalhes', preco: 'detalhes',
+  };
+
+  const onInvalid = (errors: any) => {
+    const keys = Object.keys(errors);
+    const labels = keys.map((k) => FIELD_LABELS[k] ?? k);
+    const targetTab = keys.map((k) => FIELD_TAB[k]).find(Boolean);
+    if (targetTab) setTab(targetTab);
+    toast({
+      title: 'Verifique os campos obrigatórios',
+      description: labels.length ? `Campos com erro: ${labels.join(', ')}` : 'Preencha os campos destacados.',
+      variant: 'destructive',
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
 
   // Extrai o path dentro do bucket a partir de um valor salvo (que pode ser path puro ou uma URL antiga).
   const extractStoragePath = (value: string): string | null => {
@@ -553,7 +575,7 @@ export default function ImovelForm() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-24 md:pb-6">
           {currentId && (
             <ProprietariosCard
               imovelId={currentId}
