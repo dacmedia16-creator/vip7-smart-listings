@@ -401,22 +401,30 @@ export default function ImovelForm() {
   const handleUpload = async (files: FileList | null) => {
     if (!files) return;
     setUploading(true);
-    try {
-      const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        const ext = file.name.split('.').pop();
+    const allowed = ['jpg', 'jpeg', 'png', 'webp'];
+    const urls: string[] = [];
+    for (const file of Array.from(files)) {
+      try {
+        const rawExt = (file.name.split('.').pop() ?? '').toLowerCase();
+        const ext = allowed.includes(rawExt) ? rawExt : (file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg');
         const path = `${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage.from('imoveis-fotos').upload(path, file);
-        if (error) throw error;
+        const { error } = await supabase.storage
+          .from('imoveis-fotos')
+          .upload(path, file, { contentType: file.type || `image/${ext}`, upsert: false });
+        if (error) {
+          console.error('[upload foto] falhou:', file.name, error);
+          toast({ title: `Falha em ${file.name}`, description: error.message, variant: 'destructive' });
+          continue;
+        }
         const { data: pub } = supabase.storage.from('imoveis-fotos').getPublicUrl(path);
         urls.push(pub.publicUrl);
+      } catch (e: any) {
+        console.error('[upload foto] exceção:', file.name, e);
+        toast({ title: `Falha em ${file.name}`, description: e.message, variant: 'destructive' });
       }
-      setFotos((prev) => [...prev, ...urls]);
-    } catch (e: any) {
-      toast({ title: 'Erro no upload', description: e.message, variant: 'destructive' });
-    } finally {
-      setUploading(false);
     }
+    if (urls.length) setFotos((prev) => [...prev, ...urls]);
+    setUploading(false);
   };
 
   const removeFoto = (url: string) => setFotos((p) => p.filter((u) => u !== url));
