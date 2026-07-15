@@ -1,16 +1,26 @@
-## Plano
+## Problema
+O último imóvel cadastrado manualmente (origem `proprio`) ficou sem código porque o campo `codigo_interno` do formulário é opcional — só é preenchido se o usuário digitar. Como os imóveis do Imoview têm `codigo_imoview`, só os cadastrados manualmente aparecem com "—" na lista do CRM.
 
-1. **Corrigir a exibição no CRM**
-   - Ajustar a listagem de **Imóveis Próprios** e o detalhe do imóvel no CRM para converter qualquer caminho/URL salva em `fotos` para URL pública válida antes de renderizar a imagem.
-   - Adicionar fallback visual quando a imagem falhar, para não aparecer o ícone quebrado do navegador.
+## Solução proposta
+Gerar automaticamente um `codigo_interno` para imóveis próprios no momento do salvamento (quando o usuário não digitar um código manualmente).
 
-2. **Corrigir a sincronização futura**
-   - Revisar a função de importação do Imoview para garantir que as fotos sejam salvas em um formato consistente e utilizável pelo CRM/site.
-   - Manter as URLs originais quando o download para o storage não for necessário ou falhar.
+### Formato do código
+Prefixo `VIP` + número sequencial de 4 dígitos, começando do maior atualmente em uso. Ex.: `VIP0001`, `VIP0002`, …
 
-3. **Verificar dados existentes**
-   - Conferir alguns imóveis importados que já têm `fotos` no banco e validar que o card passa a carregar a primeira foto corretamente.
+Vantagens:
+- Fácil de ler e falar por telefone/WhatsApp.
+- Não conflita com códigos numéricos do Imoview (que são apenas números).
+- Sequencial → fácil identificar imóveis mais recentes.
 
-## Detalhe técnico
+### Onde implementar
+1. **Função no banco** `next_codigo_interno_vip()` — SECURITY DEFINER, faz `SELECT max(...)` sobre `codigo_interno` que casa com `^VIP\d+$` e retorna o próximo (`VIP` + N+1 com padding). Uso de advisory lock para evitar race condition em cadastros simultâneos.
+2. **`ImovelForm.tsx` (onSubmit)** — se `origem === 'proprio'` (ou novo cadastro) e `codigo_interno` estiver vazio, chamar `supabase.rpc('next_codigo_interno_vip')` e injetar no payload antes do insert.
+3. **Backfill** — atualizar o único imóvel já cadastrado sem código (id `ab7ff74d…`) para receber `VIP0001`.
 
-O banco já tem fotos importadas, mas o card do CRM usa `im.fotos[0]` diretamente. Se esse valor for caminho de storage, URL com caracteres/query problemática, ou uma URL que falha no navegador, a imagem quebra como no print. A correção centraliza a normalização da URL e adiciona tratamento de erro no `<img>`.
+### O que NÃO muda
+- Imóveis vindos do Imoview continuam usando `codigo_imoview` como identificador principal (nada é sobrescrito).
+- Usuário ainda pode digitar um `codigo_interno` manual — a geração só ocorre quando o campo está vazio.
+- Nenhuma alteração no site público / API / edge functions.
+
+## Checagem
+Após implementar: cadastrar um novo imóvel próprio de teste sem preencher código e confirmar que ele aparece na lista com `VIP0002`.
