@@ -14,6 +14,7 @@ import { imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
 import { PessoasVinculadasCard } from '../components/PessoasVinculadasCard';
 import { PortaisCard } from '../components/PortaisCard';
+import { CrmPropertyPhoto } from '../components/CrmPropertyPhoto';
 
 export default function ImovelDetail() {
   const { id } = useParams();
@@ -51,6 +52,7 @@ export default function ImovelDetail() {
   if (!imovel) return <CrmLayout><p className="text-muted-foreground">Imóvel não encontrado.</p></CrmLayout>;
 
   const status = imovelStatusMeta(imovel.status);
+  const fotos = Array.isArray(imovel.fotos) ? imovel.fotos.filter(Boolean) : [];
 
   return (
     <CrmLayout>
@@ -85,13 +87,15 @@ export default function ImovelDetail() {
       </div>
 
       <Card className="overflow-hidden mb-6">
-        {imovel.fotos?.length > 0 ? (
+        {fotos.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
             <div className="col-span-2 row-span-2 aspect-square md:aspect-auto">
-              <img src={imovel.fotos[0]} alt={imovel.titulo} className="w-full h-full object-cover" />
+              <CrmPropertyPhoto src={fotos[0]} alt={imovel.titulo} className="w-full h-full object-cover" loading="eager" />
             </div>
-            {imovel.fotos.slice(1, 5).map((f: string, i: number) => (
-              <div key={i} className="aspect-square"><img src={f} className="w-full h-full object-cover" /></div>
+            {fotos.slice(1, 5).map((f: string, i: number) => (
+              <div key={`${f}-${i}`} className="aspect-square">
+                <CrmPropertyPhoto src={f} alt={`${imovel.titulo} - foto ${i + 2}`} className="w-full h-full object-cover" />
+              </div>
             ))}
           </div>
         ) : (

@@ -14,6 +14,7 @@ import { IMOVEL_STATUS, imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
 import { useAuth } from '../hooks/useAuth';
 import { useRoles } from '../hooks/useRole';
+import { CrmPropertyPhoto } from '../components/CrmPropertyPhoto';
 
 const PAGE_SIZE = 60;
 
@@ -458,7 +459,7 @@ export default function Imoveis() {
                 <Link key={im.id} to={`/crm/imoveis/${im.id}`}>
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-video bg-muted relative">
-                      {foto ? <img src={foto} alt={im.titulo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Building2 className="h-12 w-12 text-muted-foreground/40" /></div>}
+                      <CrmPropertyPhoto src={foto} alt={im.titulo} className="w-full h-full object-cover" />
                       <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
                       {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
                       {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
