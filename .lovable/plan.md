@@ -1,33 +1,20 @@
-## Situação
+## Problema
 
-Você não encontrou a opção "Allow public buckets" em Privacy & Security — e faz sentido: a tela que você mostrou é de **Workspace → Privacy & security** (acessos e convites), não é lá que fica esse controle. Além disso, o workspace tem a policy `cloud_block_public_buckets` ativa, o que faz o tool `storage_update_bucket` recusar tornar o bucket público.
+Ao clicar em **"Finalizar e salvar"** no cadastro de imóvel, nada acontece — sem toast, sem redirecionamento.
 
-Como tornar o bucket público **não é viável** agora, vou por outro caminho que resolve o problema sem depender dessa configuração.
+Causa: o formulário usa `react-hook-form` + `zod` com campos obrigatórios (`titulo` ≥ 3, `tipo`, `finalidade`, `status`, `preco` > 0). Se algum estiver inválido, `handleSubmit` bloqueia o envio silenciosamente. Como o form é dividido em abas, o campo com erro pode estar numa aba que o usuário não vê, então parece que o botão "não faz nada".
 
-## Correção (sem precisar liberar bucket público)
+## Correção
 
-Trocar `getPublicUrl` por **`createSignedUrl`** no formulário de fotos. Assim o bucket permanece **privado** e as miniaturas continuam funcionando — o Storage gera uma URL assinada temporária que qualquer usuário autenticado do CRM consegue abrir.
+Em `src/crm/pages/ImovelForm.tsx`:
 
-### Passos
+1. Passar um handler `onInvalid` para `form.handleSubmit(onSubmit, onInvalid)`.
+2. Em `onInvalid`, exibir um toast destrutivo listando os campos com erro (ex.: "Título, Preço") e **navegar automaticamente para a primeira aba** que contém o campo inválido, para o usuário ver o destaque de erro.
+3. Mapear cada campo do schema à sua aba (`TABS`) para saber para onde levar.
 
-1. **`src/crm/pages/ImovelForm.tsx`**
-   - No upload de fotos (~linha 411): depois do `upload(...)`, chamar `supabase.storage.from('imoveis-fotos').createSignedUrl(path, 60 * 60 * 24 * 7)` (7 dias) e salvar essa URL no state em vez de `getPublicUrl`.
-   - Ao **abrir** um imóvel existente para editar, gerar signed URLs em lote para as fotos já salvas (usando `createSignedUrls`) para os thumbnails renderizarem.
-   - Manter as melhorias de robustez já planejadas: sanitizar extensão (`jpg`/`jpeg`/`png`/`webp`), passar `contentType`, `upsert: false`, toast por arquivo com erro sem abortar os demais, log de `error.message`.
-
-2. **O que fica salvo no banco**: continua sendo o **path** do arquivo no bucket (ex.: `imovel-123/uuid.jpg`), **não** a URL assinada (que expira). Isso já é como o restante do sistema espera.
-
-3. **`imoview-sync`**: **não mexer agora**. Ela roda no servidor e o `getPublicUrl` lá é usado para gerar link público de fotos vindas do Imoview — é um fluxo separado do upload manual e não afeta o bug que você está enfrentando. Se aparecer o mesmo problema lá depois, tratamos em um plano próprio.
+Nenhuma outra lógica de salvar é alterada — o `onSubmit` existente já grava corretamente quando os dados são válidos.
 
 ## Verificação
 
-- `/crm/imoveis/novo` → aba Fotos → Adicionar fotos: miniaturas aparecem imediatamente.
-- Salvar o imóvel, sair e reabrir em edição: miniaturas continuam visíveis (signed URLs regeradas no load).
-- Console sem 400/404 em requests para `/storage/v1/object/public/imoveis-fotos/...`.
-
-## Fora do escopo
-
-- Não tornar o bucket público (bloqueado pelo workspace).
-- Não alterar RLS / migrations.
-- Não refatorar reordenação/capa nem outros passos do formulário.
-- Não tocar em `imoview-sync`.
+- Clicar em "Finalizar e salvar" com campos vazios → toast lista os campos faltantes e abre a aba correta.
+- Preencher tudo e clicar novamente → salva e redireciona para `/crm/imoveis` como antes.
