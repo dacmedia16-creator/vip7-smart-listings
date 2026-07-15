@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Building2, ExternalLink } from 'lucide-react';
 import { fmtMoney } from '../lib/leads';
+import { CrmPropertyPhoto } from './CrmPropertyPhoto';
 
 type ImovelRow = {
   id: string;
@@ -56,13 +57,11 @@ function Section({ titulo, codigos, byCodigo }: { titulo: string; codigos: strin
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-2 rounded border border-[#E8E4D9] hover:bg-[#FBF3DC] transition-colors group"
             >
-              {im.fotos?.[0] ? (
-                <img src={im.fotos[0]} alt="" className="h-12 w-16 object-cover rounded shrink-0" loading="lazy" />
-              ) : (
-                <div className="h-12 w-16 bg-[#F0E9D6] rounded flex items-center justify-center shrink-0">
-                  <Building2 className="h-5 w-5 text-[#4A4A52]" />
-                </div>
-              )}
+              <CrmPropertyPhoto
+                src={im.fotos?.[0]}
+                className="h-12 w-16 object-cover rounded shrink-0"
+                iconClassName="h-5 w-5 text-[#4A4A52]"
+              />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-[#0F0F12] truncate">
                   #{im.codigo_imoview} · {im.titulo}
