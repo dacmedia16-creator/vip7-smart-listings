@@ -161,7 +161,6 @@ export default function ImovelDetail() {
           </Card>
 
           {(() => {
-            const siteOrigin = "https://vipsevenimoveis.com.br";
             const backendOrigin = import.meta.env.VITE_SUPABASE_URL;
             const cacheBuster = Math.floor(Date.now() / 60000);
             const linkPublico = `${backendOrigin}/functions/v1/og-metadata?v=${cacheBuster}&codigo=${imovel.id}`;
