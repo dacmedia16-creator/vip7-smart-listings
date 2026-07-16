@@ -1,19 +1,13 @@
-## Corrigir link "não encontrado"
+Plano para corrigir o link do imóvel:
 
-O site usa `BrowserRouter` (não `HashRouter`), então o `#/` no link gerado quebra a rota. A rota real é `/imovel/:codigo`.
+1. No card “Link do site” do CRM, trocar o final da URL para usar `imovel.id` diretamente.
+   - De: `/imovel/{codigo_imoview ou código gerado}`
+   - Para: `/imovel/{id do imóvel}`
 
-### Mudança
+2. Remover a dependência de `uuidToCode` nessa tela, porque ela gera um número e não o ID real.
 
-Em `src/crm/pages/ImovelDetail.tsx`, trocar:
+3. Manter o comportamento atual:
+   - clicar no link copia a URL;
+   - botão “Abrir no site” abre em nova aba.
 
-```ts
-const linkPublico = `${window.location.origin}/#/imovel/${codigoPublico}`;
-```
-
-por:
-
-```ts
-const linkPublico = `${window.location.origin}/imovel/${codigoPublico}`;
-```
-
-Sem outras alterações.
+4. Conferir que a página pública já aceita UUID em `/imovel/:codigo`, pois `detalhesImovel` busca pelo campo `id` quando o parâmetro é um UUID.
