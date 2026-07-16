@@ -115,7 +115,8 @@ export default function ImovelDetail() {
   }
 
   const isRental = property.finalidade === 1; // API Imoview: 1 = Aluguel, 2 = Venda
-  const whatsappMessage = generatePropertyWhatsAppMessage({ titulo: property.titulo, codigo: property.codigo });
+  const shareCode = property.id ?? codigo ?? property.codigo;
+  const whatsappMessage = generatePropertyWhatsAppMessage({ titulo: property.titulo, codigo: shareCode });
   const whatsappLink = generateWhatsAppLink(whatsappMessage);
   const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
@@ -130,7 +131,7 @@ export default function ImovelDetail() {
     : `${property.tipoDescricao || 'Imóvel'} para ${isRental ? 'alugar' : 'vender'} em ${property.bairro}, ${property.cidade}. ${property.qtdeQuartos || 0} quartos, ${property.areaConstruida || property.areaTotal || 0}m².`;
 
   // URL for sharing with dynamic OG meta tags - usa helper centralizado
-  const shareUrl = buildOgShareUrl(property.codigo);
+  const shareUrl = buildOgShareUrl(shareCode);
   
   // Direct WhatsApp share link with OG URL
   const whatsappShareLink = `https://wa.me/?text=${encodeURIComponent(`Confira este imóvel: ${property.titulo}\n${shareUrl}`)}`;

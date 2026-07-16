@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const DEFAULT_SITE_URL = 'https://vip7imoveis.com.br';
+const DEFAULT_SITE_URL = 'https://vipsevenimoveis.com.br';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -21,7 +21,7 @@ async function fetchPropertyDetails(codigo: string) {
   if (Number.isFinite(codigoNum)) {
     const { data } = await supabase
       .from('imoveis_proprios')
-      .select('codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description')
+      .select('id,codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description,quartos,banheiros,vagas,area,area_total')
       .eq('codigo_imoview', codigoNum)
       .eq('ativo', true)
       .maybeSingle();
@@ -31,7 +31,7 @@ async function fetchPropertyDetails(codigo: string) {
   if (!row && /^[0-9a-f-]{36}$/i.test(codigo)) {
     const { data } = await supabase
       .from('imoveis_proprios')
-      .select('codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description')
+      .select('id,codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description,quartos,banheiros,vagas,area,area_total')
       .eq('id', codigo)
       .maybeSingle();
     row = data as Record<string, unknown> | null;
@@ -43,9 +43,10 @@ async function fetchPropertyDetails(codigo: string) {
   }
 
   const fotos = Array.isArray(row.fotos) ? row.fotos as string[] : [];
-  const imagem = fotos[0] || '';
+  const imagem = toPublicPhotoUrl(fotos[0] || '');
 
   return {
+    id: row.id as string,
     codigo: row.codigo_imoview ?? codigo,
     titulo: (row.titulo as string) || `${row.tipo || 'Imóvel'} em ${row.bairro || 'Sorocaba'}`,
     descricao: (row.meta_description as string) || (row.descricao as string) || `Imóvel disponível em ${row.bairro || ''}, ${row.cidade || 'Sorocaba'}`,
@@ -55,7 +56,19 @@ async function fetchPropertyDetails(codigo: string) {
     tipo: (row.tipo as string) || 'Imóvel',
     valor: row.preco as number,
     finalidade: row.finalidade as string,
+    quartos: row.quartos as number | null,
+    banheiros: row.banheiros as number | null,
+    vagas: row.vagas as number | null,
+    area: (row.area as number | null) || (row.area_total as number | null),
   };
+}
+
+function toPublicPhotoUrl(value: string): string {
+  const photo = String(value || '').trim();
+  if (!photo) return '';
+  if (/^https?:\/\//i.test(photo)) return photo;
+  const encodedPath = photo.split('/').map((part) => encodeURIComponent(part)).join('/');
+  return `${SUPABASE_URL}/storage/v1/object/public/imoveis-fotos/${encodedPath}`;
 }
 
 function formatCurrency(value: unknown): string {
@@ -111,11 +124,16 @@ serve(async (req) => {
     const finalidadeTexto = isRental ? 'Aluguel' : 'Venda';
 
     const pageTitle = `${property.titulo} | VIP7 Imóveis`;
-    const pageDescription = valorFormatado
-      ? `${property.tipo} para ${finalidadeTexto.toLowerCase()} em ${property.bairro}, ${property.cidade}. ${valorFormatado}`
-      : property.descricao?.slice(0, 160) || `${property.tipo} disponível em ${property.bairro}, ${property.cidade}`;
+    const detalhes = [
+      valorFormatado,
+      property.quartos ? `${property.quartos} quarto${property.quartos === 1 ? '' : 's'}` : '',
+      property.banheiros ? `${property.banheiros} banheiro${property.banheiros === 1 ? '' : 's'}` : '',
+      property.vagas ? `${property.vagas} vaga${property.vagas === 1 ? '' : 's'}` : '',
+      property.area ? `${property.area} m²` : '',
+    ].filter(Boolean).join(' · ');
+    const pageDescription = `${property.tipo} para ${finalidadeTexto.toLowerCase()} em ${[property.bairro, property.cidade].filter(Boolean).join(', ')}${detalhes ? `. ${detalhes}` : ''}`.slice(0, 160);
 
-    const canonicalUrl = buildCanonicalUrl(redirectParam, siteUrl, codigo);
+    const canonicalUrl = buildCanonicalUrl(redirectParam, siteUrl, property.id || codigo);
     const imageUrl = property.imagem || `${siteUrl}/og-image.jpg`;
     const optimizedImageUrl = imageUrl;
 
@@ -192,7 +210,7 @@ serve(async (req) => {
 function buildCanonicalUrl(redirectParam: string, siteUrl: string, codigo: string): string {
   const redirect = (redirectParam || '').trim();
   const base = redirect.replace(/\/$/, '');
-  if (!base) return `${siteUrl}/#/imovel/${codigo}`;
+  if (!base) return `${siteUrl}/imovel/${codigo}`;
   if (base.includes('{codigo}')) {
     return base.split('{codigo}').join(String(codigo));
   }
@@ -202,7 +220,7 @@ function buildCanonicalUrl(redirectParam: string, siteUrl: string, codigo: strin
     lower.includes('#/imovel/') ||
     lower.includes('codigo=');
   if (isFullUrl) return base;
-  return `${base}/#/imovel/${codigo}`;
+  return `${base}/imovel/${codigo}`;
 }
 
 function isSocialCrawlerUserAgent(userAgent: string): boolean {
