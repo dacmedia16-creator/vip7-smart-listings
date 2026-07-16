@@ -1,19 +1,18 @@
-# Rodar a importação da planilha completa direto no servidor
+# Aceitar código alfanumérico na busca por código
 
-Planilha `imoveis-Ativos_2026-06-08-162435-2.xls` já parseada: **1.155 linhas**. Aplicar UPDATEs em `imoveis_proprios` casando por `codigo_imoview` = `Codigo`.
+Hoje a busca só aceita dígitos (`codigo_imoview`). Códigos internos como `VIP0001` são rejeitados.
 
-## Passos
+## Mudanças
 
-1. Regerar 58 lotes menores (~20 UPDATEs cada) para caber no limite de payload.
-2. Executar cada lote via `supabase--insert`.
-3. Rodar consulta final mostrando quantos imóveis ficaram com cada campo novo preenchido (administradora, síndico, área privativa, portais publicados, pontuação, características, etc.).
-4. Listar códigos da planilha que não existem no banco (ignorados).
+1. **`src/components/HeroSection.tsx`** (input de busca por código, linha ~421)
+   - Remover `inputMode="numeric"` e o filtro `replace(/\D/g,'')`.
+   - Aceitar qualquer caractere, transformando em maiúsculas.
+   - Atualizar `placeholder` para `Ex: 2138 ou VIP0001`.
+   - `handleSearchByCodigo` envia o valor bruto (trim + upper).
 
-## Campos atualizados por linha (quando presentes na planilha)
+2. **`src/services/imoveisDb.ts` → `detalhesImovel`**
+   - Se for número → busca por `codigo_imoview` (mantém).
+   - Se for UUID → busca por `id` (mantém).
+   - **Novo fallback**: se for string alfanumérica → busca por `codigo_interno` com `ilike` (case-insensitive).
 
-Financeiro (preço, condomínio, IPTU, seguros, comissões), endereço completo, áreas, cômodos, dados do prédio/empreendimento, administradora e síndico, cartório, água/luz, datas, descrição, anotações, pontuação, características (array), etiquetas (array), portais publicados (jsonb).
-
-## Fora de escopo
-
-- Nada de criar novo imóvel — só UPDATE em quem já existe.
-- Fotos, geocode, `codigo_interno`, `created_at`, `created_by` não são tocados.
+Nada mais é alterado — resto do fluxo (rota `/imovel/:codigo`, cards) já passa string.

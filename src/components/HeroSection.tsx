@@ -90,9 +90,9 @@ export function HeroSection() {
   };
 
   const handleSearchByCodigo = () => {
-    const codigo = codigoImovel.trim().replace(/\D/g, '');
+    const codigo = codigoImovel.trim().toUpperCase();
     if (codigo) {
-      navigate(`/imovel/${codigo}`);
+      navigate(`/imovel/${encodeURIComponent(codigo)}`);
     }
   };
 
