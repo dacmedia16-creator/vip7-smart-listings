@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      _imp_stg: {
+        Row: {
+          codigo: number
+          data: Json
+        }
+        Insert: {
+          codigo: number
+          data: Json
+        }
+        Update: {
+          codigo?: number
+          data?: Json
+        }
+        Relationships: []
+      }
       activity_log: {
         Row: {
           acao: string
