@@ -16,7 +16,7 @@ const PRICE_STEP = 50000;
 
 export function HeroSection() {
   const navigate = useNavigate();
-  const [searchMode, setSearchMode] = useState<'ia' | 'filtros'>('ia');
+  
   const [finalidade, setFinalidade] = useState<string>('venda');
   const [tipo, setTipo] = useState<string>('');
   const [cidade, setCidade] = useState<string>('');
