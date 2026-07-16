@@ -17,6 +17,7 @@ function toPublicPhotoUrl(value: string): string {
 // ============== Types (same shape as imoviewApi.ts) =====================
 
 export interface ImoviewProperty {
+  id?: string;
   codigo: number;
   codigoReferencia?: string;
   titulo?: string;
@@ -152,6 +153,7 @@ function mapRow(r: Row): ImoviewProperty {
     r.finalidade === 'aluguel' ? 1 : r.finalidade === 'venda' ? 2 : 2; // venda_aluguel defaults to 2 for UI
   const codigo = r.codigo_imoview ?? uuidToCode(r.id);
   return {
+    id: r.id,
     codigo,
     codigoReferencia: r.codigo_interno ?? undefined,
     titulo: r.titulo,
