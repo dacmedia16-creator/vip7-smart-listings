@@ -1,16 +1,11 @@
-# Endereço completo na página do imóvel (CRM)
+# Separar proprietários e interessados no card "Pessoas vinculadas"
 
-Hoje o cabeçalho mostra só `endereço, bairro, cidade`. Atualizar para incluir número, complemento, estado e CEP.
+## Mudança em `src/crm/components/PessoasVinculadasCard.tsx`
 
-## Mudança
+Agrupar `rows` por `papel` em duas seções renderizadas na ordem:
 
-`src/crm/pages/ImovelDetail.tsx` (linha 117):
+1. **Proprietários** (papel `proprietario`) — com contador ao lado do título.
+2. **Interessados** (papel `interessado`).
+3. **Outros** (co-proprietário, procurador, inquilino etc., se existirem) numa seção "Outros".
 
-Substituir a linha atual por uma composição:
-- `endereco, nº numero` (junta na mesma parte se número existir)
-- `complemento` (se existir)
-- `bairro`
-- `cidade/UF`
-- `CEP xxxxx-xxx` (se existir)
-
-Cada parte separada por `·` para não truncar visualmente e permitir exibir o endereço completo. Fallback continua "Sem endereço".
+Cada seção com um subtítulo pequeno (`text-xs uppercase tracking-wide text-muted-foreground`) e o mesmo layout de linha já existente. Seções vazias são ocultadas. Botão "Adicionar interessado" continua no rodapé.
