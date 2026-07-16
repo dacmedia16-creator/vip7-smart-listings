@@ -112,9 +112,22 @@ export default function ImovelDetail() {
               <div>
                 <p className="text-xs text-muted-foreground">{imovel.codigo_interno || '—'} · {imovel.tipo}</p>
                 <h1 className="text-2xl font-bold">{imovel.titulo}</h1>
-                <p className="text-muted-foreground flex items-center gap-1 mt-1">
-                  <MapPin className="h-4 w-4" />
-                  {[imovel.endereco, imovel.bairro, imovel.cidade].filter(Boolean).join(', ') || 'Sem endereço'}
+                <p className="text-muted-foreground flex items-start gap-1 mt-1">
+                  <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>
+                    {(() => {
+                      const linha1 = [imovel.endereco, imovel.numero].filter(Boolean).join(', ');
+                      const partes = [
+                        linha1,
+                        imovel.complemento,
+                        imovel.torre_bloco,
+                        imovel.bairro,
+                        [imovel.cidade, imovel.estado].filter(Boolean).join('/'),
+                        imovel.cep ? `CEP ${imovel.cep}` : null,
+                      ].filter(Boolean);
+                      return partes.length ? partes.join(' · ') : 'Sem endereço';
+                    })()}
+                  </span>
                 </p>
               </div>
               <Badge className={status.color}>{status.label}</Badge>
