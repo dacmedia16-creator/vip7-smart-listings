@@ -161,6 +161,37 @@ export default function ImovelDetail() {
             </div>
           </Card>
 
+          {(() => {
+            const codigoPublico = imovel.codigo_imoview ?? uuidToCode(imovel.id);
+            const linkPublico = `${window.location.origin}/#/imovel/${codigoPublico}`;
+            const copiar = async () => {
+              try {
+                await navigator.clipboard.writeText(linkPublico);
+                toast({ title: 'Link copiado!', description: linkPublico });
+              } catch {
+                toast({ title: 'Erro ao copiar', variant: 'destructive' });
+              }
+            };
+            return (
+              <Card className="p-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2"><ExternalLink className="h-4 w-4" />Link do site</h3>
+                <button
+                  onClick={copiar}
+                  className="w-full text-left text-xs font-mono bg-muted hover:bg-muted/70 rounded px-2 py-2 truncate flex items-center gap-2 mb-2 transition-colors"
+                  title="Clique para copiar"
+                >
+                  <Copy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{linkPublico}</span>
+                </button>
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <a href={linkPublico} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" />Abrir no site
+                  </a>
+                </Button>
+              </Card>
+            );
+          })()}
+
           <Card className="p-4">
             <h3 className="font-semibold mb-3 flex items-center gap-2"><UserIcon className="h-4 w-4" />Responsável</h3>
             {corretor ? (
