@@ -161,7 +161,9 @@ export default function ImovelDetail() {
           </Card>
 
           {(() => {
-            const linkPublico = `${window.location.origin}/imovel/${imovel.id}`;
+            const siteOrigin = "https://vipsevenimoveis.com.br";
+            const destinoFinal = `${siteOrigin}/imovel/${imovel.id}`;
+            const linkPublico = `https://qozlwzgesezsygmnuzky.supabase.co/functions/v1/og-metadata?codigo=${imovel.id}&redirect=${encodeURIComponent(destinoFinal)}`;
             const copiar = async () => {
               try {
                 await navigator.clipboard.writeText(linkPublico);
