@@ -163,7 +163,7 @@ export default function ImovelDetail() {
 
           {(() => {
             const codigoPublico = imovel.codigo_imoview ?? uuidToCode(imovel.id);
-            const linkPublico = `${window.location.origin}/#/imovel/${codigoPublico}`;
+            const linkPublico = `${window.location.origin}/imovel/${codigoPublico}`;
             const copiar = async () => {
               try {
                 await navigator.clipboard.writeText(linkPublico);
