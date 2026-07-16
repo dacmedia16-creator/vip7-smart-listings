@@ -86,7 +86,7 @@ function normalize(str: string): string {
 }
 
 /** Convert a UUID to a stable positive 31-bit integer (for own properties without codigo_imoview). */
-function uuidToCode(uuid: string): number {
+export function uuidToCode(uuid: string): number {
   let h = 5381;
   for (let i = 0; i < uuid.length; i++) h = ((h << 5) + h + uuid.charCodeAt(i)) | 0;
   return Math.abs(h);
