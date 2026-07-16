@@ -90,9 +90,9 @@ export function HeroSection() {
   };
 
   const handleSearchByCodigo = () => {
-    const codigo = codigoImovel.trim().replace(/\D/g, '');
+    const codigo = codigoImovel.trim().toUpperCase();
     if (codigo) {
-      navigate(`/imovel/${codigo}`);
+      navigate(`/imovel/${encodeURIComponent(codigo)}`);
     }
   };
 
@@ -420,10 +420,9 @@ export function HeroSection() {
               <div className="flex gap-3">
                 <Input
                   type="text"
-                  inputMode="numeric"
-                  placeholder="Ex: 2138"
+                  placeholder="Ex: 2138 ou VIP0001"
                   value={codigoImovel}
-                  onChange={(e) => setCodigoImovel(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setCodigoImovel(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && codigoImovel.trim() && handleSearchByCodigo()}
                   className="bg-secondary/50 border-border/50 h-10 rounded-xl hover:border-primary/50 transition-colors flex-1"
                 />

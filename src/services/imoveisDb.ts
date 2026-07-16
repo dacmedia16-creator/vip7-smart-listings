@@ -337,7 +337,8 @@ export async function listarImoveisRecentes(filters: {
 
 export async function detalhesImovel(codigo: string | number): Promise<ImoviewProperty | null> {
   try {
-    const codigoNum = typeof codigo === 'string' ? parseInt(codigo, 10) : codigo;
+    const codigoStr = typeof codigo === 'string' ? codigo.trim() : String(codigo);
+    const codigoNum = /^\d+$/.test(codigoStr) ? parseInt(codigoStr, 10) : NaN;
     if (Number.isFinite(codigoNum)) {
       const { data } = await supabase
         .from('imoveis_proprios')
@@ -347,12 +348,22 @@ export async function detalhesImovel(codigo: string | number): Promise<ImoviewPr
         .maybeSingle();
       if (data) return mapRow(data as unknown as Row);
     }
-    // Fallback: try by UUID
-    if (typeof codigo === 'string' && /^[0-9a-f-]{36}$/i.test(codigo)) {
+    // Fallback: UUID
+    if (/^[0-9a-f-]{36}$/i.test(codigoStr)) {
       const { data } = await supabase
         .from('imoveis_proprios')
         .select(SELECT_COLS)
-        .eq('id', codigo)
+        .eq('id', codigoStr)
+        .maybeSingle();
+      if (data) return mapRow(data as unknown as Row);
+    }
+    // Fallback: código interno alfanumérico (ex.: VIP0001)
+    if (/[A-Za-z]/.test(codigoStr)) {
+      const { data } = await supabase
+        .from('imoveis_proprios')
+        .select(SELECT_COLS)
+        .ilike('codigo_interno', codigoStr)
+        .eq('ativo', true)
         .maybeSingle();
       if (data) return mapRow(data as unknown as Row);
     }
