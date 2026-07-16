@@ -430,7 +430,6 @@ export function HeroSection() {
               </Button>
             </div>
           </div>
-          )}
         </div>
       </div>
 
