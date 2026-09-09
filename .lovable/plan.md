@@ -1,21 +1,46 @@
-Vou ajustar a geração do link para resolver os dois pontos que ainda impedem o funcionamento:
+# Importar os imóveis que faltam do backup Imoview
 
-1. **Link final sempre com ID do imóvel**
-   - No CRM, o link copiado/aberto continuará apontando para o preview especial, mas o destino final será sempre:
-     `https://vipsevenimoveis.com.br/imovel/{id-do-imovel}`
-   - Isso evita usar código Imoview, código interno ou número gerado.
+## O que foi verificado
 
-2. **Página pública aceitar o ID real do imóvel**
-   - Hoje a página pública `/imovel/:codigo` recebe o parâmetro, mas o objeto carregado não preserva o `id` do banco.
-   - Vou incluir o `id` no mapeamento do imóvel para garantir que propriedades cadastradas no CRM funcionem pelo UUID real.
+O backup (`Backup_vipseven.xlsx`) tem 2.999 imóveis; o sistema tem 1.232 com código Imoview, e todos eles existem no backup. Faltam **1.767 imóveis**, sendo:
 
-3. **Preview do WhatsApp com foto principal e características**
-   - A função de metadata vai buscar o imóvel pelo ID.
-   - A imagem será a primeira foto do imóvel.
-   - A descrição do preview será montada com as principais características: tipo, finalidade, bairro/cidade, preço, quartos, banheiros, vagas e área quando existirem.
-   - Também vou converter fotos salvas como caminho do storage para URL pública absoluta, para o WhatsApp conseguir carregar a imagem.
+- 361 disponíveis (Vago/Disponível)
+- 1.389 desativados
+- 14 vendidos, 1 alugado, 2 em moderação
 
-4. **Evitar cache atrapalhando o teste**
-   - O link gerado no CRM terá um parâmetro de versão/cache para forçar nova leitura do preview.
+O backup também traz 5.455 pessoas, os vínculos de proprietário (3.022 linhas) e 90.179 fotos com os links originais.
 
-Depois disso, ao copiar/abrir o “Link do site” no CRM, o final do destino será o ID do imóvel e o compartilhamento deverá exibir a foto principal e as características no WhatsApp.
+## O que será feito
+
+Importar apenas os **361 imóveis disponíveis** que faltam, com fotos e proprietários.
+
+### 1. Imóveis (361 novos)
+
+Cada imóvel entra como registro próprio com `codigo_imoview` igual ao código do backup, ativo e com status disponível. Nenhum imóvel existente é alterado — só entram códigos que ainda não existem.
+
+Campos aproveitados: tipo, finalidade, valor, endereço completo (rua, número, complemento, bloco, bairro, cidade, UF, CEP), condomínio e nome do condomínio, IPTU, quartos, suítes, salas, banheiros, varandas, vagas e tipo de vaga, andar, áreas (interna, externa, lote, privativa), ano de construção, latitude/longitude, descrição, título, ponto de referência, matrícula/cartório, aceita permuta/financiamento, exclusivo, mobiliado, padrão, taxas e comissões, anotações internas e as características (portaria 24h, closet, armários, ar-condicionado, área de serviço, varanda gourmet, aquecimento solar, jardim, gás canalizado, etc.).
+
+Códigos internos VIP continuam sendo gerados só para imóveis cadastrados manualmente; estes ficam identificados pelo código Imoview.
+
+### 2. Fotos
+
+O backup traz os links diretos das fotos hospedadas no S3 da Imoview, na ordem correta. As fotos desses 361 imóveis serão gravadas usando esses links (todas, sem limite por imóvel), respeitando a ordem definida no backup — a primeira vira a capa. Não é preciso baixar e reenviar arquivo por arquivo.
+
+Observação: se um dia a Imoview desligar esse endereço das imagens, as fotos deixariam de carregar. Se preferir, depois posso fazer uma cópia dessas fotos para o armazenamento próprio do site — isso é bem mais demorado e pode ficar para uma segunda etapa.
+
+### 3. Proprietários
+
+Somente as pessoas ligadas a esses 361 imóveis serão cadastradas em Clientes (nome, CPF/CNPJ, telefones, e-mails, endereço, data de nascimento, profissão, anotações), sem duplicar quem já existe (comparação pelo código Imoview da pessoa). Cada uma é vinculada ao imóvel como **proprietário**, com o percentual informado no backup.
+
+### 4. Conferência
+
+Ao final: quantos imóveis entraram, quantas fotos, quantos proprietários criados e quantos reaproveitados, além da lista de qualquer código que não pôde entrar.
+
+## Detalhes técnicos
+
+- Fonte: `/tmp/bk/Backup_vipseven.xlsx`, abas `Imoveis`, ` Imoveis x Fotos`, `Imoveis x Proprietários `, `Pessoas`, `Pessoas x Email x Telefone`.
+- Chave de correspondência: `CodigoImovel` → `imoveis_proprios.codigo_imoview`; `CodigoPessoa` → `clientes.codigo_imoview`.
+- Inserção em lotes via SQL a partir de uma tabela temporária de staging, removida ao final (mesmo procedimento usado na importação anterior).
+- Fotos gravadas no array `fotos` como URLs http completas — o helper `toPublicPhotoUrl` já preserva URLs absolutas.
+- Vínculos gravados em `cliente_imoveis` com `papel = 'proprietario'`.
+- JSON bruto de cada imóvel guardado em `imoview_raw` e `origem = 'imoview'`.
