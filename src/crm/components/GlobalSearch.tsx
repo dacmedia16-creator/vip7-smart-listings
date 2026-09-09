@@ -212,9 +212,13 @@ export function GlobalSearch() {
         .order('created_at', { ascending: false })
         .limit(MAX_PER_GROUP);
       if (s) {
-        q = q.or(
-          `titulo.ilike.${s},codigo_interno.ilike.${s},cidade.ilike.${s},bairro.ilike.${s},endereco.ilike.${s},descricao.ilike.${s}`
-        );
+        const ors = [
+          `titulo.ilike.${s}`, `codigo_interno.ilike.${s}`, `cidade.ilike.${s}`,
+          `bairro.ilike.${s}`, `endereco.ilike.${s}`, `descricao.ilike.${s}`,
+        ];
+        const digits = String(s).replace(/\D/g, '');
+        if (digits && Number.isSafeInteger(Number(digits))) ors.push(`codigo_imoview.eq.${Number(digits)}`);
+        q = q.or(ors.join(','));
       }
       if (fCorretor !== ALL) q = q.eq('corretor_id', fCorretor);
       if (fFinalidade !== ALL) q = q.eq('finalidade', fFinalidade);

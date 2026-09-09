@@ -202,9 +202,13 @@ export default function Imoveis() {
 
       if (qDebounced.trim()) {
         const s = qDebounced.trim().replace(/[,()]/g, ' ');
-        query = query.or(
-          `titulo.ilike.%${s}%,codigo_interno.ilike.%${s}%,bairro.ilike.%${s}%,cidade.ilike.%${s}%`
-        );
+        const ors = [
+          `titulo.ilike.%${s}%`, `codigo_interno.ilike.%${s}%`,
+          `bairro.ilike.%${s}%`, `cidade.ilike.%${s}%`,
+        ];
+        const digits = s.replace(/\D/g, '');
+        if (digits && Number.isSafeInteger(Number(digits))) ors.push(`codigo_imoview.eq.${Number(digits)}`);
+        query = query.or(ors.join(','));
       }
 
       const { data, count } = await query;
