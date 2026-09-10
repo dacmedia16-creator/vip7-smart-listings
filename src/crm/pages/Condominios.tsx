@@ -146,13 +146,42 @@ export default function Condominios() {
               {lastSync && ` • Última sincronização: ${lastSync.toLocaleString('pt-BR')}`}
             </p>
           </div>
-          {isAdmin && (
-            <Button onClick={() => sync.mutate()} disabled={sync.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
-              <RefreshCw className={`h-4 w-4 mr-2 ${sync.isPending ? 'animate-spin' : ''}`} />
-              {sync.isPending ? 'Sincronizando…' : 'Sincronizar do Imoview'}
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={() => setDialogOpen(true)} variant="outline" className="border-[#C9A24C] text-[#7A5A14] hover:bg-[#FBF3DC]">
+              <Plus className="h-4 w-4 mr-2" /> Novo condomínio
             </Button>
-          )}
+            {isAdmin && (
+              <Button onClick={() => sync.mutate()} disabled={sync.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
+                <RefreshCw className={`h-4 w-4 mr-2 ${sync.isPending ? 'animate-spin' : ''}`} />
+                {sync.isPending ? 'Sincronizando…' : 'Sincronizar do Imoview'}
+              </Button>
+            )}
+          </div>
         </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo condomínio</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="cond-nome">Nome *</Label>
+                <Input id="cond-nome" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Residencial Parque das Flores" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cond-cidade">Cidade</Label>
+                <Input id="cond-cidade" value={novaCidade} onChange={(e) => setNovaCidade(e.target.value)} placeholder="Ex.: Sorocaba" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={() => criar.mutate()} disabled={criar.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
+                {criar.isPending ? 'Salvando…' : 'Salvar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Card className="p-4 bg-white border-[#E8E4D9]">
           <div className="flex gap-3 flex-wrap">
