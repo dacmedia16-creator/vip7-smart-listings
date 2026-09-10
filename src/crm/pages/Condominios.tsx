@@ -16,7 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2, Upload, X, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CondoRow {
@@ -29,6 +29,7 @@ interface CondoRow {
   numero: string | null;
   bairro: string | null;
   estado: string | null;
+  fotos: string[] | null;
 }
 
 interface FormState {
@@ -42,6 +43,13 @@ interface FormState {
 }
 
 const emptyForm: FormState = { nome: '', cep: '', endereco: '', numero: '', bairro: '', cidade: '', estado: '' };
+
+const BUCKET = 'imoveis-fotos';
+
+function storagePathFromUrl(url: string): string | null {
+  const m = url.match(/\/imoveis-fotos\/(.+?)(\?|$)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
 
 function enderecoResumo(c: CondoRow) {
   const parts = [
