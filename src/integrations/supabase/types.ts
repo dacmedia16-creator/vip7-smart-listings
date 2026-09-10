@@ -216,30 +216,45 @@ export type Database = {
       }
       condominios_cache: {
         Row: {
+          bairro: string | null
+          cep: string | null
           cidade: string | null
           cidade_codigo: number | null
           codigo: number
           created_at: string | null
+          endereco: string | null
+          estado: string | null
           finalidade: number | null
           nome: string
+          numero: string | null
           updated_at: string | null
         }
         Insert: {
+          bairro?: string | null
+          cep?: string | null
           cidade?: string | null
           cidade_codigo?: number | null
           codigo: number
           created_at?: string | null
+          endereco?: string | null
+          estado?: string | null
           finalidade?: number | null
           nome: string
+          numero?: string | null
           updated_at?: string | null
         }
         Update: {
+          bairro?: string | null
+          cep?: string | null
           cidade?: string | null
           cidade_codigo?: number | null
           codigo?: number
           created_at?: string | null
+          endereco?: string | null
+          estado?: string | null
           finalidade?: number | null
           nome?: string
+          numero?: string | null
           updated_at?: string | null
         }
         Relationships: []
