@@ -1417,6 +1417,7 @@ export type Database = {
       is_admin_or_gestor: { Args: { _user_id: string }; Returns: boolean }
       is_crm_user: { Args: { _user_id: string }; Returns: boolean }
       next_codigo_interno_vip: { Args: never; Returns: string }
+      preencher_endereco_condominios: { Args: never; Returns: number }
       setup_first_admin: { Args: never; Returns: boolean }
     }
     Enums: {
