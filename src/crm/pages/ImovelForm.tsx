@@ -698,7 +698,21 @@ export default function ImovelForm() {
 
                 <TabsContent value="ident" className="border rounded-md bg-white px-4 py-4">
                   <div className="grid md:grid-cols-3 gap-4 pt-2">
-                    {T('codigo_interno', 'Código interno')}
+                    <FormField control={form.control} name="codigo_interno" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Código interno</FormLabel>
+                        <FormControl>
+                          <Input
+                            readOnly
+                            className="bg-muted/50"
+                            placeholder="Gerado automaticamente ao salvar"
+                            value={(field.value as string) ?? ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
                     {T('codigo_auxiliar', 'Código auxiliar')}
                     {Sel('destinacao', 'Destinação', DESTINACAO)}
                     {T('segundo_tipo', 'Segundo tipo')}
