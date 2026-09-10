@@ -417,6 +417,14 @@ export default function ImovelForm() {
         if (novoCodigo) form.setValue('codigo_interno', novoCodigo as any);
         setCurrentId(newId);
         setLoadedRecord({ ...draftPayload, id: newId, codigo_interno: novoCodigo });
+        // grava proprietários que estavam pendentes antes do rascunho existir
+        if (pendingProprietarios.length) {
+          for (const p of pendingProprietarios) {
+            try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
+            catch (e) { console.error('vinculo proprietario falhou', e); }
+          }
+          setPendingProprietarios([]);
+        }
         if (draftKey) localStorage.removeItem(draftKey);
         // muda URL silenciosamente
         window.history.replaceState(null, '', `/crm/imoveis/${newId}`);
@@ -473,6 +481,7 @@ export default function ImovelForm() {
           try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
           catch (e) { console.error('vinculo proprietario falhou', e); }
         }
+        setPendingProprietarios([]);
       }
       if (draftKey) localStorage.removeItem(draftKey);
       setAutoSaveStatus('saved');
@@ -1015,7 +1024,11 @@ export default function ImovelForm() {
                 </div>
               </Card>
 
-              <ProprietariosSection imovelId={currentId ?? null} onPendingChange={setPendingProprietarios} />
+              <ProprietariosSection
+                imovelId={currentId ?? null}
+                pending={pendingProprietarios}
+                onPendingChange={setPendingProprietarios}
+              />
             </TabsContent>
 
             {/* ANOTAÇÕES */}
