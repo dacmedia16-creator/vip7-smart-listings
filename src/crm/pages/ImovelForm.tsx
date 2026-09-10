@@ -98,6 +98,11 @@ type FormData = z.infer<typeof schema>;
 export default function ImovelForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate('/crm/imoveis');
+  };
   const { toast } = useToast();
   const { user } = useAuth();
   const { isManager, isCorretor, isAtendente, loading: rolesLoading } = useRoles();
@@ -562,7 +567,7 @@ export default function ImovelForm() {
 
   return (
     <CrmLayout>
-      <Button variant="ghost" onClick={() => navigate('/crm/imoveis')} className="mb-4">
+      <Button variant="ghost" onClick={goBack} className="mb-4">
         <ArrowLeft className="h-4 w-4 mr-2" />Voltar
       </Button>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -1005,7 +1010,7 @@ export default function ImovelForm() {
                   </Button>
                 )
               )}
-              <Button type="button" variant="outline" onClick={() => navigate('/crm/imoveis')}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={goBack}>Cancelar</Button>
               <Button type="submit" disabled={saving || (!!currentId && !canEditThisRecord)}>{saving ? 'Salvando...' : 'Salvar'}</Button>
             </div>
           </div>

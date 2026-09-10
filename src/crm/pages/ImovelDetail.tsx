@@ -19,6 +19,11 @@ import { CrmPropertyPhoto } from '../components/CrmPropertyPhoto';
 export default function ImovelDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate('/crm/imoveis');
+  };
   const { toast } = useToast();
   const { user } = useAuth();
   const { isManager, isCorretor } = useRoles();
@@ -57,7 +62,7 @@ export default function ImovelDetail() {
   return (
     <CrmLayout>
       <div className="flex items-center justify-between mb-4">
-        <Button variant="ghost" onClick={() => navigate('/crm/imoveis')}>
+        <Button variant="ghost" onClick={goBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />Voltar
         </Button>
         <div className="flex gap-2">
