@@ -91,6 +91,9 @@ export default function Imoveis() {
   const [rows, setRows] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [confirmToggle, setConfirmToggle] = useState<any | null>(null);
+  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const savedRef = useRef(loadSavedState());
   const saved = savedRef.current;
