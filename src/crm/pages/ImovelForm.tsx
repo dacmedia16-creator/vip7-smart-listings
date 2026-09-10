@@ -417,6 +417,14 @@ export default function ImovelForm() {
         if (novoCodigo) form.setValue('codigo_interno', novoCodigo as any);
         setCurrentId(newId);
         setLoadedRecord({ ...draftPayload, id: newId, codigo_interno: novoCodigo });
+        // grava proprietários que estavam pendentes antes do rascunho existir
+        if (pendingProprietarios.length) {
+          for (const p of pendingProprietarios) {
+            try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
+            catch (e) { console.error('vinculo proprietario falhou', e); }
+          }
+          setPendingProprietarios([]);
+        }
         if (draftKey) localStorage.removeItem(draftKey);
         // muda URL silenciosamente
         window.history.replaceState(null, '', `/crm/imoveis/${newId}`);
@@ -473,6 +481,7 @@ export default function ImovelForm() {
           try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
           catch (e) { console.error('vinculo proprietario falhou', e); }
         }
+        setPendingProprietarios([]);
       }
       if (draftKey) localStorage.removeItem(draftKey);
       setAutoSaveStatus('saved');
@@ -687,6 +696,11 @@ export default function ImovelForm() {
                 <TabsTrigger key={t.key} value={t.key} className="flex-shrink-0 md:flex-shrink gap-1.5">
                   <span className="text-[10px] opacity-60 md:hidden">{i + 1}/{TABS.length}</span>
                   {t.label}
+                  {t.key === 'relacionamentos' && pendingProprietarios.length > 0 && (
+                    <span className="ml-1 text-[10px] rounded-full bg-amber-100 text-amber-800 px-1.5 py-0.5">
+                      {pendingProprietarios.length}
+                    </span>
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -1015,7 +1029,11 @@ export default function ImovelForm() {
                 </div>
               </Card>
 
-              <ProprietariosSection imovelId={currentId ?? null} onPendingChange={setPendingProprietarios} />
+              <ProprietariosSection
+                imovelId={currentId ?? null}
+                pending={pendingProprietarios}
+                onPendingChange={setPendingProprietarios}
+              />
             </TabsContent>
 
             {/* ANOTAÇÕES */}
