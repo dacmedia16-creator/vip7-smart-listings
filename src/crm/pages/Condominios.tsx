@@ -11,8 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, Search, Building, ExternalLink, Plus } from 'lucide-react';
+import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CondoRow {
@@ -20,6 +24,32 @@ interface CondoRow {
   nome: string;
   cidade: string | null;
   updated_at: string | null;
+  cep: string | null;
+  endereco: string | null;
+  numero: string | null;
+  bairro: string | null;
+  estado: string | null;
+}
+
+interface FormState {
+  nome: string;
+  cep: string;
+  endereco: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
+const emptyForm: FormState = { nome: '', cep: '', endereco: '', numero: '', bairro: '', cidade: '', estado: '' };
+
+function enderecoResumo(c: CondoRow) {
+  const parts = [
+    [c.endereco, c.numero].filter(Boolean).join(', '),
+    c.bairro,
+    c.cep,
+  ].filter(Boolean);
+  return parts.join(' · ');
 }
 
 export default function Condominios() {
@@ -30,8 +60,10 @@ export default function Condominios() {
   const [cidade, setCidade] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [novoNome, setNovoNome] = useState('');
-  const [novaCidade, setNovaCidade] = useState('');
+  const [editing, setEditing] = useState<CondoRow | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [toDelete, setToDelete] = useState<CondoRow | null>(null);
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
@@ -41,7 +73,7 @@ export default function Condominios() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('condominios_cache')
-        .select('codigo, nome, cidade, updated_at')
+        .select('codigo, nome, cidade, updated_at, cep, endereco, numero, bairro, estado')
         .order('nome');
       if (error) throw error;
       return (data ?? []) as CondoRow[];
@@ -103,10 +135,75 @@ export default function Condominios() {
     onError: (e: Error) => toast.error(`Falha: ${e.message}`),
   });
 
-  const criar = useMutation({
+  const buscarCep = async (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cep-lookup', { body: { cep: digits } });
+      if (error) throw error;
+      const d = data as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
+      if (d?.erro) {
+        toast.error('CEP não encontrado');
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        endereco: d.logradouro || f.endereco,
+        bairro: d.bairro || f.bairro,
+        cidade: d.localidade || f.cidade,
+        estado: d.uf || f.estado,
+      }));
+    } catch {
+      toast.error('Não foi possível consultar o CEP');
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const openNovo = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (c: CondoRow) => {
+    setEditing(c);
+    setForm({
+      nome: c.nome ?? '',
+      cep: c.cep ?? '',
+      endereco: c.endereco ?? '',
+      numero: c.numero ?? '',
+      bairro: c.bairro ?? '',
+      cidade: c.cidade ?? '',
+      estado: c.estado ?? '',
+    });
+    setDialogOpen(true);
+  };
+
+  const salvar = useMutation({
     mutationFn: async () => {
-      const nome = novoNome.trim();
+      const nome = form.nome.trim();
       if (!nome) throw new Error('Informe o nome do condomínio');
+      const payload = {
+        nome,
+        cep: form.cep.trim() || null,
+        endereco: form.endereco.trim() || null,
+        numero: form.numero.trim() || null,
+        bairro: form.bairro.trim() || null,
+        cidade: form.cidade.trim() || null,
+        estado: form.estado.trim() || null,
+      };
+
+      if (editing) {
+        const { error } = await supabase
+          .from('condominios_cache')
+          .update(payload)
+          .eq('codigo', editing.codigo);
+        if (error) throw error;
+        return;
+      }
+
       // Código negativo para não colidir com códigos do Imoview
       const { data: minRow } = await supabase
         .from('condominios_cache')
@@ -116,19 +213,42 @@ export default function Condominios() {
         .limit(1)
         .maybeSingle();
       const codigo = Math.min(0, minRow?.codigo ?? 0) - 1;
-      const { error } = await supabase
-        .from('condominios_cache')
-        .insert({ codigo, nome, cidade: novaCidade.trim() || null });
+      const { error } = await supabase.from('condominios_cache').insert({ codigo, ...payload });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Condomínio cadastrado');
+      toast.success(editing ? 'Condomínio atualizado' : 'Condomínio cadastrado');
       setDialogOpen(false);
-      setNovoNome('');
-      setNovaCidade('');
+      setEditing(null);
+      setForm(emptyForm);
       qc.invalidateQueries({ queryKey: ['condominios-cache'] });
     },
-    onError: (e: Error) => toast.error(`Falha ao cadastrar: ${e.message}`),
+    onError: (e: Error) => toast.error(`Falha ao salvar: ${e.message}`),
+  });
+
+  const excluir = useMutation({
+    mutationFn: async (c: CondoRow) => {
+      const { count, error: cErr } = await supabase
+        .from('imoveis_proprios')
+        .select('id', { count: 'exact', head: true })
+        .eq('codigo_condominio_imoview', c.codigo);
+      if (cErr) throw cErr;
+      if ((count ?? 0) > 0) {
+        throw new Error(`Este condomínio tem ${count} imóveis vinculados. Desvincule antes de excluir.`);
+      }
+      const { error } = await supabase.from('condominios_cache').delete().eq('codigo', c.codigo);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Condomínio excluído');
+      setToDelete(null);
+      qc.invalidateQueries({ queryKey: ['condominios-cache'] });
+      qc.invalidateQueries({ queryKey: ['condominios-counts'] });
+    },
+    onError: (e: Error) => {
+      setToDelete(null);
+      toast.error(e.message);
+    },
   });
 
   const totalImoveis = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -147,7 +267,7 @@ export default function Condominios() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={() => setDialogOpen(true)} variant="outline" className="border-[#C9A24C] text-[#7A5A14] hover:bg-[#FBF3DC]">
+            <Button onClick={openNovo} variant="outline" className="border-[#C9A24C] text-[#7A5A14] hover:bg-[#FBF3DC]">
               <Plus className="h-4 w-4 mr-2" /> Novo condomínio
             </Button>
             {isAdmin && (
@@ -160,28 +280,91 @@ export default function Condominios() {
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Novo condomínio</DialogTitle>
+              <DialogTitle>{editing ? 'Editar condomínio' : 'Novo condomínio'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label htmlFor="cond-nome">Nome *</Label>
-                <Input id="cond-nome" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Residencial Parque das Flores" />
+                <Input id="cond-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex.: Residencial Parque das Flores" />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cond-cep">CEP</Label>
+                  <div className="relative">
+                    <Input
+                      id="cond-cep"
+                      value={form.cep}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setForm((f) => ({ ...f, cep: v }));
+                        if (v.replace(/\D/g, '').length === 8) buscarCep(v);
+                      }}
+                      onBlur={(e) => buscarCep(e.target.value)}
+                      placeholder="00000-000"
+                      inputMode="numeric"
+                    />
+                    {cepLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cond-numero">Número</Label>
+                  <Input id="cond-numero" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} placeholder="Ex.: 250" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cond-endereco">Endereço</Label>
+                <Input id="cond-endereco" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} placeholder="Rua / Avenida" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cond-bairro">Bairro</Label>
+                  <Input id="cond-bairro" value={form.bairro} onChange={(e) => setForm({ ...form, bairro: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cond-estado">Estado</Label>
+                  <Input id="cond-estado" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value.toUpperCase().slice(0, 2) })} placeholder="SP" />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="cond-cidade">Cidade</Label>
-                <Input id="cond-cidade" value={novaCidade} onChange={(e) => setNovaCidade(e.target.value)} placeholder="Ex.: Sorocaba" />
+                <Input id="cond-cidade" value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} placeholder="Ex.: Sorocaba" />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={() => criar.mutate()} disabled={criar.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
-                {criar.isPending ? 'Salvando…' : 'Salvar'}
+              <Button onClick={() => salvar.mutate()} disabled={salvar.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
+                {salvar.isPending ? 'Salvando…' : 'Salvar'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!toDelete} onOpenChange={(o) => { if (!o) setToDelete(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir condomínio</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir <strong>{toDelete?.nome}</strong>? Esta ação não pode ser desfeita.
+                Condomínios vindos do Imoview podem reaparecer na próxima sincronização.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); if (toDelete) excluir.mutate(toDelete); }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {excluir.isPending ? 'Excluindo…' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Card className="p-4 bg-white border-[#E8E4D9]">
           <div className="flex gap-3 flex-wrap">
@@ -214,7 +397,7 @@ export default function Condominios() {
                 <TableHead className="text-[#4A4A52]">Cidade</TableHead>
                 <TableHead className="text-right text-[#4A4A52]">Imóveis</TableHead>
                 <TableHead className="text-[#4A4A52]">Código Imoview</TableHead>
-                <TableHead className="w-[80px]"></TableHead>
+                <TableHead className="w-[140px] text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -224,10 +407,12 @@ export default function Condominios() {
                 <TableRow><TableCell colSpan={5} className="text-center py-8 text-[#4A4A52]">Nenhum condomínio encontrado</TableCell></TableRow>
               ) : pageItems.map((c) => {
                 const n = counts[c.codigo] ?? 0;
+                const end = enderecoResumo(c);
                 return (
                   <TableRow key={c.codigo} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
                     <TableCell className="font-medium">
                       <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
+                      {end && <div className="text-xs text-[#4A4A52] font-normal mt-0.5">{end}</div>}
                     </TableCell>
                     <TableCell className="text-[#4A4A52]">{c.cidade ?? '—'}</TableCell>
                     <TableCell className="text-right">
@@ -237,9 +422,24 @@ export default function Condominios() {
                     </TableCell>
                     <TableCell className="text-[#4A4A52] text-sm">{c.codigo}</TableCell>
                     <TableCell>
-                      <Link to={`/crm/condominios/${c.codigo}`} className="inline-flex items-center text-[#7A5A14] hover:text-[#C9A24C]">
-                        <ExternalLink className="h-4 w-4" />
-                      </Link>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link to={`/crm/condominios/${c.codigo}`} className="inline-flex items-center p-2 text-[#7A5A14] hover:text-[#C9A24C]" title="Abrir">
+                          <ExternalLink className="h-4 w-4" />
+                        </Link>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4A4A52] hover:text-[#0F0F12]" title="Editar" onClick={() => openEdit(c)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Excluir"
+                            onClick={() => setToDelete(c)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
