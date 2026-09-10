@@ -243,6 +243,7 @@ export default function Condominios() {
         bairro: form.bairro.trim() || null,
         cidade: form.cidade.trim() || null,
         estado: form.estado.trim() || null,
+        fotos,
       };
 
       if (editing) {
