@@ -67,7 +67,7 @@ export default function Portais() {
     const [imRes, pRes] = await Promise.all([
       supabase
         .from('imoveis_proprios')
-        .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos')
+        .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem')
         .eq('ativo', true)
         .order('titulo'),
       (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),
