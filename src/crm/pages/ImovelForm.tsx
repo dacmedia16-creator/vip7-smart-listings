@@ -201,7 +201,6 @@ export default function ImovelForm() {
     if (area > 0) diferenciais.push(`${Math.round(area)} m²`);
 
     if (diferenciais.length > 0) {
-      const sep = diferenciais.length > 1 ? ', ' : ' ';
       const joined = diferenciais.length > 1
         ? diferenciais.slice(0, -1).join(', ') + ' e ' + diferenciais[diferenciais.length - 1]
         : diferenciais[0];
