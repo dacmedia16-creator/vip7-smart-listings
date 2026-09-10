@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { IMOVEL_STATUS, imovelStatusMeta } from '../lib/imoveis';
@@ -93,6 +94,9 @@ export default function Imoveis() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [confirmToggle, setConfirmToggle] = useState<any | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState<'ativar' | 'desativar' | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const savedRef = useRef(loadSavedState());
@@ -117,6 +121,8 @@ export default function Imoveis() {
   }, [q, filters, applied, pagina, open]);
   useEffect(() => { const t = setTimeout(() => setQDebounced(q), 300); return () => clearTimeout(t); }, [q]);
   useEffect(() => { setPagina(1); }, [qDebounced, applied]);
+  // Limpa a seleção ao mudar página, busca ou filtros
+  useEffect(() => { setSelected(new Set()); }, [pagina, qDebounced, applied]);
 
   // Carrega opções uma vez
   useEffect(() => {
@@ -258,6 +264,35 @@ export default function Imoveis() {
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     toast({ title: ativo ? 'Imóvel reativado' : 'Imóvel desativado' });
     setConfirmToggle(null);
+    setRefreshKey((k) => k + 1);
+  };
+
+  const toggleSelect = (id: string) => setSelected((s) => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const selectableRows = rows.filter((im) => isManager || (im.corretor_id && im.corretor_id === user?.id));
+  const allSelected = selectableRows.length > 0 && selectableRows.every((im) => selected.has(im.id));
+  const toggleSelectAll = () => setSelected((s) => {
+    if (allSelected) return new Set<string>();
+    const next = new Set(s);
+    for (const im of selectableRows) next.add(im.id);
+    return next;
+  });
+
+  const bulkToggle = async (ativar: boolean) => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setBulkLoading(true);
+    const updates = ativar ? { ativo: true, status: 'disponivel' as const } : { ativo: false, status: 'inativo' as const };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).in('id', ids);
+    setBulkLoading(false);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: ativar ? `${ids.length} imóvel(is) reativado(s)` : `${ids.length} imóvel(is) desativado(s)` });
+    setConfirmBulk(null);
+    setSelected(new Set());
     setRefreshKey((k) => k + 1);
   };
 
@@ -500,6 +535,28 @@ export default function Imoveis() {
         </Card>
       ) : (
         <>
+          {(isManager || isCorretor) && selectableRows.length > 0 && (
+            <Card className="p-3 mb-4 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm cursor-pointer" onClick={(e) => e.preventDefault()}>
+                <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
+                Selecionar todos ({selectableRows.length})
+              </label>
+              {selected.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 ml-auto">
+                  <Badge variant="secondary">{selected.size} selecionado(s)</Badge>
+                  <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => bulkToggle(true)}>
+                    <Eye className="h-4 w-4 mr-1" />Ativar
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => setConfirmBulk('desativar')}>
+                    <EyeOff className="h-4 w-4 mr-1" />Desativar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                    <X className="h-4 w-4 mr-1" />Limpar seleção
+                  </Button>
+                </div>
+              )}
+            </Card>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {rows.map((im) => {
               const meta = imovelStatusMeta(im.status);
@@ -510,8 +567,21 @@ export default function Imoveis() {
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-video bg-muted relative">
                       <CrmPropertyPhoto src={foto} alt={im.titulo} className="w-full h-full object-cover" />
+                      {(isManager || isMine) && (
+                        <div
+                          className="absolute top-2 left-2 z-10"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        >
+                          <Checkbox
+                            checked={selected.has(im.id)}
+                            onCheckedChange={() => toggleSelect(im.id)}
+                            className="h-5 w-5 bg-background/90 data-[state=checked]:bg-primary"
+                            aria-label="Selecionar imóvel"
+                          />
+                        </div>
+                      )}
                       <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
-                      {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
+                      {isMine && <Badge className="absolute top-9 left-2 bg-primary text-primary-foreground">Meu</Badge>}
                       {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
                       {(isManager || isMine) && (
                         <DropdownMenu>
@@ -591,6 +661,23 @@ export default function Imoveis() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => confirmToggle && toggleAtivo(confirmToggle)}>
               {confirmToggle && confirmToggle.ativo !== false && confirmToggle.status !== 'inativo' ? 'Desativar' : 'Reativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!confirmBulk} onOpenChange={(o) => { if (!o) setConfirmBulk(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar {selected.size} imóvel(is)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Os imóveis selecionados deixarão de aparecer no site principal. Você poderá reativá-los depois.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => bulkToggle(false)} disabled={bulkLoading}>
+              Desativar {selected.size}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
