@@ -237,7 +237,7 @@ export default function ImovelForm() {
       const { data, error } = await supabase.functions.invoke('gerar-descricao-imovel', { body: { imovel } });
       if (error) throw error;
       const d: any = data || {};
-      if (d.titulo) form.setValue('titulo_anuncio', d.titulo, { shouldDirty: true });
+      if (d.titulo) { autoTituloRef.current = ''; form.setValue('titulo_anuncio', d.titulo, { shouldDirty: true }); }
       if (d.descricao) form.setValue('descricao', d.descricao, { shouldDirty: true });
       if (d.meta_description) form.setValue('meta_description', d.meta_description, { shouldDirty: true });
       toast({ title: 'Conteúdo gerado com IA' });
