@@ -16,8 +16,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2, Upload, X, Star } from 'lucide-react';
+import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2, Upload, X, Star, Images } from 'lucide-react';
 import { toast } from 'sonner';
+import { CondominioFotosDialog } from '@/crm/components/CondominioFotosDialog';
 
 interface CondoRow {
   codigo: number;
@@ -75,6 +76,7 @@ export default function Condominios() {
   const [fotos, setFotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [capaUploading, setCapaUploading] = useState<number | null>(null);
+  const [galeria, setGaleria] = useState<CondoRow | null>(null);
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
