@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AutocompleteInput } from '@/crm/components/AutocompleteInput';
 import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
@@ -57,6 +57,27 @@ const EMPTY: Filters = {
   edificio: '', tipo_condominio: 'todos', imovel_ocupado: 'todos',
 };
 
+const STATE_KEY = 'crm-imoveis-state';
+
+type SavedState = { q: string; filters: Filters; applied: Filters; pagina: number; open: boolean };
+
+function loadSavedState(): SavedState | null {
+  try {
+    const raw = sessionStorage.getItem(STATE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    return {
+      q: s.q ?? '',
+      filters: { ...EMPTY, ...s.filters },
+      applied: { ...EMPTY, ...s.applied },
+      pagina: typeof s.pagina === 'number' && s.pagina > 0 ? s.pagina : 1,
+      open: !!s.open,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const splitList = (s: string) => s.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
 const numOrNull = (s: string) => { const t = (s ?? '').trim(); if (!t) return null; const n = Number(t.replace(',', '.')); return Number.isFinite(n) ? n : null; };
 
@@ -68,12 +89,15 @@ export default function Imoveis() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
-  const [q, setQ] = useState(searchParams.get('q') ?? '');
-  const [qDebounced, setQDebounced] = useState(q);
-  const [pagina, setPagina] = useState(1);
-  const [open, setOpen] = useState(false);
-  const [filters, setFilters] = useState<Filters>(EMPTY);
-  const [applied, setApplied] = useState<Filters>(EMPTY);
+  const savedRef = useRef(loadSavedState());
+  const saved = savedRef.current;
+  const qParam = searchParams.get('q');
+  const [q, setQ] = useState(qParam ?? saved?.q ?? '');
+  const [qDebounced, setQDebounced] = useState(qParam ?? saved?.q ?? '');
+  const [pagina, setPagina] = useState(saved?.pagina ?? 1);
+  const [open, setOpen] = useState(saved?.open ?? false);
+  const [filters, setFilters] = useState<Filters>(saved?.filters ?? EMPTY);
+  const [applied, setApplied] = useState<Filters>(saved?.applied ?? EMPTY);
 
   // Options carregados dinamicamente
   const [opts, setOpts] = useState<{
@@ -81,7 +105,10 @@ export default function Imoveis() {
     tiposCond: string[]; etiquetas: string[];
   }>({ tipos: [], regioes: [], subRegioes: [], tiposCond: [], etiquetas: [] });
 
-  useEffect(() => { setQ(searchParams.get('q') ?? ''); }, [searchParams]);
+  useEffect(() => { const p = searchParams.get('q'); if (p != null) setQ(p); }, [searchParams]);
+  useEffect(() => {
+    try { sessionStorage.setItem(STATE_KEY, JSON.stringify({ q, filters, applied, pagina, open })); } catch { /* ignore */ }
+  }, [q, filters, applied, pagina, open]);
   useEffect(() => { const t = setTimeout(() => setQDebounced(q), 300); return () => clearTimeout(t); }, [q]);
   useEffect(() => { setPagina(1); }, [qDebounced, applied]);
 
