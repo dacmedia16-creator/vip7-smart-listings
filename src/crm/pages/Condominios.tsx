@@ -231,6 +231,38 @@ export default function Condominios() {
     setFotos((f) => [url, ...f.filter((u) => u !== url)]);
   };
 
+  const uploadCapa = async (c: CondoRow, file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione um arquivo de imagem');
+      return;
+    }
+    setCapaUploading(c.codigo);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `condominios/${c.codigo}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { contentType: file.type || `image/${ext}`, upsert: false });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const url = data.publicUrl;
+      const novas = [url, ...(c.fotos ?? []).filter((u) => u !== url)];
+      const { error } = await supabase
+        .from('condominios_cache')
+        .update({ fotos: novas })
+        .eq('codigo', c.codigo);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['condominios-cache'] });
+      toast.success('Foto de capa atualizada');
+    } catch (e) {
+      console.error('[condominio capa]', e);
+      toast.error(`Falha ao enviar a capa: ${(e as Error).message}`);
+    } finally {
+      setCapaUploading(null);
+    }
+  };
+
   const salvar = useMutation({
     mutationFn: async () => {
       const nome = form.nome.trim();
