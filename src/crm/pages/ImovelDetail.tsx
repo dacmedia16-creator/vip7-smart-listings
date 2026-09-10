@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2, Building2, MapPin, BedDouble, Bath, Car, Ruler, User as UserIcon, Copy, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Building2, MapPin, BedDouble, Bath, Car, Ruler, User as UserIcon, Copy, ExternalLink, EyeOff, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,15 @@ export default function ImovelDetail() {
   const canEdit = imovel && (isManager || (isCorretor && imovel.corretor_id === user?.id));
   const canDelete = imovel && (isManager || (isCorretor && imovel.corretor_id === user?.id));
 
+  const handleToggleAtivo = async () => {
+    const ativo = !(imovel.ativo !== false && imovel.status !== 'inativo');
+    const updates = ativo ? { ativo: true, status: 'disponivel' as const } : { ativo: false, status: 'inativo' as const };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', id!);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: ativo ? 'Imóvel reativado' : 'Imóvel desativado' });
+    setImovel((prev: any) => ({ ...prev, ...updates }));
+  };
+
   const handleDelete = async () => {
     const { error } = await supabase.from('imoveis_proprios').delete().eq('id', id!);
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -68,6 +77,33 @@ export default function ImovelDetail() {
         <div className="flex gap-2">
           {canEdit && (
             <Button asChild variant="outline"><Link to={`/crm/imoveis/${id}/editar`}><Edit className="h-4 w-4 mr-1" />Editar</Link></Button>
+          )}
+          {canEdit && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                {imovel.ativo !== false && imovel.status !== 'inativo' ? (
+                  <Button variant="outline"><EyeOff className="h-4 w-4 mr-1" />Desativar</Button>
+                ) : (
+                  <Button variant="outline"><Eye className="h-4 w-4 mr-1" />Reativar</Button>
+                )}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{imovel.ativo !== false && imovel.status !== 'inativo' ? 'Desativar imóvel?' : 'Reativar imóvel?'}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {imovel.ativo !== false && imovel.status !== 'inativo'
+                      ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
+                      : 'Reativar este imóvel? Ele voltará a aparecer no site como disponível.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleToggleAtivo}>
+                    {imovel.ativo !== false && imovel.status !== 'inativo' ? 'Desativar' : 'Reativar'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {canDelete && (
             <AlertDialog>

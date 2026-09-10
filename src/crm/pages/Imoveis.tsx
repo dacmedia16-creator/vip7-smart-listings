@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AutocompleteInput } from '@/crm/components/AutocompleteInput';
-import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, MoreVertical, EyeOff, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { IMOVEL_STATUS, imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
 import { useAuth } from '../hooks/useAuth';
@@ -88,6 +91,9 @@ export default function Imoveis() {
   const [rows, setRows] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [confirmToggle, setConfirmToggle] = useState<any | null>(null);
+  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const savedRef = useRef(loadSavedState());
   const saved = savedRef.current;
@@ -243,7 +249,17 @@ export default function Imoveis() {
       setTotal(count ?? 0);
       setLoading(false);
     })();
-  }, [pagina, qDebounced, applied]);
+  }, [pagina, qDebounced, applied, refreshKey]);
+
+  const toggleAtivo = async (im: any) => {
+    const ativo = !(im.ativo !== false && im.status !== 'inativo');
+    const updates = ativo ? { ativo: true, status: 'disponivel' as const } : { ativo: false, status: 'inativo' as const };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', im.id);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: ativo ? 'Imóvel reativado' : 'Imóvel desativado' });
+    setConfirmToggle(null);
+    setRefreshKey((k) => k + 1);
+  };
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const update = (k: keyof Filters, v: string) => setFilters((s) => {
@@ -497,6 +513,30 @@ export default function Imoveis() {
                       <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
                       {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
                       {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
+                      {(isManager || isMine) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-background/90 border flex items-center justify-center hover:bg-background"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                            <DropdownMenuItem
+                              onSelect={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmToggle(im); }}
+                            >
+                              {im.ativo !== false && im.status !== 'inativo' ? (
+                                <><EyeOff className="h-4 w-4 mr-2" />Desativar imóvel</>
+                              ) : (
+                                <><Eye className="h-4 w-4 mr-2" />Reativar imóvel</>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                     <div className="p-4">
                       <p className="text-xs text-muted-foreground mb-1">
@@ -534,6 +574,27 @@ export default function Imoveis() {
           </div>
         </>
       )}
+
+      <AlertDialog open={!!confirmToggle} onOpenChange={(o) => { if (!o) setConfirmToggle(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmToggle && confirmToggle.ativo !== false && confirmToggle.status !== 'inativo' ? 'Desativar imóvel?' : 'Reativar imóvel?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmToggle && confirmToggle.ativo !== false && confirmToggle.status !== 'inativo'
+                ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
+                : 'Reativar este imóvel? Ele voltará a aparecer no site como disponível.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmToggle && toggleAtivo(confirmToggle)}>
+              {confirmToggle && confirmToggle.ativo !== false && confirmToggle.status !== 'inativo' ? 'Desativar' : 'Reativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </CrmLayout>
   );
 }
