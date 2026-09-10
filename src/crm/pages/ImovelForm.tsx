@@ -311,6 +311,12 @@ export default function ImovelForm() {
         reset.preco = data.preco; reset.destaque = !!data.destaque; reset.ativo = !!data.ativo;
         reset.venc_autorizacao_venda = data.venc_autorizacao_venda ?? '';
         form.reset(reset);
+        // Se o título salvo coincide com o que a regra geraria, trata como automático
+        {
+          const atual = String(data.titulo_anuncio ?? '').trim();
+          const gerado = gerarTituloAnuncio({ ...(data as any), caracteristicas: data.caracteristicas ?? [] });
+          autoTituloRef.current = atual && atual === gerado ? atual : '';
+        }
         setFotos(data.fotos ?? []);
         setCaracteristicas(data.caracteristicas ?? []);
         setLastSavedAt(new Date(data.updated_at ?? Date.now()));
