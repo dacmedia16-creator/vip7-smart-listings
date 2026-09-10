@@ -586,6 +586,14 @@ export default function Condominios() {
                         <Link to={`/crm/condominios/${c.codigo}`} className="inline-flex items-center p-2 text-[#7A5A14] hover:text-[#C9A24C]" title="Abrir">
                           <ExternalLink className="h-4 w-4" />
                         </Link>
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-8 w-8 text-[#4A4A52] hover:text-[#0F0F12]"
+                          title="Fotos"
+                          onClick={() => setGaleria(c)}
+                        >
+                          <Images className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4A4A52] hover:text-[#0F0F12]" title="Editar" onClick={() => openEdit(c)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
