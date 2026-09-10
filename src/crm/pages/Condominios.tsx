@@ -474,6 +474,12 @@ export default function Condominios() {
           </DialogContent>
         </Dialog>
 
+        <CondominioFotosDialog
+          condo={galeria ? (condos.find((c) => c.codigo === galeria.codigo) ?? galeria) : null}
+          onOpenChange={(o) => { if (!o) setGaleria(null); }}
+          canDelete={isAdmin}
+        />
+
         <AlertDialog open={!!toDelete} onOpenChange={(o) => { if (!o) setToDelete(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
