@@ -574,6 +574,27 @@ export default function Imoveis() {
           </div>
         </>
       )}
+
+      <AlertDialog open={!!confirmToggle} onOpenChange={(o) => { if (!o) setConfirmToggle(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmToggle && confirmToggle.ativo !== false && confirmToggle.status !== 'inativo' ? 'Desativar imóvel?' : 'Reativar imóvel?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmToggle && confirmToggle.ativo !== false && confirmToggle.status !== 'inativo'
+                ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
+                : 'Reativar este imóvel? Ele voltará a aparecer no site como disponível.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmToggle && toggleAtivo(confirmToggle)}>
+              {confirmToggle && confirmToggle.ativo !== false && confirmToggle.status !== 'inativo' ? 'Desativar' : 'Reativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </CrmLayout>
   );
 }
