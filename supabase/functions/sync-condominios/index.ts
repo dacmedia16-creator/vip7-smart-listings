@@ -222,6 +222,14 @@ serve(async (req) => {
       } else {
         console.log(`[sync-condominios] Addresses filled: ${filled}`);
       }
+
+      // Preenche fotos dos condomínios sem foto a partir das fotos de área comum dos imóveis
+      const { data: photosFilled, error: photosError } = await supabase.rpc('preencher_fotos_condominios');
+      if (photosError) {
+        console.error('[sync-condominios] Error filling photos:', photosError);
+      } else {
+        console.log(`[sync-condominios] Photos filled: ${photosFilled}`);
+      }
     }
 
     const duration = Date.now() - startTime;
