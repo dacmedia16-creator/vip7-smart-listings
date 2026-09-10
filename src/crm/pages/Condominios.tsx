@@ -74,6 +74,7 @@ export default function Condominios() {
   const [toDelete, setToDelete] = useState<CondoRow | null>(null);
   const [fotos, setFotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [capaUploading, setCapaUploading] = useState<number | null>(null);
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
