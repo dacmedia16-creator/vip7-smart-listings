@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { IMOVEL_STATUS, imovelStatusMeta } from '../lib/imoveis';
@@ -93,6 +94,9 @@ export default function Imoveis() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [confirmToggle, setConfirmToggle] = useState<any | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState<'ativar' | 'desativar' | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const savedRef = useRef(loadSavedState());
