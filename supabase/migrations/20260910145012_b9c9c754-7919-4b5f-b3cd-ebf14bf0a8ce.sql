@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.preencher_endereco_condominios() FROM authenticated;
