@@ -499,7 +499,9 @@ export default function Imoveis() {
                       {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
                     </div>
                     <div className="p-4">
-                      <p className="text-xs text-muted-foreground mb-1">{im.codigo_interno || '—'} · {im.tipo}</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {[im.codigo_interno, im.codigo_imoview].filter(Boolean).join(' · ') || '—'} · {im.tipo}
+                      </p>
                       <h3 className="font-semibold line-clamp-1">{im.titulo}</h3>
                       {im.descricao && (
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{im.descricao}</p>
