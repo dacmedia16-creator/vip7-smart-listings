@@ -377,7 +377,12 @@ export default function ImovelForm() {
   const runAutoSave = async () => {
     if (!user) return;
     const values = form.getValues();
-    const payload: any = { ...values, fotos, caracteristicas };
+    // Gera título do anúncio automaticamente se vazio
+    if (!values.titulo_anuncio) {
+      const auto = gerarTituloAnuncio({ ...values, caracteristicas });
+      if (auto) form.setValue('titulo_anuncio', auto, { shouldDirty: true });
+    }
+    const payload: any = { ...form.getValues(), fotos, caracteristicas };
     Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
     if (isManager) payload.corretor_id = corretorId || null;
     else if (isCorretor) payload.corretor_id = loadedRecord?.corretor_id ?? user.id;
