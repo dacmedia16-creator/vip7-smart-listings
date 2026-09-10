@@ -1,0 +1,1 @@
+ALTER TABLE public.condominios_cache ADD COLUMN IF NOT EXISTS fotos text[] NOT NULL DEFAULT '{}';
