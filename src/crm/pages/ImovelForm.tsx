@@ -345,14 +345,18 @@ export default function ImovelForm() {
         }
         // INSERT em rascunho (inativo)
         const draftPayload = { ...payload, status: 'inativo', ativo: false };
-        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(draftPayload).select('id').single();
+        delete draftPayload.codigo_interno; // gerado automaticamente pelo banco
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(draftPayload).select('id, codigo_interno').single();
         if (error) throw error;
         const newId = (ins as { id: string }).id;
+        const novoCodigo = (ins as { codigo_interno: string | null }).codigo_interno;
+        if (novoCodigo) form.setValue('codigo_interno', novoCodigo as any);
         setCurrentId(newId);
-        setLoadedRecord({ ...draftPayload, id: newId });
+        setLoadedRecord({ ...draftPayload, id: newId, codigo_interno: novoCodigo });
         if (draftKey) localStorage.removeItem(draftKey);
         // muda URL silenciosamente
         window.history.replaceState(null, '', `/crm/imoveis/${newId}`);
+
       }
       setLastSavedAt(new Date());
       setAutoSaveStatus('saved');
