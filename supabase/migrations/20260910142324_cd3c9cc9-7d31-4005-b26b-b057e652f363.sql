@@ -1,0 +1,2 @@
+CREATE POLICY "CRM users can insert condominios" ON public.condominios_cache FOR INSERT TO authenticated WITH CHECK (public.is_crm_user(auth.uid()));
+CREATE POLICY "CRM users can update condominios" ON public.condominios_cache FOR UPDATE TO authenticated USING (public.is_crm_user(auth.uid())) WITH CHECK (public.is_crm_user(auth.uid()));
