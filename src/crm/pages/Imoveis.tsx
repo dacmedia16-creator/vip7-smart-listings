@@ -267,6 +267,35 @@ export default function Imoveis() {
     setRefreshKey((k) => k + 1);
   };
 
+  const toggleSelect = (id: string) => setSelected((s) => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const selectableRows = rows.filter((im) => isManager || (im.corretor_id && im.corretor_id === user?.id));
+  const allSelected = selectableRows.length > 0 && selectableRows.every((im) => selected.has(im.id));
+  const toggleSelectAll = () => setSelected((s) => {
+    if (allSelected) return new Set<string>();
+    const next = new Set(s);
+    for (const im of selectableRows) next.add(im.id);
+    return next;
+  });
+
+  const bulkToggle = async (ativar: boolean) => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setBulkLoading(true);
+    const updates = ativar ? { ativo: true, status: 'disponivel' as const } : { ativo: false, status: 'inativo' as const };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).in('id', ids);
+    setBulkLoading(false);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: ativar ? `${ids.length} imóvel(is) reativado(s)` : `${ids.length} imóvel(is) desativado(s)` });
+    setConfirmBulk(null);
+    setSelected(new Set());
+    setRefreshKey((k) => k + 1);
+  };
+
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const update = (k: keyof Filters, v: string) => setFilters((s) => {
     const next = { ...s, [k]: v };
