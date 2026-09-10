@@ -192,31 +192,36 @@ serve(async (req) => {
 
     // 3. Upsert all condominios to database
     if (allCondominios.length > 0) {
-      // Clear existing cache and insert new data
-      const { error: deleteError } = await supabase
-        .from('condominios_cache')
-        .delete()
-        .neq('codigo', 0); // Delete all rows
+      // Upsert por código: preserva condomínios cadastrados manualmente,
+      // fotos e endereços já salvos.
+      const UPSERT_BATCH_SIZE = 100;
+      for (let i = 0; i < allCondominios.length; i += UPSERT_BATCH_SIZE) {
+        const batch = allCondominios.slice(i, i + UPSERT_BATCH_SIZE).map((c) => ({
+          codigo: c.codigo,
+          nome: c.nome,
+          cidade: c.cidade,
+          cidade_codigo: c.cidade_codigo,
+          updated_at: new Date().toISOString(),
+        }));
 
-      if (deleteError) {
-        console.error('[sync-condominios] Error clearing cache:', deleteError);
-      }
-
-      // Insert in batches of 100
-      const INSERT_BATCH_SIZE = 100;
-      for (let i = 0; i < allCondominios.length; i += INSERT_BATCH_SIZE) {
-        const batch = allCondominios.slice(i, i + INSERT_BATCH_SIZE);
-        
-        const { error: insertError } = await supabase
+        const { error: upsertError } = await supabase
           .from('condominios_cache')
-          .insert(batch);
+          .upsert(batch, { onConflict: 'codigo' });
 
-        if (insertError) {
-          console.error(`[sync-condominios] Error inserting batch ${i / INSERT_BATCH_SIZE + 1}:`, insertError);
+        if (upsertError) {
+          console.error(`[sync-condominios] Error upserting batch ${i / UPSERT_BATCH_SIZE + 1}:`, upsertError);
         }
       }
 
-      console.log(`[sync-condominios] Inserted ${allCondominios.length} condominios to cache`);
+      console.log(`[sync-condominios] Upserted ${allCondominios.length} condominios to cache`);
+
+      // Preenche endereço dos condomínios sem endereço a partir dos imóveis vinculados
+      const { data: filled, error: fillError } = await supabase.rpc('preencher_endereco_condominios');
+      if (fillError) {
+        console.error('[sync-condominios] Error filling addresses:', fillError);
+      } else {
+        console.log(`[sync-condominios] Addresses filled: ${filled}`);
+      }
     }
 
     const duration = Date.now() - startTime;
