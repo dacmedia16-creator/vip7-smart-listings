@@ -35,10 +35,9 @@ function waLink(tel: string) {
   return `https://wa.me/${withDDI}`;
 }
 
-export function ProprietariosSection({ imovelId, onPendingChange }: Props) {
+export function ProprietariosSection({ imovelId, pending = [], onPendingChange }: Props) {
   const { toast } = useToast();
   const [existing, setExisting] = useState<ExistingVinculo[]>([]);
-  const [pending, setPending] = useState<PendingVinculo[]>([]);
   const [loading, setLoading] = useState(!!imovelId);
   const [open, setOpen] = useState(false);
 
@@ -55,7 +54,6 @@ export function ProprietariosSection({ imovelId, onPendingChange }: Props) {
 
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [imovelId]);
 
-  useEffect(() => { onPendingChange?.(pending); /* eslint-disable-next-line */ }, [pending]);
 
   const handleAddExisting = async (cliente: Cliente, percentual: number | null) => {
     if (imovelId) {
