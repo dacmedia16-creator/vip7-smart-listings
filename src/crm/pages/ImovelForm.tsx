@@ -125,6 +125,8 @@ export default function ImovelForm() {
   const hasOfferedRestoreRef = useRef(false);
   const [cepLoading, setCepLoading] = useState(false);
   const lastCepRef = useRef<string>('');
+  // Último título gerado automaticamente (permite atualizar enquanto não for editado à mão)
+  const autoTituloRef = useRef<string>('');
 
   const lookupCep = async (rawCep: string) => {
     const digits = rawCep.replace(/\D/g, '');
