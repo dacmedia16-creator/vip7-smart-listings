@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/crm/components/MoneyInput';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -757,15 +758,15 @@ export default function ImovelForm() {
                 <TabsContent value="valores" className="border rounded-md bg-white px-4 py-4">
                   <div className="grid md:grid-cols-3 gap-4 pt-2">
                     <FormField control={form.control} name="preco" render={({ field }) => (
-                      <FormItem><FormLabel>Venda (R$) *</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Venda (R$) *</FormLabel><FormControl><MoneyInput value={field.value ?? null} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
                     )} />
-                    {T('valor_anterior', 'Valor anterior', 'number')}
-                    {T('condominio', 'Condomínio (R$)', 'number')}
-                    {T('iptu_mensal', 'IPTU (mensal)', 'number')}
-                    {T('iptu_anual', 'IPTU (anual)', 'number')}
+                    {Money('valor_anterior', 'Valor anterior')}
+                    {Money('condominio', 'Condomínio (R$)')}
+                    {Money('iptu_mensal', 'IPTU (mensal)')}
+                    {Money('iptu_anual', 'IPTU (anual)')}
                     {T('rentabilidade_pct', 'Rentabilidade %', 'number')}
                     {T('comissao_venda_pct', 'Comissão venda %', 'number')}
-                    {T('valor_avaliacao', 'Valor avaliação', 'number')}
+                    {Money('valor_avaliacao', 'Valor avaliação')}
                     <FormField control={form.control} name="valor_sob_consulta" render={({ field }) => (
                       <div className="flex items-center justify-between gap-3 rounded-md border border-[#E8E4D9] bg-white px-3 py-2">
                         <Label className="text-sm">Valor sob consulta</Label>
