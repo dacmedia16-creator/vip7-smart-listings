@@ -665,6 +665,23 @@ export default function Imoveis() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!confirmBulk} onOpenChange={(o) => { if (!o) setConfirmBulk(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar {selected.size} imóvel(is)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Os imóveis selecionados deixarão de aparecer no site principal. Você poderá reativá-los depois.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => bulkToggle(false)} disabled={bulkLoading}>
+              Desativar {selected.size}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </CrmLayout>
   );
 }
