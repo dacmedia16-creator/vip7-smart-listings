@@ -370,6 +370,61 @@ export default function Portais() {
               <option value="nao_publicados">Não publicados</option>
               <option value="com_erro">Com erro de validação</option>
             </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroFinalidade}
+              onChange={(e) => setFiltroFinalidade(e.target.value)}
+            >
+              <option value="todos">Todas as finalidades</option>
+              <option value="venda">Venda</option>
+              <option value="aluguel">Aluguel</option>
+              <option value="venda_aluguel">Venda e aluguel</option>
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+            >
+              <option value="todos">Todos os tipos</option>
+              {tiposDisponiveis.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroCidade}
+              onChange={(e) => setFiltroCidade(e.target.value)}
+            >
+              <option value="todos">Todas as cidades</option>
+              {cidadesDisponiveis.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={periodo}
+              onChange={(e) => setPeriodo(e.target.value as any)}
+            >
+              <option value="todos">Qualquer data</option>
+              <option value="7">Últimos 7 dias</option>
+              <option value="30">Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={ordenacao}
+              onChange={(e) => setOrdenacao(e.target.value as any)}
+            >
+              <option value="recentes">Mais recentes</option>
+              <option value="antigos">Mais antigos</option>
+              <option value="maior_valor">Maior valor</option>
+              <option value="menor_valor">Menor valor</option>
+              <option value="titulo">Título A–Z</option>
+            </select>
+            <div className="flex items-center gap-1">
+              <MoneyInput value={precoMin} onChange={setPrecoMin} placeholder="De R$" className="h-9 w-28" />
+              <span className="text-xs text-muted-foreground">até</span>
+              <MoneyInput value={precoMax} onChange={setPrecoMax} placeholder="Até R$" className="h-9 w-28" />
+            </div>
+            {filtrosAtivos && (
+              <Button size="sm" variant="ghost" onClick={limparFiltros}>Limpar filtros</Button>
+            )}
             <span className="text-xs text-muted-foreground ml-auto">{filtrados.length} imóveis</span>
           </div>
         </Card>
