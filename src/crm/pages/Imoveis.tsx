@@ -535,6 +535,28 @@ export default function Imoveis() {
         </Card>
       ) : (
         <>
+          {(isManager || isCorretor) && selectableRows.length > 0 && (
+            <Card className="p-3 mb-4 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm cursor-pointer" onClick={(e) => e.preventDefault()}>
+                <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
+                Selecionar todos ({selectableRows.length})
+              </label>
+              {selected.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 ml-auto">
+                  <Badge variant="secondary">{selected.size} selecionado(s)</Badge>
+                  <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => bulkToggle(true)}>
+                    <Eye className="h-4 w-4 mr-1" />Ativar
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => setConfirmBulk('desativar')}>
+                    <EyeOff className="h-4 w-4 mr-1" />Desativar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                    <X className="h-4 w-4 mr-1" />Limpar seleção
+                  </Button>
+                </div>
+              )}
+            </Card>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {rows.map((im) => {
               const meta = imovelStatusMeta(im.status);
