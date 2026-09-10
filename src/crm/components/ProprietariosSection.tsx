@@ -70,7 +70,7 @@ export function ProprietariosSection({ imovelId, pending = [], onPendingChange }
         toast({ title: 'Já adicionado', variant: 'destructive' });
         return;
       }
-      setPending((p) => [...p, { cliente, percentual }]);
+      onPendingChange?.([...pending, { cliente, percentual }]);
       setOpen(false);
     }
   };
@@ -80,7 +80,8 @@ export function ProprietariosSection({ imovelId, pending = [], onPendingChange }
     try { await removeVinculo(id); refresh(); } catch (e) { toast({ title: 'Erro', description: (e as Error).message, variant: 'destructive' }); }
   };
 
-  const handleRemovePending = (clienteId: string) => setPending((p) => p.filter((x) => x.cliente.id !== clienteId));
+  const handleRemovePending = (clienteId: string) =>
+    onPendingChange?.(pending.filter((x) => x.cliente.id !== clienteId));
 
   const rows = imovelId
     ? existing.map((v) => v.clientes && {
@@ -93,7 +94,12 @@ export function ProprietariosSection({ imovelId, pending = [], onPendingChange }
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold flex items-center gap-2"><Users className="h-4 w-4" /> Proprietários</h2>
+        <h2 className="font-semibold flex items-center gap-2">
+          <Users className="h-4 w-4" /> Proprietários
+          {!imovelId && pending.length > 0 && (
+            <Badge variant="outline">{pending.length} aguardando salvar</Badge>
+          )}
+        </h2>
         <Button type="button" size="sm" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4 mr-1" /> Adicionar proprietário
         </Button>
