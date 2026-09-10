@@ -121,6 +121,8 @@ export default function Imoveis() {
   }, [q, filters, applied, pagina, open]);
   useEffect(() => { const t = setTimeout(() => setQDebounced(q), 300); return () => clearTimeout(t); }, [q]);
   useEffect(() => { setPagina(1); }, [qDebounced, applied]);
+  // Limpa a seleção ao mudar página, busca ou filtros
+  useEffect(() => { setSelected(new Set()); }, [pagina, qDebounced, applied]);
 
   // Carrega opções uma vez
   useEffect(() => {
