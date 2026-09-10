@@ -272,6 +272,7 @@ export default function Condominios() {
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
+      setFotos([]);
       qc.invalidateQueries({ queryKey: ['condominios-cache'] });
     },
     onError: (e: Error) => toast.error(`Falha ao salvar: ${e.message}`),
@@ -385,6 +386,48 @@ export default function Condominios() {
               <div className="space-y-2">
                 <Label htmlFor="cond-cidade">Cidade</Label>
                 <Input id="cond-cidade" value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} placeholder="Ex.: Sorocaba" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Fotos</Label>
+                  <label className="inline-flex items-center gap-2 text-sm text-[#7A5A14] cursor-pointer hover:text-[#C9A24C]">
+                    <Upload className="h-4 w-4" />
+                    {uploading ? 'Enviando…' : 'Adicionar fotos'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => { handleUpload(e.target.files); e.target.value = ''; }}
+                    />
+                  </label>
+                </div>
+                {fotos.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma foto. A primeira foto será a capa.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {fotos.map((url, i) => (
+                      <div key={url} className="relative group rounded-md overflow-hidden border border-[#E8E4D9]">
+                        <img src={url} alt={`Foto ${i + 1} do condomínio`} loading="lazy" className="h-24 w-full object-cover" />
+                        {i === 0 && (
+                          <span className="absolute bottom-1 left-1 rounded bg-[#C9A24C] px-1.5 py-0.5 text-[10px] font-medium text-[#0F0F12]">Capa</span>
+                        )}
+                        <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {i !== 0 && (
+                            <button type="button" title="Definir como capa" onClick={() => definirCapa(url)} className="rounded bg-black/60 p-1 text-white hover:bg-black/80">
+                              <Star className="h-3 w-3" />
+                            </button>
+                          )}
+                          <button type="button" title="Remover" onClick={() => removerFoto(url)} className="rounded bg-black/60 p-1 text-white hover:bg-destructive">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>
