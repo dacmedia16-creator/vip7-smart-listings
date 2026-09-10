@@ -435,6 +435,12 @@ export default function ImovelForm() {
     setSaving(true);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     try {
+      // Gera título do anúncio automaticamente se vazio
+      const vals = values as Record<string, any>;
+      if (!vals.titulo_anuncio) {
+        const auto = gerarTituloAnuncio({ ...vals, caracteristicas });
+        if (auto) values.titulo_anuncio = auto;
+      }
       const payload: any = { ...values, fotos, caracteristicas };
       Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
 
