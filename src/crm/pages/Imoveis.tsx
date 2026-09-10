@@ -180,8 +180,16 @@ export default function Imoveis() {
       let query = supabase
         .from('imoveis_proprios')
         .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
         .range(from, to);
+
+      // Ordenação server-side (paginação é server-side)
+      switch (ordenacao) {
+        case 'antigos': query = query.order('created_at', { ascending: true }); break;
+        case 'menor_valor': query = query.order('preco', { ascending: true }); break;
+        case 'maior_valor': query = query.order('preco', { ascending: false }); break;
+        case 'titulo': query = query.order('titulo', { ascending: true }); break;
+        default: query = query.order('created_at', { ascending: false }); break;
+      }
 
       const f = applied;
 
