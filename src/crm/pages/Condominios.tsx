@@ -332,7 +332,7 @@ export default function Condominios() {
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[88vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editing ? 'Editar condomínio' : 'Novo condomínio'}</DialogTitle>
             </DialogHeader>
