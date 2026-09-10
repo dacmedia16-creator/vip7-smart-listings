@@ -249,7 +249,17 @@ export default function Imoveis() {
       setTotal(count ?? 0);
       setLoading(false);
     })();
-  }, [pagina, qDebounced, applied]);
+  }, [pagina, qDebounced, applied, refreshKey]);
+
+  const toggleAtivo = async (im: any) => {
+    const ativo = !(im.ativo !== false && im.status !== 'inativo');
+    const updates = ativo ? { ativo: true, status: 'disponivel' as const } : { ativo: false, status: 'inativo' as const };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', im.id);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: ativo ? 'Imóvel reativado' : 'Imóvel desativado' });
+    setConfirmToggle(null);
+    setRefreshKey((k) => k + 1);
+  };
 
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const update = (k: keyof Filters, v: string) => setFilters((s) => {
