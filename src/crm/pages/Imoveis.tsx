@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AutocompleteInput } from '@/crm/components/AutocompleteInput';
-import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, MoreVertical, EyeOff, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CrmLayout } from '../components/CrmLayout';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { IMOVEL_STATUS, imovelStatusMeta } from '../lib/imoveis';
 import { fmtMoney } from '../lib/leads';
 import { useAuth } from '../hooks/useAuth';
