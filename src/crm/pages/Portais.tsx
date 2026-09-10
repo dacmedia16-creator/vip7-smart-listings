@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PORTAIS, type PortalId, TIPOS_ANUNCIO, type TipoAnuncio, validarImovelParaPortais } from '../lib/portais';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
+import { MoneyInput } from '../components/MoneyInput';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -28,6 +29,8 @@ interface ImovelLite {
   cep: string | null;
   estado: string | null;
   fotos: string[] | null;
+  created_at: string | null;
+  data_atualizacao_origem: string | null;
 }
 
 interface PortalRow {
@@ -47,6 +50,13 @@ export default function Portais() {
   const [filtro, setFiltro] = useState('');
   const [filtroPortal, setFiltroPortal] = useState<PortalId | 'todos'>('todos');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'publicados' | 'nao_publicados' | 'com_erro'>('todos');
+  const [precoMin, setPrecoMin] = useState<number | null>(null);
+  const [precoMax, setPrecoMax] = useState<number | null>(null);
+  const [periodo, setPeriodo] = useState<'todos' | '7' | '30' | '90'>('todos');
+  const [ordenacao, setOrdenacao] = useState<'recentes' | 'antigos' | 'maior_valor' | 'menor_valor' | 'titulo'>('recentes');
+  const [filtroFinalidade, setFiltroFinalidade] = useState<string>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [filtroCidade, setFiltroCidade] = useState<string>('todos');
   const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
 
@@ -57,7 +67,7 @@ export default function Portais() {
     const [imRes, pRes] = await Promise.all([
       supabase
         .from('imoveis_proprios')
-        .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos')
+        .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem')
         .eq('ativo', true)
         .order('titulo'),
       (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),
@@ -144,10 +154,47 @@ export default function Portais() {
     toast({ title: 'URL copiada', description: url });
   }
 
+  const cidadesDisponiveis = useMemo(
+    () => Array.from(new Set(imoveis.map((i) => i.cidade).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b)),
+    [imoveis],
+  );
+  const tiposDisponiveis = useMemo(
+    () => Array.from(new Set(imoveis.map((i) => i.tipo).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [imoveis],
+  );
+
+  const filtrosAtivos =
+    !!filtro || filtroPortal !== 'todos' || filtroStatus !== 'todos' || precoMin !== null || precoMax !== null ||
+    periodo !== 'todos' || ordenacao !== 'recentes' || filtroFinalidade !== 'todos' || filtroTipo !== 'todos' ||
+    filtroCidade !== 'todos';
+
+  function limparFiltros() {
+    setFiltro('');
+    setFiltroPortal('todos');
+    setFiltroStatus('todos');
+    setPrecoMin(null);
+    setPrecoMax(null);
+    setPeriodo('todos');
+    setOrdenacao('recentes');
+    setFiltroFinalidade('todos');
+    setFiltroTipo('todos');
+    setFiltroCidade('todos');
+  }
+
   const filtrados = useMemo(() => {
     const f = filtro.toLowerCase();
-    return imoveis.filter((im) => {
+    const limiteData = periodo === 'todos' ? null : Date.now() - Number(periodo) * 24 * 60 * 60 * 1000;
+    const lista = imoveis.filter((im) => {
       if (f && !`${im.titulo} ${im.cidade ?? ''} ${im.bairro ?? ''}`.toLowerCase().includes(f)) return false;
+      if (precoMin !== null && Number(im.preco ?? 0) < precoMin) return false;
+      if (precoMax !== null && Number(im.preco ?? 0) > precoMax) return false;
+      if (filtroFinalidade !== 'todos' && im.finalidade !== filtroFinalidade) return false;
+      if (filtroTipo !== 'todos' && im.tipo !== filtroTipo) return false;
+      if (filtroCidade !== 'todos' && im.cidade !== filtroCidade) return false;
+      if (limiteData !== null) {
+        const t = im.created_at ? new Date(im.created_at).getTime() : 0;
+        if (!t || t < limiteData) return false;
+      }
       const erros = validarImovelParaPortais(im);
       if (filtroStatus === 'com_erro' && erros.length === 0) return false;
       if (filtroPortal !== 'todos') {
@@ -161,7 +208,18 @@ export default function Portais() {
       }
       return true;
     });
-  }, [imoveis, portais, filtro, filtroPortal, filtroStatus]);
+
+    const ts = (im: ImovelLite) => (im.created_at ? new Date(im.created_at).getTime() : 0);
+    return [...lista].sort((a, b) => {
+      switch (ordenacao) {
+        case 'recentes': return ts(b) - ts(a);
+        case 'antigos': return ts(a) - ts(b);
+        case 'maior_valor': return Number(b.preco ?? 0) - Number(a.preco ?? 0);
+        case 'menor_valor': return Number(a.preco ?? 0) - Number(b.preco ?? 0);
+        default: return (a.titulo ?? '').localeCompare(b.titulo ?? '');
+      }
+    });
+  }, [imoveis, portais, filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
 
   const contagens = useMemo(() => {
     const m: Record<PortalId, number> = { zap_vivareal: 0, olx: 0, imovelweb: 0, chavesnamao: 0 };
@@ -312,6 +370,61 @@ export default function Portais() {
               <option value="nao_publicados">Não publicados</option>
               <option value="com_erro">Com erro de validação</option>
             </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroFinalidade}
+              onChange={(e) => setFiltroFinalidade(e.target.value)}
+            >
+              <option value="todos">Todas as finalidades</option>
+              <option value="venda">Venda</option>
+              <option value="aluguel">Aluguel</option>
+              <option value="venda_aluguel">Venda e aluguel</option>
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+            >
+              <option value="todos">Todos os tipos</option>
+              {tiposDisponiveis.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroCidade}
+              onChange={(e) => setFiltroCidade(e.target.value)}
+            >
+              <option value="todos">Todas as cidades</option>
+              {cidadesDisponiveis.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={periodo}
+              onChange={(e) => setPeriodo(e.target.value as any)}
+            >
+              <option value="todos">Qualquer data</option>
+              <option value="7">Últimos 7 dias</option>
+              <option value="30">Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={ordenacao}
+              onChange={(e) => setOrdenacao(e.target.value as any)}
+            >
+              <option value="recentes">Mais recentes</option>
+              <option value="antigos">Mais antigos</option>
+              <option value="maior_valor">Maior valor</option>
+              <option value="menor_valor">Menor valor</option>
+              <option value="titulo">Título A–Z</option>
+            </select>
+            <div className="flex items-center gap-1">
+              <MoneyInput value={precoMin} onChange={setPrecoMin} placeholder="De R$" className="h-9 w-28" />
+              <span className="text-xs text-muted-foreground">até</span>
+              <MoneyInput value={precoMax} onChange={setPrecoMax} placeholder="Até R$" className="h-9 w-28" />
+            </div>
+            {filtrosAtivos && (
+              <Button size="sm" variant="ghost" onClick={limparFiltros}>Limpar filtros</Button>
+            )}
             <span className="text-xs text-muted-foreground ml-auto">{filtrados.length} imóveis</span>
           </div>
         </Card>
