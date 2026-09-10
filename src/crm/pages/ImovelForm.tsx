@@ -345,14 +345,18 @@ export default function ImovelForm() {
         }
         // INSERT em rascunho (inativo)
         const draftPayload = { ...payload, status: 'inativo', ativo: false };
-        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(draftPayload).select('id').single();
+        delete draftPayload.codigo_interno; // gerado automaticamente pelo banco
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(draftPayload).select('id, codigo_interno').single();
         if (error) throw error;
         const newId = (ins as { id: string }).id;
+        const novoCodigo = (ins as { codigo_interno: string | null }).codigo_interno;
+        if (novoCodigo) form.setValue('codigo_interno', novoCodigo as any);
         setCurrentId(newId);
-        setLoadedRecord({ ...draftPayload, id: newId });
+        setLoadedRecord({ ...draftPayload, id: newId, codigo_interno: novoCodigo });
         if (draftKey) localStorage.removeItem(draftKey);
         // muda URL silenciosamente
         window.history.replaceState(null, '', `/crm/imoveis/${newId}`);
+
       }
       setLastSavedAt(new Date());
       setAutoSaveStatus('saved');
@@ -380,13 +384,16 @@ export default function ImovelForm() {
         payload.corretor_id = loadedRecord?.corretor_id ?? user!.id;
       }
 
+      let codigoGerado: string | null = null;
       if (currentId) {
         const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
         if (error) throw error;
       } else {
-        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id').single();
+        delete payload.codigo_interno; // gerado automaticamente pelo banco
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id, codigo_interno').single();
         if (error) throw error;
         const newId = (ins as { id: string }).id;
+        codigoGerado = (ins as { codigo_interno: string | null }).codigo_interno;
         for (const p of pendingProprietarios) {
           try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
           catch (e) { console.error('vinculo proprietario falhou', e); }
@@ -394,7 +401,8 @@ export default function ImovelForm() {
       }
       if (draftKey) localStorage.removeItem(draftKey);
       setAutoSaveStatus('saved');
-      toast({ title: 'Imóvel salvo' });
+      toast({ title: codigoGerado ? `Imóvel ${codigoGerado} criado` : 'Imóvel salvo' });
+
       navigate('/crm/imoveis');
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -690,7 +698,21 @@ export default function ImovelForm() {
 
                 <TabsContent value="ident" className="border rounded-md bg-white px-4 py-4">
                   <div className="grid md:grid-cols-3 gap-4 pt-2">
-                    {T('codigo_interno', 'Código interno')}
+                    <FormField control={form.control} name="codigo_interno" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Código interno</FormLabel>
+                        <FormControl>
+                          <Input
+                            readOnly
+                            className="bg-muted/50"
+                            placeholder="Gerado automaticamente ao salvar"
+                            value={(field.value as string) ?? ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
                     {T('codigo_auxiliar', 'Código auxiliar')}
                     {Sel('destinacao', 'Destinação', DESTINACAO)}
                     {T('segundo_tipo', 'Segundo tipo')}
