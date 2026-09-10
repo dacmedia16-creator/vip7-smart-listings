@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS imoveis_proprios_codigo_interno_uniq ON public.imoveis_proprios (codigo_interno) WHERE codigo_interno IS NOT NULL AND codigo_interno <> '';
