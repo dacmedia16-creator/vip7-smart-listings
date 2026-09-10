@@ -384,13 +384,16 @@ export default function ImovelForm() {
         payload.corretor_id = loadedRecord?.corretor_id ?? user!.id;
       }
 
+      let codigoGerado: string | null = null;
       if (currentId) {
         const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
         if (error) throw error;
       } else {
-        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id').single();
+        delete payload.codigo_interno; // gerado automaticamente pelo banco
+        const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id, codigo_interno').single();
         if (error) throw error;
         const newId = (ins as { id: string }).id;
+        codigoGerado = (ins as { codigo_interno: string | null }).codigo_interno;
         for (const p of pendingProprietarios) {
           try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
           catch (e) { console.error('vinculo proprietario falhou', e); }
@@ -398,7 +401,8 @@ export default function ImovelForm() {
       }
       if (draftKey) localStorage.removeItem(draftKey);
       setAutoSaveStatus('saved');
-      toast({ title: 'Imóvel salvo' });
+      toast({ title: codigoGerado ? `Imóvel ${codigoGerado} criado` : 'Imóvel salvo' });
+
       navigate('/crm/imoveis');
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
