@@ -23,6 +23,8 @@ type ExistingVinculo = {
 interface Props {
   /** Quando informado, opera direto no banco (modo edição). Quando null, mantém em memória (modo criação). */
   imovelId: string | null;
+  /** Lista pendente controlada pelo pai (sobrevive à troca de abas). */
+  pending?: PendingVinculo[];
   /** Em modo criação, expõe os vínculos pendentes para o pai persistir após criar o imóvel. */
   onPendingChange?: (pending: PendingVinculo[]) => void;
 }
