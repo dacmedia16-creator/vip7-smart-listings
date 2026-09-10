@@ -452,7 +452,9 @@ export default function Portais() {
                   <tr key={im.id} className="border-t hover:bg-muted/30">
                     <td className="p-2">
                       <div className="font-medium">{im.titulo}</div>
-                      <div className="text-xs text-muted-foreground">{im.tipo} · {im.finalidade}</div>
+<div className="text-xs text-muted-foreground">
+                      {im.tipo} · {im.finalidade} · <span className="font-medium text-foreground">{Number(im.preco ?? 0) > 0 ? `R$ ${Number(im.preco).toLocaleString('pt-BR')}` : '—'}</span>
+                    </div>
                     </td>
                     <td className="p-2 text-xs">{[im.bairro, im.cidade].filter(Boolean).join(', ') || '—'}</td>
                     <td className="p-2">
