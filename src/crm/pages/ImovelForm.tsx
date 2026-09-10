@@ -168,18 +168,16 @@ export default function ImovelForm() {
 
   /**
    * Gera um título de anúncio no formato portal-friendly.
-   * Ex: "Apartamento à venda, 3 quartos, Parque Morumbi, Votorantim/SP"
+   * Ex: "Apartamento à venda, 3 quartos, Jardim Vera Cruz, Sorocaba/SP"
    */
   const gerarTituloAnuncio = (v: Record<string, any>): string => {
     const tipo = String(v.tipo || '').trim();
     const finalidade = String(v.finalidade || '').trim();
-    const condominio = String(v.condominio_nome || '').trim();
     const bairro = String(v.bairro || '').trim();
     const cidade = String(v.cidade || '').trim();
     const estado = String(v.estado || '').trim();
-    const local = condominio || bairro;
 
-    if (!tipo && !local && !cidade) return '';
+    if (!tipo && !bairro && !cidade) return '';
 
     const partes: string[] = [];
 
@@ -191,24 +189,12 @@ export default function ImovelForm() {
       partes.push(finaTxt ? `${tipo} ${finaTxt}` : tipo);
     }
 
-    // 2. Diferenciais
-    const diferenciais: string[] = [];
-    const caracteristicas: string[] = Array.isArray(v.caracteristicas) ? v.caracteristicas : [];
-    if (caracteristicas.some((c) => String(c).toLowerCase().includes('piscina'))) {
-      diferenciais.push('piscina');
-    }
+    // 2. Quartos
     const quartos = Number(v.quartos) || 0;
-    if (quartos > 0) diferenciais.push(`${quartos} ${quartos === 1 ? 'quarto' : 'quartos'}`);
-    const suites = Number(v.suites) || 0;
-    if (suites > 0) diferenciais.push(`${suites} ${suites === 1 ? 'suíte' : 'suítes'}`);
-    const vagas = Number(v.vagas) || 0;
-    if (vagas > 0) diferenciais.push(`${vagas} ${vagas === 1 ? 'vaga' : 'vagas'}`);
-    const area = Number(v.area) || 0;
-    if (area > 0) diferenciais.push(`${Math.round(area)} m²`);
-    if (diferenciais.length > 0) partes.push(diferenciais.join(', '));
+    if (quartos > 0) partes.push(`${quartos} ${quartos === 1 ? 'quarto' : 'quartos'}`);
 
-    // 3. Local (condomínio ou bairro)
-    if (local) partes.push(local);
+    // 3. Bairro
+    if (bairro) partes.push(bairro);
 
     // 4. Cidade/UF
     if (cidade && estado) partes.push(`${cidade}/${estado}`);
