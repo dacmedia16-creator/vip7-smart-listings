@@ -163,6 +163,60 @@ export default function ImovelForm() {
   };
 
   const [aiLoading, setAiLoading] = useState(false);
+
+  /**
+   * Gera um título de anúncio comercial a partir dos campos do imóvel.
+   * Ex: "Apartamento no Parque Campolim com 3 quartos e 2 vagas"
+   */
+  const gerarTituloAnuncio = (v: Record<string, any>): string => {
+    const tipo = String(v.tipo || '').trim();
+    const condominio = String(v.condominio_nome || '').trim();
+    const bairro = String(v.bairro || '').trim();
+    const cidade = String(v.cidade || '').trim();
+    const local = condominio || bairro || cidade;
+    if (!tipo && !local) return '';
+
+    // Preposição conforme gênero do tipo
+    const tipoLower = tipo.toLowerCase();
+    const femTipos = ['casa', 'cobertura', 'loja', 'sala', 'chácara', 'fazenda', 'sobrado'];
+    const prep = femTipos.some((t) => tipoLower.includes(t)) ? 'na' : 'no';
+
+    const partes: string[] = [];
+    if (tipo && local) partes.push(`${tipo} ${prep} ${local}`);
+    else if (tipo) partes.push(tipo);
+    else partes.push(`Imóvel em ${local}`);
+
+    const diferenciais: string[] = [];
+    const caracteristicas: string[] = Array.isArray(v.caracteristicas) ? v.caracteristicas : [];
+    if (caracteristicas.some((c) => String(c).toLowerCase().includes('piscina'))) {
+      diferenciais.push('piscina');
+    }
+    const quartos = Number(v.quartos) || 0;
+    if (quartos > 0) diferenciais.push(`${quartos} ${quartos === 1 ? 'quarto' : 'quartos'}`);
+    const suites = Number(v.suites) || 0;
+    if (suites > 0) diferenciais.push(`${suites} ${suites === 1 ? 'suíte' : 'suítes'}`);
+    const vagas = Number(v.vagas) || 0;
+    if (vagas > 0) diferenciais.push(`${vagas} ${vagas === 1 ? 'vaga' : 'vagas'}`);
+    const area = Number(v.area) || 0;
+    if (area > 0) diferenciais.push(`${Math.round(area)} m²`);
+
+    if (diferenciais.length > 0) {
+      const sep = diferenciais.length > 1 ? ', ' : ' ';
+      const joined = diferenciais.length > 1
+        ? diferenciais.slice(0, -1).join(', ') + ' e ' + diferenciais[diferenciais.length - 1]
+        : diferenciais[0];
+      partes.push(`com ${joined}`);
+    }
+
+    let titulo = partes.join(' ');
+    if (titulo.length > 100) {
+      titulo = titulo.slice(0, 100);
+      const lastSpace = titulo.lastIndexOf(' ');
+      if (lastSpace > 50) titulo = titulo.slice(0, lastSpace);
+    }
+    return titulo;
+  };
+
   const gerarConteudoIA = async () => {
     setAiLoading(true);
     try {
