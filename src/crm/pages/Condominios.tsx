@@ -505,8 +505,19 @@ export default function Condominios() {
                 return (
                   <TableRow key={c.codigo} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
                     <TableCell className="font-medium">
-                      <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
-                      {end && <div className="text-xs text-[#4A4A52] font-normal mt-0.5">{end}</div>}
+                      <div className="flex items-center gap-3">
+                        {c.fotos?.[0] ? (
+                          <img src={c.fotos[0]} alt={`Foto do condomínio ${c.nome}`} loading="lazy" className="h-10 w-14 rounded object-cover border border-[#E8E4D9]" />
+                        ) : (
+                          <div className="h-10 w-14 rounded bg-[#FAF8F3] border border-[#E8E4D9] flex items-center justify-center">
+                            <Building className="h-4 w-4 text-[#C9A24C]" />
+                          </div>
+                        )}
+                        <div>
+                          <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
+                          {end && <div className="text-xs text-[#4A4A52] font-normal mt-0.5">{end}</div>}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="text-[#4A4A52]">{c.cidade ?? '—'}</TableCell>
                     <TableCell className="text-right">
