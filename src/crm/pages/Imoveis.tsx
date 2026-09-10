@@ -567,8 +567,21 @@ export default function Imoveis() {
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-video bg-muted relative">
                       <CrmPropertyPhoto src={foto} alt={im.titulo} className="w-full h-full object-cover" />
+                      {(isManager || isMine) && (
+                        <div
+                          className="absolute top-2 left-2 z-10"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        >
+                          <Checkbox
+                            checked={selected.has(im.id)}
+                            onCheckedChange={() => toggleSelect(im.id)}
+                            className="h-5 w-5 bg-background/90 data-[state=checked]:bg-primary"
+                            aria-label="Selecionar imóvel"
+                          />
+                        </div>
+                      )}
                       <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
-                      {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
+                      {isMine && <Badge className="absolute top-9 left-2 bg-primary text-primary-foreground">Meu</Badge>}
                       {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
                       {(isManager || isMine) && (
                         <DropdownMenu>
