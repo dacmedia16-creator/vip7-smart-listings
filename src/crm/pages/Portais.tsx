@@ -154,10 +154,47 @@ export default function Portais() {
     toast({ title: 'URL copiada', description: url });
   }
 
+  const cidadesDisponiveis = useMemo(
+    () => Array.from(new Set(imoveis.map((i) => i.cidade).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b)),
+    [imoveis],
+  );
+  const tiposDisponiveis = useMemo(
+    () => Array.from(new Set(imoveis.map((i) => i.tipo).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [imoveis],
+  );
+
+  const filtrosAtivos =
+    !!filtro || filtroPortal !== 'todos' || filtroStatus !== 'todos' || precoMin !== null || precoMax !== null ||
+    periodo !== 'todos' || ordenacao !== 'recentes' || filtroFinalidade !== 'todos' || filtroTipo !== 'todos' ||
+    filtroCidade !== 'todos';
+
+  function limparFiltros() {
+    setFiltro('');
+    setFiltroPortal('todos');
+    setFiltroStatus('todos');
+    setPrecoMin(null);
+    setPrecoMax(null);
+    setPeriodo('todos');
+    setOrdenacao('recentes');
+    setFiltroFinalidade('todos');
+    setFiltroTipo('todos');
+    setFiltroCidade('todos');
+  }
+
   const filtrados = useMemo(() => {
     const f = filtro.toLowerCase();
-    return imoveis.filter((im) => {
+    const limiteData = periodo === 'todos' ? null : Date.now() - Number(periodo) * 24 * 60 * 60 * 1000;
+    const lista = imoveis.filter((im) => {
       if (f && !`${im.titulo} ${im.cidade ?? ''} ${im.bairro ?? ''}`.toLowerCase().includes(f)) return false;
+      if (precoMin !== null && Number(im.preco ?? 0) < precoMin) return false;
+      if (precoMax !== null && Number(im.preco ?? 0) > precoMax) return false;
+      if (filtroFinalidade !== 'todos' && im.finalidade !== filtroFinalidade) return false;
+      if (filtroTipo !== 'todos' && im.tipo !== filtroTipo) return false;
+      if (filtroCidade !== 'todos' && im.cidade !== filtroCidade) return false;
+      if (limiteData !== null) {
+        const t = im.created_at ? new Date(im.created_at).getTime() : 0;
+        if (!t || t < limiteData) return false;
+      }
       const erros = validarImovelParaPortais(im);
       if (filtroStatus === 'com_erro' && erros.length === 0) return false;
       if (filtroPortal !== 'todos') {
@@ -171,7 +208,18 @@ export default function Portais() {
       }
       return true;
     });
-  }, [imoveis, portais, filtro, filtroPortal, filtroStatus]);
+
+    const ts = (im: ImovelLite) => (im.created_at ? new Date(im.created_at).getTime() : 0);
+    return [...lista].sort((a, b) => {
+      switch (ordenacao) {
+        case 'recentes': return ts(b) - ts(a);
+        case 'antigos': return ts(a) - ts(b);
+        case 'maior_valor': return Number(b.preco ?? 0) - Number(a.preco ?? 0);
+        case 'menor_valor': return Number(a.preco ?? 0) - Number(b.preco ?? 0);
+        default: return (a.titulo ?? '').localeCompare(b.titulo ?? '');
+      }
+    });
+  }, [imoveis, portais, filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
 
   const contagens = useMemo(() => {
     const m: Record<PortalId, number> = { zap_vivareal: 0, olx: 0, imovelweb: 0, chavesnamao: 0 };
