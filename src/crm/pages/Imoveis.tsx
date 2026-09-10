@@ -111,6 +111,7 @@ export default function Imoveis() {
   const [open, setOpen] = useState(saved?.open ?? false);
   const [filters, setFilters] = useState<Filters>(saved?.filters ?? EMPTY);
   const [applied, setApplied] = useState<Filters>(saved?.applied ?? EMPTY);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>(saved?.ordenacao ?? 'recentes');
 
   // Options carregados dinamicamente
   const [opts, setOpts] = useState<{
@@ -120,8 +121,8 @@ export default function Imoveis() {
 
   useEffect(() => { const p = searchParams.get('q'); if (p != null) setQ(p); }, [searchParams]);
   useEffect(() => {
-    try { sessionStorage.setItem(STATE_KEY, JSON.stringify({ q, filters, applied, pagina, open })); } catch { /* ignore */ }
-  }, [q, filters, applied, pagina, open]);
+    try { sessionStorage.setItem(STATE_KEY, JSON.stringify({ q, filters, applied, pagina, open, ordenacao })); } catch { /* ignore */ }
+  }, [q, filters, applied, pagina, open, ordenacao]);
   useEffect(() => { const t = setTimeout(() => setQDebounced(q), 300); return () => clearTimeout(t); }, [q]);
   useEffect(() => { setPagina(1); }, [qDebounced, applied]);
   // Limpa a seleção ao mudar página, busca ou filtros
