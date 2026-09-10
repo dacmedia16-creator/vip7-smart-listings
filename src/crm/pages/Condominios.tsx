@@ -16,7 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2, Upload, X, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CondoRow {
@@ -29,6 +29,7 @@ interface CondoRow {
   numero: string | null;
   bairro: string | null;
   estado: string | null;
+  fotos: string[] | null;
 }
 
 interface FormState {
@@ -42,6 +43,13 @@ interface FormState {
 }
 
 const emptyForm: FormState = { nome: '', cep: '', endereco: '', numero: '', bairro: '', cidade: '', estado: '' };
+
+const BUCKET = 'imoveis-fotos';
+
+function storagePathFromUrl(url: string): string | null {
+  const m = url.match(/\/imoveis-fotos\/(.+?)(\?|$)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
 
 function enderecoResumo(c: CondoRow) {
   const parts = [
@@ -64,6 +72,8 @@ export default function Condominios() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [cepLoading, setCepLoading] = useState(false);
   const [toDelete, setToDelete] = useState<CondoRow | null>(null);
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
@@ -73,7 +83,7 @@ export default function Condominios() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('condominios_cache')
-        .select('codigo, nome, cidade, updated_at, cep, endereco, numero, bairro, estado')
+        .select('codigo, nome, cidade, updated_at, cep, endereco, numero, bairro, estado, fotos')
         .order('nome');
       if (error) throw error;
       return (data ?? []) as CondoRow[];
@@ -164,6 +174,7 @@ export default function Condominios() {
   const openNovo = () => {
     setEditing(null);
     setForm(emptyForm);
+    setFotos([]);
     setDialogOpen(true);
   };
 
@@ -178,7 +189,46 @@ export default function Condominios() {
       cidade: c.cidade ?? '',
       estado: c.estado ?? '',
     });
+    setFotos(c.fotos ?? []);
     setDialogOpen(true);
+  };
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const novas: string[] = [];
+    try {
+      for (const file of Array.from(files)) {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `condominios/${editing?.codigo ?? 'novo'}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, file, { contentType: file.type || `image/${ext}`, upsert: false });
+        if (error) {
+          console.error('[condominio upload]', file.name, error);
+          toast.error(`Falha ao enviar ${file.name}`);
+          continue;
+        }
+        const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+        novas.push(data.publicUrl);
+      }
+      if (novas.length) {
+        setFotos((f) => [...f, ...novas]);
+        toast.success(`${novas.length} foto(s) enviada(s)`);
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removerFoto = async (url: string) => {
+    setFotos((f) => f.filter((u) => u !== url));
+    const path = storagePathFromUrl(url);
+    if (path) await supabase.storage.from(BUCKET).remove([path]);
+  };
+
+  const definirCapa = (url: string) => {
+    setFotos((f) => [url, ...f.filter((u) => u !== url)]);
   };
 
   const salvar = useMutation({
@@ -193,6 +243,7 @@ export default function Condominios() {
         bairro: form.bairro.trim() || null,
         cidade: form.cidade.trim() || null,
         estado: form.estado.trim() || null,
+        fotos,
       };
 
       if (editing) {
@@ -221,6 +272,7 @@ export default function Condominios() {
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
+      setFotos([]);
       qc.invalidateQueries({ queryKey: ['condominios-cache'] });
     },
     onError: (e: Error) => toast.error(`Falha ao salvar: ${e.message}`),
@@ -280,7 +332,7 @@ export default function Condominios() {
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[88vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editing ? 'Editar condomínio' : 'Novo condomínio'}</DialogTitle>
             </DialogHeader>
@@ -334,6 +386,48 @@ export default function Condominios() {
               <div className="space-y-2">
                 <Label htmlFor="cond-cidade">Cidade</Label>
                 <Input id="cond-cidade" value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} placeholder="Ex.: Sorocaba" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Fotos</Label>
+                  <label className="inline-flex items-center gap-2 text-sm text-[#7A5A14] cursor-pointer hover:text-[#C9A24C]">
+                    <Upload className="h-4 w-4" />
+                    {uploading ? 'Enviando…' : 'Adicionar fotos'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => { handleUpload(e.target.files); e.target.value = ''; }}
+                    />
+                  </label>
+                </div>
+                {fotos.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma foto. A primeira foto será a capa.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {fotos.map((url, i) => (
+                      <div key={url} className="relative group rounded-md overflow-hidden border border-[#E8E4D9]">
+                        <img src={url} alt={`Foto ${i + 1} do condomínio`} loading="lazy" className="h-24 w-full object-cover" />
+                        {i === 0 && (
+                          <span className="absolute bottom-1 left-1 rounded bg-[#C9A24C] px-1.5 py-0.5 text-[10px] font-medium text-[#0F0F12]">Capa</span>
+                        )}
+                        <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {i !== 0 && (
+                            <button type="button" title="Definir como capa" onClick={() => definirCapa(url)} className="rounded bg-black/60 p-1 text-white hover:bg-black/80">
+                              <Star className="h-3 w-3" />
+                            </button>
+                          )}
+                          <button type="button" title="Remover" onClick={() => removerFoto(url)} className="rounded bg-black/60 p-1 text-white hover:bg-destructive">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>
@@ -411,8 +505,19 @@ export default function Condominios() {
                 return (
                   <TableRow key={c.codigo} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
                     <TableCell className="font-medium">
-                      <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
-                      {end && <div className="text-xs text-[#4A4A52] font-normal mt-0.5">{end}</div>}
+                      <div className="flex items-center gap-3">
+                        {c.fotos?.[0] ? (
+                          <img src={c.fotos[0]} alt={`Foto do condomínio ${c.nome}`} loading="lazy" className="h-10 w-14 rounded object-cover border border-[#E8E4D9]" />
+                        ) : (
+                          <div className="h-10 w-14 rounded bg-[#FAF8F3] border border-[#E8E4D9] flex items-center justify-center">
+                            <Building className="h-4 w-4 text-[#C9A24C]" />
+                          </div>
+                        )}
+                        <div>
+                          <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
+                          {end && <div className="text-xs text-[#4A4A52] font-normal mt-0.5">{end}</div>}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="text-[#4A4A52]">{c.cidade ?? '—'}</TableCell>
                     <TableCell className="text-right">
