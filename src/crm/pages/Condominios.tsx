@@ -103,6 +103,34 @@ export default function Condominios() {
     onError: (e: Error) => toast.error(`Falha: ${e.message}`),
   });
 
+  const criar = useMutation({
+    mutationFn: async () => {
+      const nome = novoNome.trim();
+      if (!nome) throw new Error('Informe o nome do condomínio');
+      // Código negativo para não colidir com códigos do Imoview
+      const { data: minRow } = await supabase
+        .from('condominios_cache')
+        .select('codigo')
+        .lt('codigo', 0)
+        .order('codigo')
+        .limit(1)
+        .maybeSingle();
+      const codigo = Math.min(0, minRow?.codigo ?? 0) - 1;
+      const { error } = await supabase
+        .from('condominios_cache')
+        .insert({ codigo, nome, cidade: novaCidade.trim() || null });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Condomínio cadastrado');
+      setDialogOpen(false);
+      setNovoNome('');
+      setNovaCidade('');
+      qc.invalidateQueries({ queryKey: ['condominios-cache'] });
+    },
+    onError: (e: Error) => toast.error(`Falha ao cadastrar: ${e.message}`),
+  });
+
   const totalImoveis = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
