@@ -48,7 +48,7 @@ export default function ImovelDetail() {
 
   const handleToggleAtivo = async () => {
     const ativo = !(imovel.ativo !== false && imovel.status !== 'inativo');
-    const updates = ativo ? { ativo: true, status: 'disponivel' } : { ativo: false, status: 'inativo' };
+    const updates = ativo ? { ativo: true, status: 'disponivel' as const } : { ativo: false, status: 'inativo' as const };
     const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', id!);
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     toast({ title: ativo ? 'Imóvel reativado' : 'Imóvel desativado' });
