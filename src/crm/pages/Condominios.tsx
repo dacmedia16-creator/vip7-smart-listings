@@ -72,6 +72,8 @@ export default function Condominios() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [cepLoading, setCepLoading] = useState(false);
   const [toDelete, setToDelete] = useState<CondoRow | null>(null);
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
@@ -81,7 +83,7 @@ export default function Condominios() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('condominios_cache')
-        .select('codigo, nome, cidade, updated_at, cep, endereco, numero, bairro, estado')
+        .select('codigo, nome, cidade, updated_at, cep, endereco, numero, bairro, estado, fotos')
         .order('nome');
       if (error) throw error;
       return (data ?? []) as CondoRow[];
