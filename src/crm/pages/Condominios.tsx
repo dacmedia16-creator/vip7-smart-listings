@@ -16,8 +16,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2, Upload, X, Star } from 'lucide-react';
+import { RefreshCw, Search, Building, ExternalLink, Plus, Loader2, Pencil, Trash2, Upload, X, Star, Images } from 'lucide-react';
 import { toast } from 'sonner';
+import { CondominioFotosDialog } from '@/crm/components/CondominioFotosDialog';
 
 interface CondoRow {
   codigo: number;
@@ -75,6 +76,7 @@ export default function Condominios() {
   const [fotos, setFotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [capaUploading, setCapaUploading] = useState<number | null>(null);
+  const [galeria, setGaleria] = useState<CondoRow | null>(null);
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
@@ -472,6 +474,12 @@ export default function Condominios() {
           </DialogContent>
         </Dialog>
 
+        <CondominioFotosDialog
+          condo={galeria ? (condos.find((c) => c.codigo === galeria.codigo) ?? galeria) : null}
+          onOpenChange={(o) => { if (!o) setGaleria(null); }}
+          canDelete={isAdmin}
+        />
+
         <AlertDialog open={!!toDelete} onOpenChange={(o) => { if (!o) setToDelete(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -584,6 +592,14 @@ export default function Condominios() {
                         <Link to={`/crm/condominios/${c.codigo}`} className="inline-flex items-center p-2 text-[#7A5A14] hover:text-[#C9A24C]" title="Abrir">
                           <ExternalLink className="h-4 w-4" />
                         </Link>
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-8 w-8 text-[#4A4A52] hover:text-[#0F0F12]"
+                          title="Fotos"
+                          onClick={() => setGaleria(c)}
+                        >
+                          <Images className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4A4A52] hover:text-[#0F0F12]" title="Editar" onClick={() => openEdit(c)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
