@@ -366,6 +366,16 @@ export default function Imoveis() {
           Filtros {activeCount > 0 && <Badge className="ml-2 bg-primary text-primary-foreground">{activeCount}</Badge>}
           {open ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
         </Button>
+        <Select value={ordenacao} onValueChange={(v) => setOrdenacao(v as Ordenacao)}>
+          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recentes">Mais recentes</SelectItem>
+            <SelectItem value="antigos">Mais antigos</SelectItem>
+            <SelectItem value="menor_valor">Menor valor</SelectItem>
+            <SelectItem value="maior_valor">Maior valor</SelectItem>
+            <SelectItem value="titulo">Título A–Z</SelectItem>
+          </SelectContent>
+        </Select>
         {activeCount > 0 && (
           <Button variant="ghost" onClick={clear}><X className="h-4 w-4 mr-1" /> Limpar</Button>
         )}
