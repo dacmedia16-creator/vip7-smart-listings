@@ -50,6 +50,13 @@ export default function Portais() {
   const [filtro, setFiltro] = useState('');
   const [filtroPortal, setFiltroPortal] = useState<PortalId | 'todos'>('todos');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'publicados' | 'nao_publicados' | 'com_erro'>('todos');
+  const [precoMin, setPrecoMin] = useState<number | null>(null);
+  const [precoMax, setPrecoMax] = useState<number | null>(null);
+  const [periodo, setPeriodo] = useState<'todos' | '7' | '30' | '90'>('todos');
+  const [ordenacao, setOrdenacao] = useState<'recentes' | 'antigos' | 'maior_valor' | 'menor_valor' | 'titulo'>('recentes');
+  const [filtroFinalidade, setFiltroFinalidade] = useState<string>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [filtroCidade, setFiltroCidade] = useState<string>('todos');
   const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
 
