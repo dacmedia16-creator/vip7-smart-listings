@@ -696,6 +696,11 @@ export default function ImovelForm() {
                 <TabsTrigger key={t.key} value={t.key} className="flex-shrink-0 md:flex-shrink gap-1.5">
                   <span className="text-[10px] opacity-60 md:hidden">{i + 1}/{TABS.length}</span>
                   {t.label}
+                  {t.key === 'relacionamentos' && pendingProprietarios.length > 0 && (
+                    <span className="ml-1 text-[10px] rounded-full bg-amber-100 text-amber-800 px-1.5 py-0.5">
+                      {pendingProprietarios.length}
+                    </span>
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
