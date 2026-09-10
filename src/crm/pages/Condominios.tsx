@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { RefreshCw, Search, Building, ExternalLink } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { RefreshCw, Search, Building, ExternalLink, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CondoRow {
@@ -27,6 +29,9 @@ export default function Condominios() {
   const [search, setSearch] = useState('');
   const [cidade, setCidade] = useState<string>('all');
   const [page, setPage] = useState(1);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [novoNome, setNovoNome] = useState('');
+  const [novaCidade, setNovaCidade] = useState('');
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
@@ -98,6 +103,34 @@ export default function Condominios() {
     onError: (e: Error) => toast.error(`Falha: ${e.message}`),
   });
 
+  const criar = useMutation({
+    mutationFn: async () => {
+      const nome = novoNome.trim();
+      if (!nome) throw new Error('Informe o nome do condomínio');
+      // Código negativo para não colidir com códigos do Imoview
+      const { data: minRow } = await supabase
+        .from('condominios_cache')
+        .select('codigo')
+        .lt('codigo', 0)
+        .order('codigo')
+        .limit(1)
+        .maybeSingle();
+      const codigo = Math.min(0, minRow?.codigo ?? 0) - 1;
+      const { error } = await supabase
+        .from('condominios_cache')
+        .insert({ codigo, nome, cidade: novaCidade.trim() || null });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Condomínio cadastrado');
+      setDialogOpen(false);
+      setNovoNome('');
+      setNovaCidade('');
+      qc.invalidateQueries({ queryKey: ['condominios-cache'] });
+    },
+    onError: (e: Error) => toast.error(`Falha ao cadastrar: ${e.message}`),
+  });
+
   const totalImoveis = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
@@ -113,13 +146,42 @@ export default function Condominios() {
               {lastSync && ` • Última sincronização: ${lastSync.toLocaleString('pt-BR')}`}
             </p>
           </div>
-          {isAdmin && (
-            <Button onClick={() => sync.mutate()} disabled={sync.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
-              <RefreshCw className={`h-4 w-4 mr-2 ${sync.isPending ? 'animate-spin' : ''}`} />
-              {sync.isPending ? 'Sincronizando…' : 'Sincronizar do Imoview'}
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={() => setDialogOpen(true)} variant="outline" className="border-[#C9A24C] text-[#7A5A14] hover:bg-[#FBF3DC]">
+              <Plus className="h-4 w-4 mr-2" /> Novo condomínio
             </Button>
-          )}
+            {isAdmin && (
+              <Button onClick={() => sync.mutate()} disabled={sync.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
+                <RefreshCw className={`h-4 w-4 mr-2 ${sync.isPending ? 'animate-spin' : ''}`} />
+                {sync.isPending ? 'Sincronizando…' : 'Sincronizar do Imoview'}
+              </Button>
+            )}
+          </div>
         </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo condomínio</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="cond-nome">Nome *</Label>
+                <Input id="cond-nome" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Residencial Parque das Flores" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cond-cidade">Cidade</Label>
+                <Input id="cond-cidade" value={novaCidade} onChange={(e) => setNovaCidade(e.target.value)} placeholder="Ex.: Sorocaba" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={() => criar.mutate()} disabled={criar.isPending} className="bg-[#C9A24C] hover:bg-[#B8923C] text-[#0F0F12]">
+                {criar.isPending ? 'Salvando…' : 'Salvar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Card className="p-4 bg-white border-[#E8E4D9]">
           <div className="flex gap-3 flex-wrap">
