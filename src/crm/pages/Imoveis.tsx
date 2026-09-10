@@ -63,7 +63,9 @@ const EMPTY: Filters = {
 
 const STATE_KEY = 'crm-imoveis-state';
 
-type SavedState = { q: string; filters: Filters; applied: Filters; pagina: number; open: boolean };
+type Ordenacao = 'recentes' | 'antigos' | 'menor_valor' | 'maior_valor' | 'titulo';
+
+type SavedState = { q: string; filters: Filters; applied: Filters; pagina: number; open: boolean; ordenacao: Ordenacao };
 
 function loadSavedState(): SavedState | null {
   try {
@@ -76,6 +78,7 @@ function loadSavedState(): SavedState | null {
       applied: { ...EMPTY, ...s.applied },
       pagina: typeof s.pagina === 'number' && s.pagina > 0 ? s.pagina : 1,
       open: !!s.open,
+      ordenacao: (s.ordenacao ?? 'recentes') as Ordenacao,
     };
   } catch {
     return null;
@@ -108,6 +111,7 @@ export default function Imoveis() {
   const [open, setOpen] = useState(saved?.open ?? false);
   const [filters, setFilters] = useState<Filters>(saved?.filters ?? EMPTY);
   const [applied, setApplied] = useState<Filters>(saved?.applied ?? EMPTY);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>(saved?.ordenacao ?? 'recentes');
 
   // Options carregados dinamicamente
   const [opts, setOpts] = useState<{
@@ -117,8 +121,8 @@ export default function Imoveis() {
 
   useEffect(() => { const p = searchParams.get('q'); if (p != null) setQ(p); }, [searchParams]);
   useEffect(() => {
-    try { sessionStorage.setItem(STATE_KEY, JSON.stringify({ q, filters, applied, pagina, open })); } catch { /* ignore */ }
-  }, [q, filters, applied, pagina, open]);
+    try { sessionStorage.setItem(STATE_KEY, JSON.stringify({ q, filters, applied, pagina, open, ordenacao })); } catch { /* ignore */ }
+  }, [q, filters, applied, pagina, open, ordenacao]);
   useEffect(() => { const t = setTimeout(() => setQDebounced(q), 300); return () => clearTimeout(t); }, [q]);
   useEffect(() => { setPagina(1); }, [qDebounced, applied]);
   // Limpa a seleção ao mudar página, busca ou filtros
@@ -176,8 +180,16 @@ export default function Imoveis() {
       let query = supabase
         .from('imoveis_proprios')
         .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
         .range(from, to);
+
+      // Ordenação server-side (paginação é server-side)
+      switch (ordenacao) {
+        case 'antigos': query = query.order('created_at', { ascending: true }); break;
+        case 'menor_valor': query = query.order('preco', { ascending: true }); break;
+        case 'maior_valor': query = query.order('preco', { ascending: false }); break;
+        case 'titulo': query = query.order('titulo', { ascending: true }); break;
+        default: query = query.order('created_at', { ascending: false }); break;
+      }
 
       const f = applied;
 
@@ -255,7 +267,7 @@ export default function Imoveis() {
       setTotal(count ?? 0);
       setLoading(false);
     })();
-  }, [pagina, qDebounced, applied, refreshKey]);
+  }, [pagina, qDebounced, applied, refreshKey, ordenacao]);
 
   const toggleAtivo = async (im: any) => {
     const ativo = !(im.ativo !== false && im.status !== 'inativo');
@@ -354,6 +366,16 @@ export default function Imoveis() {
           Filtros {activeCount > 0 && <Badge className="ml-2 bg-primary text-primary-foreground">{activeCount}</Badge>}
           {open ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
         </Button>
+        <Select value={ordenacao} onValueChange={(v) => setOrdenacao(v as Ordenacao)}>
+          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recentes">Mais recentes</SelectItem>
+            <SelectItem value="antigos">Mais antigos</SelectItem>
+            <SelectItem value="menor_valor">Menor valor</SelectItem>
+            <SelectItem value="maior_valor">Maior valor</SelectItem>
+            <SelectItem value="titulo">Título A–Z</SelectItem>
+          </SelectContent>
+        </Select>
         {activeCount > 0 && (
           <Button variant="ghost" onClick={clear}><X className="h-4 w-4 mr-1" /> Limpar</Button>
         )}
