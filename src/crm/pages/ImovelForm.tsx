@@ -165,27 +165,31 @@ export default function ImovelForm() {
   const [aiLoading, setAiLoading] = useState(false);
 
   /**
-   * Gera um título de anúncio comercial a partir dos campos do imóvel.
-   * Ex: "Apartamento no Parque Campolim com 3 quartos e 2 vagas"
+   * Gera um título de anúncio no formato portal-friendly.
+   * Ex: "Apartamento à venda, 3 quartos, Parque Morumbi, Votorantim/SP"
    */
   const gerarTituloAnuncio = (v: Record<string, any>): string => {
     const tipo = String(v.tipo || '').trim();
+    const finalidade = String(v.finalidade || '').trim();
     const condominio = String(v.condominio_nome || '').trim();
     const bairro = String(v.bairro || '').trim();
     const cidade = String(v.cidade || '').trim();
-    const local = condominio || bairro || cidade;
-    if (!tipo && !local) return '';
+    const estado = String(v.estado || '').trim();
+    const local = condominio || bairro;
 
-    // Preposição conforme gênero do tipo
-    const tipoLower = tipo.toLowerCase();
-    const femTipos = ['casa', 'cobertura', 'loja', 'sala', 'chácara', 'fazenda', 'sobrado'];
-    const prep = femTipos.some((t) => tipoLower.includes(t)) ? 'na' : 'no';
+    if (!tipo && !local && !cidade) return '';
 
     const partes: string[] = [];
-    if (tipo && local) partes.push(`${tipo} ${prep} ${local}`);
-    else if (tipo) partes.push(tipo);
-    else partes.push(`Imóvel em ${local}`);
 
+    // 1. Tipo + finalidade
+    if (tipo) {
+      const finaTxt =
+        finalidade === 'aluguel' ? 'para alugar' :
+        finalidade === 'venda' || finalidade === 'venda_aluguel' ? 'à venda' : '';
+      partes.push(finaTxt ? `${tipo} ${finaTxt}` : tipo);
+    }
+
+    // 2. Diferenciais
     const diferenciais: string[] = [];
     const caracteristicas: string[] = Array.isArray(v.caracteristicas) ? v.caracteristicas : [];
     if (caracteristicas.some((c) => String(c).toLowerCase().includes('piscina'))) {
@@ -199,15 +203,16 @@ export default function ImovelForm() {
     if (vagas > 0) diferenciais.push(`${vagas} ${vagas === 1 ? 'vaga' : 'vagas'}`);
     const area = Number(v.area) || 0;
     if (area > 0) diferenciais.push(`${Math.round(area)} m²`);
+    if (diferenciais.length > 0) partes.push(diferenciais.join(', '));
 
-    if (diferenciais.length > 0) {
-      const joined = diferenciais.length > 1
-        ? diferenciais.slice(0, -1).join(', ') + ' e ' + diferenciais[diferenciais.length - 1]
-        : diferenciais[0];
-      partes.push(`com ${joined}`);
-    }
+    // 3. Local (condomínio ou bairro)
+    if (local) partes.push(local);
 
-    let titulo = partes.join(' ');
+    // 4. Cidade/UF
+    if (cidade && estado) partes.push(`${cidade}/${estado}`);
+    else if (cidade) partes.push(cidade);
+
+    let titulo = partes.join(', ');
     if (titulo.length > 100) {
       titulo = titulo.slice(0, 100);
       const lastSpace = titulo.lastIndexOf(' ');
