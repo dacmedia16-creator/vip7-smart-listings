@@ -28,6 +28,8 @@ interface ImovelLite {
   cep: string | null;
   estado: string | null;
   fotos: string[] | null;
+  created_at: string | null;
+  data_atualizacao_origem: string | null;
 }
 
 interface PortalRow {
