@@ -29,6 +29,9 @@ export default function Condominios() {
   const [search, setSearch] = useState('');
   const [cidade, setCidade] = useState<string>('all');
   const [page, setPage] = useState(1);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [novoNome, setNovoNome] = useState('');
+  const [novaCidade, setNovaCidade] = useState('');
   const PAGE_SIZE = 30;
 
   useEffect(() => { setPage(1); }, [search, cidade]);
