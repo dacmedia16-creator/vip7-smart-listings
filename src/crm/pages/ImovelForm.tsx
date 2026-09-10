@@ -125,6 +125,8 @@ export default function ImovelForm() {
   const hasOfferedRestoreRef = useRef(false);
   const [cepLoading, setCepLoading] = useState(false);
   const lastCepRef = useRef<string>('');
+  // Último título gerado automaticamente (permite atualizar enquanto não for editado à mão)
+  const autoTituloRef = useRef<string>('');
 
   const lookupCep = async (rawCep: string) => {
     const digits = rawCep.replace(/\D/g, '');
@@ -235,7 +237,7 @@ export default function ImovelForm() {
       const { data, error } = await supabase.functions.invoke('gerar-descricao-imovel', { body: { imovel } });
       if (error) throw error;
       const d: any = data || {};
-      if (d.titulo) form.setValue('titulo_anuncio', d.titulo, { shouldDirty: true });
+      if (d.titulo) { autoTituloRef.current = ''; form.setValue('titulo_anuncio', d.titulo, { shouldDirty: true }); }
       if (d.descricao) form.setValue('descricao', d.descricao, { shouldDirty: true });
       if (d.meta_description) form.setValue('meta_description', d.meta_description, { shouldDirty: true });
       toast({ title: 'Conteúdo gerado com IA' });
@@ -309,6 +311,12 @@ export default function ImovelForm() {
         reset.preco = data.preco; reset.destaque = !!data.destaque; reset.ativo = !!data.ativo;
         reset.venc_autorizacao_venda = data.venc_autorizacao_venda ?? '';
         form.reset(reset);
+        // Se o título salvo coincide com o que a regra geraria, trata como automático
+        {
+          const atual = String(data.titulo_anuncio ?? '').trim();
+          const gerado = gerarTituloAnuncio({ ...(data as any), caracteristicas: data.caracteristicas ?? [] });
+          autoTituloRef.current = atual && atual === gerado ? atual : '';
+        }
         setFotos(data.fotos ?? []);
         setCaracteristicas(data.caracteristicas ?? []);
         setLastSavedAt(new Date(data.updated_at ?? Date.now()));
@@ -381,10 +389,16 @@ export default function ImovelForm() {
   const runAutoSave = async () => {
     if (!user) return;
     const values = form.getValues();
-    // Gera título do anúncio automaticamente se vazio
-    if (!values.titulo_anuncio) {
+    // Gera/atualiza título do anúncio se vazio ou se ainda for o gerado automaticamente
+    const tituloAtual = String((values as any).titulo_anuncio ?? '').trim();
+    if (!tituloAtual || tituloAtual === autoTituloRef.current) {
       const auto = gerarTituloAnuncio({ ...values, caracteristicas });
-      if (auto) form.setValue('titulo_anuncio', auto, { shouldDirty: true });
+      if (auto && auto !== tituloAtual) {
+        autoTituloRef.current = auto;
+        form.setValue('titulo_anuncio', auto, { shouldDirty: true });
+      } else if (auto) {
+        autoTituloRef.current = auto;
+      }
     }
     const payload: any = { ...form.getValues(), fotos, caracteristicas };
     Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
@@ -439,11 +453,16 @@ export default function ImovelForm() {
     setSaving(true);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     try {
-      // Gera título do anúncio automaticamente se vazio
+      // Gera/atualiza título do anúncio se vazio ou se ainda for o gerado automaticamente
       const vals = values as Record<string, any>;
-      if (!vals.titulo_anuncio) {
+      const tituloAtual = String(vals.titulo_anuncio ?? '').trim();
+      if (!tituloAtual || tituloAtual === autoTituloRef.current) {
         const auto = gerarTituloAnuncio({ ...vals, caracteristicas });
-        if (auto) values.titulo_anuncio = auto;
+        if (auto) {
+          autoTituloRef.current = auto;
+          vals.titulo_anuncio = auto;
+          form.setValue('titulo_anuncio', auto);
+        }
       }
       const payload: any = { ...values, fotos, caracteristicas };
       Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
