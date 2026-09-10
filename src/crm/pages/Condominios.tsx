@@ -174,6 +174,7 @@ export default function Condominios() {
   const openNovo = () => {
     setEditing(null);
     setForm(emptyForm);
+    setFotos([]);
     setDialogOpen(true);
   };
 
@@ -188,7 +189,46 @@ export default function Condominios() {
       cidade: c.cidade ?? '',
       estado: c.estado ?? '',
     });
+    setFotos(c.fotos ?? []);
     setDialogOpen(true);
+  };
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const novas: string[] = [];
+    try {
+      for (const file of Array.from(files)) {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `condominios/${editing?.codigo ?? 'novo'}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, file, { contentType: file.type || `image/${ext}`, upsert: false });
+        if (error) {
+          console.error('[condominio upload]', file.name, error);
+          toast.error(`Falha ao enviar ${file.name}`);
+          continue;
+        }
+        const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+        novas.push(data.publicUrl);
+      }
+      if (novas.length) {
+        setFotos((f) => [...f, ...novas]);
+        toast.success(`${novas.length} foto(s) enviada(s)`);
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removerFoto = async (url: string) => {
+    setFotos((f) => f.filter((u) => u !== url));
+    const path = storagePathFromUrl(url);
+    if (path) await supabase.storage.from(BUCKET).remove([path]);
+  };
+
+  const definirCapa = (url: string) => {
+    setFotos((f) => [url, ...f.filter((u) => u !== url)]);
   };
 
   const salvar = useMutation({
