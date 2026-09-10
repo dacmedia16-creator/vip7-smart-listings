@@ -513,6 +513,30 @@ export default function Imoveis() {
                       <Badge className={`absolute top-2 right-2 ${meta.color}`}>{meta.label}</Badge>
                       {isMine && <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">Meu</Badge>}
                       {im.ativo === false && <Badge className="absolute bottom-2 left-2 bg-muted text-muted-foreground border">Desativado</Badge>}
+                      {(isManager || isMine) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-background/90 border flex items-center justify-center hover:bg-background"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                            <DropdownMenuItem
+                              onSelect={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmToggle(im); }}
+                            >
+                              {im.ativo !== false && im.status !== 'inativo' ? (
+                                <><EyeOff className="h-4 w-4 mr-2" />Desativar imóvel</>
+                              ) : (
+                                <><Eye className="h-4 w-4 mr-2" />Reativar imóvel</>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                     <div className="p-4">
                       <p className="text-xs text-muted-foreground mb-1">
