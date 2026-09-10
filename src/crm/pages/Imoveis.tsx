@@ -63,7 +63,9 @@ const EMPTY: Filters = {
 
 const STATE_KEY = 'crm-imoveis-state';
 
-type SavedState = { q: string; filters: Filters; applied: Filters; pagina: number; open: boolean };
+type Ordenacao = 'recentes' | 'antigos' | 'menor_valor' | 'maior_valor' | 'titulo';
+
+type SavedState = { q: string; filters: Filters; applied: Filters; pagina: number; open: boolean; ordenacao: Ordenacao };
 
 function loadSavedState(): SavedState | null {
   try {
@@ -76,6 +78,7 @@ function loadSavedState(): SavedState | null {
       applied: { ...EMPTY, ...s.applied },
       pagina: typeof s.pagina === 'number' && s.pagina > 0 ? s.pagina : 1,
       open: !!s.open,
+      ordenacao: (s.ordenacao ?? 'recentes') as Ordenacao,
     };
   } catch {
     return null;
