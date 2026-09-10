@@ -115,7 +115,7 @@ export default function ImovelDetail() {
           <Card className="p-6">
             <div className="flex items-start justify-between flex-wrap gap-3 mb-2">
               <div>
-                <p className="text-xs text-muted-foreground">{imovel.codigo_interno || '—'} · {imovel.tipo}</p>
+                <p className="text-xs text-muted-foreground">{[imovel.codigo_interno, imovel.codigo_imoview, imovel.tipo].filter(Boolean).join(' · ')}</p>
                 <h1 className="text-2xl font-bold">{imovel.titulo}</h1>
                 <p className="text-muted-foreground flex items-start gap-1 mt-1">
                   <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
