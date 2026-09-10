@@ -46,6 +46,15 @@ export default function ImovelDetail() {
   const canEdit = imovel && (isManager || (isCorretor && imovel.corretor_id === user?.id));
   const canDelete = imovel && (isManager || (isCorretor && imovel.corretor_id === user?.id));
 
+  const handleToggleAtivo = async () => {
+    const ativo = !(imovel.ativo !== false && imovel.status !== 'inativo');
+    const updates = ativo ? { ativo: true, status: 'disponivel' } : { ativo: false, status: 'inativo' };
+    const { error } = await supabase.from('imoveis_proprios').update(updates).eq('id', id!);
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    toast({ title: ativo ? 'Imóvel reativado' : 'Imóvel desativado' });
+    setImovel((prev: any) => ({ ...prev, ...updates }));
+  };
+
   const handleDelete = async () => {
     const { error } = await supabase.from('imoveis_proprios').delete().eq('id', id!);
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' });
