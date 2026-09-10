@@ -267,7 +267,7 @@ export default function Imoveis() {
       setTotal(count ?? 0);
       setLoading(false);
     })();
-  }, [pagina, qDebounced, applied, refreshKey]);
+  }, [pagina, qDebounced, applied, refreshKey, ordenacao]);
 
   const toggleAtivo = async (im: any) => {
     const ativo = !(im.ativo !== false && im.status !== 'inativo');
