@@ -389,10 +389,16 @@ export default function ImovelForm() {
   const runAutoSave = async () => {
     if (!user) return;
     const values = form.getValues();
-    // Gera título do anúncio automaticamente se vazio
-    if (!values.titulo_anuncio) {
+    // Gera/atualiza título do anúncio se vazio ou se ainda for o gerado automaticamente
+    const tituloAtual = String((values as any).titulo_anuncio ?? '').trim();
+    if (!tituloAtual || tituloAtual === autoTituloRef.current) {
       const auto = gerarTituloAnuncio({ ...values, caracteristicas });
-      if (auto) form.setValue('titulo_anuncio', auto, { shouldDirty: true });
+      if (auto && auto !== tituloAtual) {
+        autoTituloRef.current = auto;
+        form.setValue('titulo_anuncio', auto, { shouldDirty: true });
+      } else if (auto) {
+        autoTituloRef.current = auto;
+      }
     }
     const payload: any = { ...form.getValues(), fotos, caracteristicas };
     Object.keys(payload).forEach((k) => { if (payload[k] === '' || payload[k] === undefined) payload[k] = null; });
