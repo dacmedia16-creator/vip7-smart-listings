@@ -539,13 +539,33 @@ export default function Condominios() {
                   <TableRow key={c.codigo} className="border-b border-[#E8E4D9] hover:bg-[#FAF8F3]">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
-                        {c.fotos?.[0] ? (
-                          <img src={c.fotos[0]} alt={`Foto do condomínio ${c.nome}`} loading="lazy" className="h-10 w-14 rounded object-cover border border-[#E8E4D9]" />
-                        ) : (
-                          <div className="h-10 w-14 rounded bg-[#FAF8F3] border border-[#E8E4D9] flex items-center justify-center">
-                            <Building className="h-4 w-4 text-[#C9A24C]" />
-                          </div>
-                        )}
+                        <label
+                          title={c.fotos?.[0] ? 'Trocar capa' : 'Adicionar capa'}
+                          className="group relative h-14 w-[72px] shrink-0 cursor-pointer overflow-hidden rounded-md border border-[#E8E4D9] bg-[#FAF8F3] block"
+                        >
+                          {c.fotos?.[0] ? (
+                            <img src={c.fotos[0]} alt={`Foto de capa do condomínio ${c.nome}`} loading="lazy" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center">
+                              <Building className="h-5 w-5 text-[#C9A24C]" />
+                            </span>
+                          )}
+                          <span className="absolute inset-0 hidden items-center justify-center bg-black/55 text-[10px] font-medium text-white group-hover:flex">
+                            {c.fotos?.[0] ? 'Trocar capa' : 'Adicionar capa'}
+                          </span>
+                          {capaUploading === c.codigo && (
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/60">
+                              <Loader2 className="h-4 w-4 animate-spin text-white" />
+                            </span>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={capaUploading !== null}
+                            onChange={(e) => { uploadCapa(c, e.target.files?.[0]); e.target.value = ''; }}
+                          />
+                        </label>
                         <div>
                           <Link to={`/crm/condominios/${c.codigo}`} className="text-[#0F0F12] hover:text-[#7A5A14]">{c.nome}</Link>
                           {end && <div className="text-xs text-[#4A4A52] font-normal mt-0.5">{end}</div>}
