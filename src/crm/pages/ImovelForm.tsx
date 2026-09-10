@@ -542,6 +542,16 @@ export default function ImovelForm() {
     )} />
   );
 
+  const Money = (name: any, label: string) => (
+    <FormField control={form.control} name={name} render={({ field }) => (
+      <FormItem>
+        <FormLabel>{label}</FormLabel>
+        <FormControl><MoneyInput value={field.value ?? null} onChange={field.onChange} /></FormControl>
+        <FormMessage />
+      </FormItem>
+    )} />
+  );
+
   const Sel = (name: any, label: string, opts: string[]) => (
     <FormField control={form.control} name={name} render={({ field }) => (
       <FormItem>
