@@ -78,6 +78,33 @@ export default function ImovelDetail() {
           {canEdit && (
             <Button asChild variant="outline"><Link to={`/crm/imoveis/${id}/editar`}><Edit className="h-4 w-4 mr-1" />Editar</Link></Button>
           )}
+          {canEdit && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                {imovel.ativo !== false && imovel.status !== 'inativo' ? (
+                  <Button variant="outline"><EyeOff className="h-4 w-4 mr-1" />Desativar</Button>
+                ) : (
+                  <Button variant="outline"><Eye className="h-4 w-4 mr-1" />Reativar</Button>
+                )}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{imovel.ativo !== false && imovel.status !== 'inativo' ? 'Desativar imóvel?' : 'Reativar imóvel?'}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {imovel.ativo !== false && imovel.status !== 'inativo'
+                      ? 'Desativar este imóvel? Ele deixará de aparecer no site principal.'
+                      : 'Reativar este imóvel? Ele voltará a aparecer no site como disponível.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleToggleAtivo}>
+                    {imovel.ativo !== false && imovel.status !== 'inativo' ? 'Desativar' : 'Reativar'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
