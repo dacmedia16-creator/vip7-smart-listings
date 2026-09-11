@@ -42,6 +42,7 @@ export default function LeadsList() {
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [origemFilter, setOrigemFilter] = useState<string>('all');
+  const [situacao, setSituacao] = useState<'ativos' | 'arquivados' | 'todos'>('ativos');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export default function LeadsList() {
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
+    if (situacao !== 'todos') q = q.eq('arquivado', situacao === 'arquivados');
     if (statusFilter !== 'all') q = q.eq('status_funil', statusFilter as any);
     if (origemFilter !== 'all') q = q.eq('origem', origemFilter as any);
     if (search.trim()) {
