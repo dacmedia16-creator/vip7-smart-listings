@@ -31,6 +31,7 @@ interface ImovelLite {
   fotos: string[] | null;
   created_at: string | null;
   data_atualizacao_origem: string | null;
+  mostrar_endereco?: boolean | null;
 }
 
 interface PortalRow {
@@ -71,7 +72,7 @@ export default function Portais() {
     const [imRes, pRes] = await Promise.all([
       supabase
         .from('imoveis_proprios')
-        .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem')
+        .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem,mostrar_endereco')
         .eq('ativo', true)
         .order('titulo'),
       (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),
@@ -194,6 +195,28 @@ export default function Portais() {
     toast({
       title: publicar ? `${elegiveis.length} imóveis publicados no ${nomePortal}` : `${elegiveis.length} imóveis despublicados do ${nomePortal}`,
       description: pulados > 0 ? `${pulados} pulados por dados faltando.` : undefined,
+    });
+    setSelecionados(new Set());
+  }
+
+  async function bulkSetMostrarEndereco(valor: boolean) {
+    const ids = Array.from(selecionados);
+    if (ids.length === 0) return;
+    setBulkLoading(true);
+    const { error } = await (supabase as any)
+      .from('imoveis_proprios')
+      .update({ mostrar_endereco: valor })
+      .in('id', ids);
+    setBulkLoading(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setImoveis((prev) => prev.map((im) => (selecionados.has(im.id) ? { ...im, mostrar_endereco: valor } : im)));
+    toast({
+      title: valor
+        ? `${ids.length} imóveis passam a enviar o endereço completo`
+        : `${ids.length} imóveis deixam de enviar rua e número`,
     });
     setSelecionados(new Set());
   }
@@ -533,6 +556,14 @@ export default function Portais() {
                     </Button>
                   </div>
                 ))}
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => bulkSetMostrarEndereco(true)}>
+                    Mostrar endereço
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={bulkLoading} onClick={() => bulkSetMostrarEndereco(false)}>
+                    Ocultar endereço
+                  </Button>
+                </div>
                 <Button size="sm" variant="ghost" onClick={() => setSelecionados(new Set())}>
                   Limpar seleção
                 </Button>
@@ -555,6 +586,7 @@ export default function Portais() {
                 <th className="text-left p-2">Imóvel</th>
                 <th className="text-left p-2">Cidade</th>
                 <th className="text-left p-2">Status</th>
+                <th className="text-left p-2 whitespace-nowrap">Endereço</th>
                 {PORTAIS.map((p) => (
                   <th key={p.id} className="text-center p-2 whitespace-nowrap">
                     <div className="flex flex-col items-center gap-0.5">
@@ -569,9 +601,9 @@ export default function Portais() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
+                <tr><td colSpan={5 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
               ) : filtrados.length === 0 ? (
-                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
+                <tr><td colSpan={5 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
               ) : paginaItems.map((im) => {
                 const erros = validarImovelParaPortais(im);
                 const marcado = selecionados.has(im.id);
@@ -599,6 +631,17 @@ export default function Portais() {
                       ) : (
                         <Badge variant="outline" className="text-emerald-700 border-emerald-400 gap-1">
                           <CheckCircle2 className="h-3 w-3" /> OK
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {im.mostrar_endereco ? (
+                        <Badge variant="outline" className="text-emerald-700 border-emerald-400 whitespace-nowrap" title="Rua e número são enviados aos portais">
+                          Completo
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground whitespace-nowrap" title="Envia apenas bairro, cidade, estado e CEP">
+                          Sem rua/nº
                         </Badge>
                       )}
                     </td>

@@ -55,6 +55,7 @@ const schema = z.object({
   cep: str, endereco: str, numero: str, bairro: str, segundo_bairro: str,
   regiao: str, sub_regiao: str, cidade: str, estado: str,
   tipo_complemento: str, complemento: str, torre_bloco: str,
+  mostrar_endereco: z.boolean().optional(),
 
   // Valores
   valor_anterior: num, condominio: num, iptu_mensal: num, iptu_anual: num,
@@ -262,7 +263,7 @@ export default function ImovelForm() {
       preco: 0, destaque: false, ativo: true, estado: 'SP',
       valor_sob_consulta: false, exclusivo: false, imovel_ocupado: false,
       imovel_alugado: false, aceita_financiamento: false, aceita_permuta: false,
-      na_planta: false, permite_animais: false,
+      na_planta: false, permite_animais: false, mostrar_endereco: false,
     },
   });
 
@@ -748,6 +749,17 @@ export default function ImovelForm() {
                   {Sel('tipo_complemento', 'Tipo complemento', TIPO_COMPLEMENTO)}
                   {T('complemento', 'Complemento')}
                   {T('torre_bloco', 'Torre / bloco')}
+                  <FormField control={form.control} name="mostrar_endereco" render={({ field }) => (
+                    <div className="md:col-span-3 flex items-center justify-between gap-3 rounded-md border border-[#E8E4D9] bg-white px-3 py-2">
+                      <div>
+                        <Label className="text-sm">Mostrar endereço completo nos portais</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Ligado: envia rua e número aos portais. Desligado: envia apenas bairro, cidade, estado e CEP.
+                        </p>
+                      </div>
+                      <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                    </div>
+                  )} />
                   <FormField control={form.control} name="finalidade" render={({ field }) => (
                     <FormItem><FormLabel>Finalidade *</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
