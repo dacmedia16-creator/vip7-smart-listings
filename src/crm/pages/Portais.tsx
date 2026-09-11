@@ -533,11 +533,25 @@ export default function Portais() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
+                <th className="p-2 w-10">
+                  <Checkbox
+                    checked={todosSelecionados ? true : algunsSelecionados ? 'indeterminate' : false}
+                    onCheckedChange={(v) => toggleSelecionarTodos(!!v)}
+                    aria-label="Selecionar todos"
+                  />
+                </th>
                 <th className="text-left p-2">Imóvel</th>
                 <th className="text-left p-2">Cidade</th>
                 <th className="text-left p-2">Status</th>
                 {PORTAIS.map((p) => (
-                  <th key={p.id} className="text-center p-2 whitespace-nowrap">{p.nome.split(' ')[0]}</th>
+                  <th key={p.id} className="text-center p-2 whitespace-nowrap">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span>{p.nome.split(' ')[0]}</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {contagens[p.id]} publicado{contagens[p.id] === 1 ? '' : 's'}
+                      </Badge>
+                    </div>
+                  </th>
                 ))}
               </tr>
             </thead>
