@@ -586,6 +586,7 @@ export default function Portais() {
                 <th className="text-left p-2">Imóvel</th>
                 <th className="text-left p-2">Cidade</th>
                 <th className="text-left p-2">Status</th>
+                <th className="text-left p-2 whitespace-nowrap">Endereço</th>
                 {PORTAIS.map((p) => (
                   <th key={p.id} className="text-center p-2 whitespace-nowrap">
                     <div className="flex flex-col items-center gap-0.5">
