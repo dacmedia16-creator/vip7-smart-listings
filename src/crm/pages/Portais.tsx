@@ -601,9 +601,9 @@ export default function Portais() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
+                <tr><td colSpan={5 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
               ) : filtrados.length === 0 ? (
-                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
+                <tr><td colSpan={5 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
               ) : paginaItems.map((im) => {
                 const erros = validarImovelParaPortais(im);
                 const marcado = selecionados.has(im.id);
