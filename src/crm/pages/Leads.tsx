@@ -246,6 +246,15 @@ export default function LeadsList() {
                       <TableCell className="text-[#4A4A52] text-xs">
                         {formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: ptBR })}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); toggleArquivo(l); }}
+                        >
+                          {l.arquivado ? 'Restaurar' : 'Arquivar'}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })
