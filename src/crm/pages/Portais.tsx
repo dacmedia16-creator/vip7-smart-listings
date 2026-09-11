@@ -283,17 +283,27 @@ export default function Portais() {
     return m;
   }, [portais]);
 
-  // Limpa seleção quando busca/filtros mudam (evita ações em itens fora da tela)
+  // Limpa seleção e volta para página 1 quando busca/filtros mudam
   useEffect(() => {
     setSelecionados(new Set());
+    setPagina(1);
   }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
 
-  const filtradosIds = useMemo(() => filtrados.map((i) => i.id), [filtrados]);
-  const todosSelecionados = filtradosIds.length > 0 && filtradosIds.every((id) => selecionados.has(id));
-  const algunsSelecionados = filtradosIds.some((id) => selecionados.has(id));
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const inicio = (paginaAtual - 1) * PAGE_SIZE;
+  const paginaItems = useMemo(() => filtrados.slice(inicio, inicio + PAGE_SIZE), [filtrados, inicio]);
+  const paginaIds = paginaItems.map((i) => i.id);
+  const todosSelecionados = paginaIds.length > 0 && paginaIds.every((id) => selecionados.has(id));
+  const algunsSelecionados = paginaIds.some((id) => selecionados.has(id));
 
   function toggleSelecionarTodos(checked: boolean) {
-    setSelecionados(checked ? new Set(filtradosIds) : new Set());
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (checked) paginaIds.forEach((id) => next.add(id));
+      else paginaIds.forEach((id) => next.delete(id));
+      return next;
+    });
   }
 
   const comErro = imoveis.filter((im) => validarImovelParaPortais(im).length > 0).length;
