@@ -144,6 +144,58 @@ export default function Portais() {
     }
   }
 
+  function toggleSelecionado(id: string, checked: boolean) {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  async function bulkSetPortal(portal: PortalId, publicar: boolean) {
+    const ids = Array.from(selecionados);
+    if (ids.length === 0) return;
+    let elegiveis = ids;
+    let pulados = 0;
+    if (publicar) {
+      const comErroIds = new Set(
+        imoveis.filter((im) => selecionados.has(im.id) && validarImovelParaPortais(im).length > 0).map((im) => im.id),
+      );
+      pulados = comErroIds.size;
+      elegiveis = ids.filter((id) => !comErroIds.has(id));
+    }
+    if (elegiveis.length === 0) {
+      toast({ title: 'Nenhum imóvel elegível', description: pulados > 0 ? `${pulados} imóveis com dados faltando foram pulados.` : undefined, variant: 'destructive' });
+      return;
+    }
+    setBulkLoading(true);
+    const rows = elegiveis.map((imovel_id) => ({ imovel_id, portal, publicar }));
+    const { error } = await (supabase as any)
+      .from('imovel_portais')
+      .upsert(rows, { onConflict: 'imovel_id,portal' });
+    setBulkLoading(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setPortais((prev) => {
+      const next = [...prev];
+      elegiveis.forEach((imovel_id) => {
+        const i = next.findIndex((p) => p.imovel_id === imovel_id && p.portal === portal);
+        if (i >= 0) next[i] = { ...next[i], publicar };
+        else next.push({ imovel_id, portal, publicar });
+      });
+      return next;
+    });
+    const nomePortal = PORTAIS.find((p) => p.id === portal)?.nome ?? portal;
+    toast({
+      title: publicar ? `${elegiveis.length} imóveis publicados no ${nomePortal}` : `${elegiveis.length} imóveis despublicados do ${nomePortal}`,
+      description: pulados > 0 ? `${pulados} pulados por dados faltando.` : undefined,
+    });
+    setSelecionados(new Set());
+  }
+
   function copiarUrl(portal: PortalId) {
     const slugMap: Record<PortalId, string> = {
       zap_vivareal: 'zap',
