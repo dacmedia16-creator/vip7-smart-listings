@@ -199,6 +199,28 @@ export default function Portais() {
     setSelecionados(new Set());
   }
 
+  async function bulkSetMostrarEndereco(valor: boolean) {
+    const ids = Array.from(selecionados);
+    if (ids.length === 0) return;
+    setBulkLoading(true);
+    const { error } = await (supabase as any)
+      .from('imoveis_proprios')
+      .update({ mostrar_endereco: valor })
+      .in('id', ids);
+    setBulkLoading(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setImoveis((prev) => prev.map((im) => (selecionados.has(im.id) ? { ...im, mostrar_endereco: valor } : im)));
+    toast({
+      title: valor
+        ? `${ids.length} imóveis passam a enviar o endereço completo`
+        : `${ids.length} imóveis deixam de enviar rua e número`,
+    });
+    setSelecionados(new Set());
+  }
+
   function copiarUrl(portal: PortalId) {
     const slugMap: Record<PortalId, string> = {
       zap_vivareal: 'zap',
