@@ -259,7 +259,6 @@ function buildImovelWeb(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): 
         <cidade>${esc(im.cidade)}</cidade>
         <bairro>${esc(im.bairro)}</bairro>
         ${im.mostrar_endereco && im.endereco ? `<logradouro>${esc(im.endereco)}</logradouro>` : ''}
-        ${im.mostrar_endereco && im.numero ? `<numero>${esc(im.numero)}</numero>` : ''}
         <mostrar_endereco>${im.mostrar_endereco ? 'true' : 'false'}</mostrar_endereco>
         ${im.latitude && im.longitude ? `<latitude>${im.latitude}</latitude><longitude>${im.longitude}</longitude>` : ''}
       </endereco>
@@ -307,7 +306,6 @@ function buildChavesNaMao(imoveis: ImovelRow[]): string {
       <cidade>${esc(im.cidade)}</cidade>
       <bairro>${esc(im.bairro)}</bairro>
       ${im.mostrar_endereco && im.endereco ? `<endereco>${esc(im.endereco)}</endereco>` : ''}
-      ${im.mostrar_endereco && im.numero ? `<numero>${esc(im.numero)}</numero>` : ''}
       ${im.latitude && im.longitude ? `<latitude>${im.latitude}</latitude><longitude>${im.longitude}</longitude>` : ''}
       <fotos>${fotos}</fotos>
       ${im.youtube_url ? `<video><![CDATA[${im.youtube_url}]]></video>` : ''}
