@@ -173,6 +173,14 @@ export default function LeadsList() {
                   <SelectItem value="indicacao">Indicação</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={situacao} onValueChange={(v) => setSituacao(v as any)}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Situação" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativos">Ativos</SelectItem>
+                  <SelectItem value="arquivados">Arquivados</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="outline" onClick={() => load()}>Aplicar</Button>
             </div>
           </CardContent>
@@ -190,6 +198,7 @@ export default function LeadsList() {
                 <TableHead className="text-[#4A4A52]">Status</TableHead>
                 <TableHead className="text-[#4A4A52]">Último contato</TableHead>
                 <TableHead className="text-[#4A4A52]">Criado</TableHead>
+                <TableHead className="text-[#4A4A52] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
