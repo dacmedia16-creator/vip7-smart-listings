@@ -281,6 +281,19 @@ export default function Portais() {
     return m;
   }, [portais]);
 
+  // Limpa seleção quando busca/filtros mudam (evita ações em itens fora da tela)
+  useEffect(() => {
+    setSelecionados(new Set());
+  }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
+
+  const filtradosIds = useMemo(() => filtrados.map((i) => i.id), [filtrados]);
+  const todosSelecionados = filtradosIds.length > 0 && filtradosIds.every((id) => selecionados.has(id));
+  const algunsSelecionados = filtradosIds.some((id) => selecionados.has(id));
+
+  function toggleSelecionarTodos(checked: boolean) {
+    setSelecionados(checked ? new Set(filtradosIds) : new Set());
+  }
+
   const comErro = imoveis.filter((im) => validarImovelParaPortais(im).length > 0).length;
 
   return (
