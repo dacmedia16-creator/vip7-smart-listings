@@ -59,6 +59,8 @@ export default function Portais() {
   const [filtroCidade, setFiltroCidade] = useState<string>('todos');
   const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const webhookUrl = `${PROJECT_URL}/functions/v1/portal-lead-grupozap`;
 
@@ -140,6 +142,58 @@ export default function Portais() {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
       load();
     }
+  }
+
+  function toggleSelecionado(id: string, checked: boolean) {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  async function bulkSetPortal(portal: PortalId, publicar: boolean) {
+    const ids = Array.from(selecionados);
+    if (ids.length === 0) return;
+    let elegiveis = ids;
+    let pulados = 0;
+    if (publicar) {
+      const comErroIds = new Set(
+        imoveis.filter((im) => selecionados.has(im.id) && validarImovelParaPortais(im).length > 0).map((im) => im.id),
+      );
+      pulados = comErroIds.size;
+      elegiveis = ids.filter((id) => !comErroIds.has(id));
+    }
+    if (elegiveis.length === 0) {
+      toast({ title: 'Nenhum imóvel elegível', description: pulados > 0 ? `${pulados} imóveis com dados faltando foram pulados.` : undefined, variant: 'destructive' });
+      return;
+    }
+    setBulkLoading(true);
+    const rows = elegiveis.map((imovel_id) => ({ imovel_id, portal, publicar }));
+    const { error } = await (supabase as any)
+      .from('imovel_portais')
+      .upsert(rows, { onConflict: 'imovel_id,portal' });
+    setBulkLoading(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setPortais((prev) => {
+      const next = [...prev];
+      elegiveis.forEach((imovel_id) => {
+        const i = next.findIndex((p) => p.imovel_id === imovel_id && p.portal === portal);
+        if (i >= 0) next[i] = { ...next[i], publicar };
+        else next.push({ imovel_id, portal, publicar });
+      });
+      return next;
+    });
+    const nomePortal = PORTAIS.find((p) => p.id === portal)?.nome ?? portal;
+    toast({
+      title: publicar ? `${elegiveis.length} imóveis publicados no ${nomePortal}` : `${elegiveis.length} imóveis despublicados do ${nomePortal}`,
+      description: pulados > 0 ? `${pulados} pulados por dados faltando.` : undefined,
+    });
+    setSelecionados(new Set());
   }
 
   function copiarUrl(portal: PortalId) {
@@ -226,6 +280,19 @@ export default function Portais() {
     portais.forEach((p) => { if (p.publicar) m[p.portal] = (m[p.portal] ?? 0) + 1; });
     return m;
   }, [portais]);
+
+  // Limpa seleção quando busca/filtros mudam (evita ações em itens fora da tela)
+  useEffect(() => {
+    setSelecionados(new Set());
+  }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
+
+  const filtradosIds = useMemo(() => filtrados.map((i) => i.id), [filtrados]);
+  const todosSelecionados = filtradosIds.length > 0 && filtradosIds.every((id) => selecionados.has(id));
+  const algunsSelecionados = filtradosIds.some((id) => selecionados.has(id));
+
+  function toggleSelecionarTodos(checked: boolean) {
+    setSelecionados(checked ? new Set(filtradosIds) : new Set());
+  }
 
   const comErro = imoveis.filter((im) => validarImovelParaPortais(im).length > 0).length;
 
@@ -429,27 +496,82 @@ export default function Portais() {
           </div>
         </Card>
 
+        {selecionados.size > 0 && (
+          <Card className="p-3 border-primary/40">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">{selecionados.size} selecionado{selecionados.size > 1 ? 's' : ''}</span>
+              <div className="flex flex-wrap gap-2 ml-auto">
+                {PORTAIS.map((p) => (
+                  <div key={p.id} className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={bulkLoading}
+                      onClick={() => bulkSetPortal(p.id, true)}
+                    >
+                      Publicar {p.nome.split(' ')[0]}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={bulkLoading}
+                      onClick={() => bulkSetPortal(p.id, false)}
+                    >
+                      Despublicar
+                    </Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => setSelecionados(new Set())}>
+                  Limpar seleção
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
+                <th className="p-2 w-10">
+                  <Checkbox
+                    checked={todosSelecionados ? true : algunsSelecionados ? 'indeterminate' : false}
+                    onCheckedChange={(v) => toggleSelecionarTodos(!!v)}
+                    aria-label="Selecionar todos"
+                  />
+                </th>
                 <th className="text-left p-2">Imóvel</th>
                 <th className="text-left p-2">Cidade</th>
                 <th className="text-left p-2">Status</th>
                 {PORTAIS.map((p) => (
-                  <th key={p.id} className="text-center p-2 whitespace-nowrap">{p.nome.split(' ')[0]}</th>
+                  <th key={p.id} className="text-center p-2 whitespace-nowrap">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span>{p.nome.split(' ')[0]}</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {contagens[p.id]} publicado{contagens[p.id] === 1 ? '' : 's'}
+                      </Badge>
+                    </div>
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={3 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
+                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
               ) : filtrados.length === 0 ? (
-                <tr><td colSpan={3 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
+                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
               ) : filtrados.map((im) => {
                 const erros = validarImovelParaPortais(im);
+                const marcado = selecionados.has(im.id);
                 return (
-                  <tr key={im.id} className="border-t hover:bg-muted/30">
+                  <tr key={im.id} className={`border-t hover:bg-muted/30 ${marcado ? 'bg-primary/5' : ''}`}>
+                    <td className="p-2">
+                      <Checkbox
+                        checked={marcado}
+                        onCheckedChange={(v) => toggleSelecionado(im.id, !!v)}
+                        aria-label={`Selecionar ${im.titulo}`}
+                      />
+                    </td>
                     <td className="p-2">
                       <div className="font-medium">{im.titulo}</div>
 <div className="text-xs text-muted-foreground">
