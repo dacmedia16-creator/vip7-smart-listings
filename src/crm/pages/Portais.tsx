@@ -61,6 +61,8 @@ export default function Portais() {
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const PAGE_SIZE = 50;
 
   const webhookUrl = `${PROJECT_URL}/functions/v1/portal-lead-grupozap`;
 
@@ -281,17 +283,27 @@ export default function Portais() {
     return m;
   }, [portais]);
 
-  // Limpa seleção quando busca/filtros mudam (evita ações em itens fora da tela)
+  // Limpa seleção e volta para página 1 quando busca/filtros mudam
   useEffect(() => {
     setSelecionados(new Set());
+    setPagina(1);
   }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
 
-  const filtradosIds = useMemo(() => filtrados.map((i) => i.id), [filtrados]);
-  const todosSelecionados = filtradosIds.length > 0 && filtradosIds.every((id) => selecionados.has(id));
-  const algunsSelecionados = filtradosIds.some((id) => selecionados.has(id));
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const inicio = (paginaAtual - 1) * PAGE_SIZE;
+  const paginaItems = useMemo(() => filtrados.slice(inicio, inicio + PAGE_SIZE), [filtrados, inicio]);
+  const paginaIds = paginaItems.map((i) => i.id);
+  const todosSelecionados = paginaIds.length > 0 && paginaIds.every((id) => selecionados.has(id));
+  const algunsSelecionados = paginaIds.some((id) => selecionados.has(id));
 
   function toggleSelecionarTodos(checked: boolean) {
-    setSelecionados(checked ? new Set(filtradosIds) : new Set());
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (checked) paginaIds.forEach((id) => next.add(id));
+      else paginaIds.forEach((id) => next.delete(id));
+      return next;
+    });
   }
 
   const comErro = imoveis.filter((im) => validarImovelParaPortais(im).length > 0).length;
@@ -560,7 +572,7 @@ export default function Portais() {
                 <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
               ) : filtrados.length === 0 ? (
                 <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
-              ) : filtrados.map((im) => {
+              ) : paginaItems.map((im) => {
                 const erros = validarImovelParaPortais(im);
                 const marcado = selecionados.has(im.id);
                 return (
@@ -621,6 +633,55 @@ export default function Portais() {
               })}
             </tbody>
           </table>
+
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between gap-2 p-3 border-t">
+              <span className="text-xs text-muted-foreground">
+                Página {paginaAtual} de {totalPaginas} · {filtrados.length} imóveis
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={paginaAtual <= 1}
+                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: Math.min(7, totalPaginas) }, (_, i) => {
+                    let pg: number;
+                    if (totalPaginas <= 7) pg = i + 1;
+                    else if (paginaAtual <= 4) pg = i + 1;
+                    else if (paginaAtual >= totalPaginas - 3) pg = totalPaginas - 6 + i;
+                    else pg = paginaAtual - 3 + i;
+                    return (
+                      <Button
+                        key={pg}
+                        size="sm"
+                        variant={pg === paginaAtual ? 'default' : 'outline'}
+                        className="h-8 w-8 p-0"
+                        onClick={() => setPagina(pg)}
+                      >
+                        {pg}
+                      </Button>
+                    );
+                  })}
+                  {totalPaginas > 7 && paginaAtual < totalPaginas - 3 && (
+                    <span className="px-1 text-muted-foreground">…</span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={paginaAtual >= totalPaginas}
+                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </CrmLayout>
