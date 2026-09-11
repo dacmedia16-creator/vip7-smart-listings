@@ -496,6 +496,39 @@ export default function Portais() {
           </div>
         </Card>
 
+        {selecionados.size > 0 && (
+          <Card className="p-3 border-primary/40">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">{selecionados.size} selecionado{selecionados.size > 1 ? 's' : ''}</span>
+              <div className="flex flex-wrap gap-2 ml-auto">
+                {PORTAIS.map((p) => (
+                  <div key={p.id} className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={bulkLoading}
+                      onClick={() => bulkSetPortal(p.id, true)}
+                    >
+                      Publicar {p.nome.split(' ')[0]}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={bulkLoading}
+                      onClick={() => bulkSetPortal(p.id, false)}
+                    >
+                      Despublicar
+                    </Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => setSelecionados(new Set())}>
+                  Limpar seleção
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
