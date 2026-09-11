@@ -55,6 +55,7 @@ const schema = z.object({
   cep: str, endereco: str, numero: str, bairro: str, segundo_bairro: str,
   regiao: str, sub_regiao: str, cidade: str, estado: str,
   tipo_complemento: str, complemento: str, torre_bloco: str,
+  mostrar_endereco: z.boolean().optional(),
 
   // Valores
   valor_anterior: num, condominio: num, iptu_mensal: num, iptu_anual: num,
