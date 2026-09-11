@@ -59,6 +59,8 @@ export default function Portais() {
   const [filtroCidade, setFiltroCidade] = useState<string>('todos');
   const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const webhookUrl = `${PROJECT_URL}/functions/v1/portal-lead-grupozap`;
 
