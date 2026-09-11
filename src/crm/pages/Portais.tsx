@@ -31,6 +31,7 @@ interface ImovelLite {
   fotos: string[] | null;
   created_at: string | null;
   data_atualizacao_origem: string | null;
+  mostrar_endereco?: boolean | null;
 }
 
 interface PortalRow {
