@@ -556,6 +556,14 @@ export default function Portais() {
                     </Button>
                   </div>
                 ))}
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => bulkSetMostrarEndereco(true)}>
+                    Mostrar endereço
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={bulkLoading} onClick={() => bulkSetMostrarEndereco(false)}>
+                    Ocultar endereço
+                  </Button>
+                </div>
                 <Button size="sm" variant="ghost" onClick={() => setSelecionados(new Set())}>
                   Limpar seleção
                 </Button>
