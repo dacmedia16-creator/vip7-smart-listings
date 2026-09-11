@@ -193,7 +193,6 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
         <City>${esc(im.cidade)}</City>
         <Neighborhood>${esc(im.bairro)}</Neighborhood>
         ${display === 'Street' && im.endereco ? `<Address>${esc(im.endereco)}</Address>` : ''}
-        ${display === 'Street' && im.numero ? `<StreetNumber>${esc(im.numero)}</StreetNumber>` : ''}
         ${im.cep ? `<PostalCode>${esc(im.cep)}</PostalCode>` : ''}
         ${im.latitude && im.longitude ? `<Latitude>${im.latitude}</Latitude><Longitude>${im.longitude}</Longitude>` : ''}
       </Location>

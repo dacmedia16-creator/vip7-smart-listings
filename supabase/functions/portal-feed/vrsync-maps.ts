@@ -130,10 +130,10 @@ export function mapFeature(c: string): string | null {
 export function mapDisplayAddress(
   mostrar: boolean,
   endereco: string | null | undefined,
-  numero: string | null | undefined,
+  _numero: string | null | undefined,
   bairro: string | null | undefined,
 ): 'Street' | 'Neighborhood' | 'City' | 'None' {
-  if (mostrar && endereco && numero) return 'Street';
+  if (mostrar && endereco) return 'Street';
   if (bairro) return 'Neighborhood';
   return 'City';
 }
