@@ -749,6 +749,17 @@ export default function ImovelForm() {
                   {Sel('tipo_complemento', 'Tipo complemento', TIPO_COMPLEMENTO)}
                   {T('complemento', 'Complemento')}
                   {T('torre_bloco', 'Torre / bloco')}
+                  <FormField control={form.control} name="mostrar_endereco" render={({ field }) => (
+                    <div className="md:col-span-3 flex items-center justify-between gap-3 rounded-md border border-[#E8E4D9] bg-white px-3 py-2">
+                      <div>
+                        <Label className="text-sm">Mostrar endereço completo nos portais</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Ligado: envia rua e número aos portais. Desligado: envia apenas bairro, cidade, estado e CEP.
+                        </p>
+                      </div>
+                      <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                    </div>
+                  )} />
                   <FormField control={form.control} name="finalidade" render={({ field }) => (
                     <FormItem><FormLabel>Finalidade *</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
