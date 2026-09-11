@@ -31,6 +31,7 @@ type Lead = {
   corretor_id: string | null;
   created_at: string;
   last_contact_at: string | null;
+  arquivado: boolean;
 };
 
 const PAGE_SIZE = 20;
@@ -72,12 +73,24 @@ export default function LeadsList() {
     setLoading(false);
   };
 
+  const toggleArquivo = async (lead: Lead) => {
+    const novo = !lead.arquivado;
+    const { error } = await supabase.from('leads').update({ arquivado: novo }).eq('id', lead.id);
+    if (error) return;
+    if (situacao === 'todos') {
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, arquivado: novo } : l)));
+    } else {
+      setLeads((prev) => prev.filter((l) => l.id !== lead.id));
+      setTotalCount((c) => Math.max(0, c - 1));
+    }
+  };
+
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, origemFilter]);
+  }, [statusFilter, origemFilter, situacao]);
 
   // Reload when page changes
   useEffect(() => {
