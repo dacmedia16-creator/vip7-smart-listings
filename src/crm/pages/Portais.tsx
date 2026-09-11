@@ -633,6 +633,55 @@ export default function Portais() {
               })}
             </tbody>
           </table>
+
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between gap-2 p-3 border-t">
+              <span className="text-xs text-muted-foreground">
+                Página {paginaAtual} de {totalPaginas} · {filtrados.length} imóveis
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={paginaAtual <= 1}
+                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: Math.min(7, totalPaginas) }, (_, i) => {
+                    let pg: number;
+                    if (totalPaginas <= 7) pg = i + 1;
+                    else if (paginaAtual <= 4) pg = i + 1;
+                    else if (paginaAtual >= totalPaginas - 3) pg = totalPaginas - 6 + i;
+                    else pg = paginaAtual - 3 + i;
+                    return (
+                      <Button
+                        key={pg}
+                        size="sm"
+                        variant={pg === paginaAtual ? 'default' : 'outline'}
+                        className="h-8 w-8 p-0"
+                        onClick={() => setPagina(pg)}
+                      >
+                        {pg}
+                      </Button>
+                    );
+                  })}
+                  {totalPaginas > 7 && paginaAtual < totalPaginas - 3 && (
+                    <span className="px-1 text-muted-foreground">…</span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={paginaAtual >= totalPaginas}
+                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </CrmLayout>
