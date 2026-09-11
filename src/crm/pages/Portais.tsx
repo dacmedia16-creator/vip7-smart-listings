@@ -18,6 +18,8 @@ import { ptBR } from 'date-fns/locale';
 interface ImovelLite {
   id: string;
   titulo: string;
+  codigo_interno: string | null;
+  codigo_imoview: number | null;
   cidade: string | null;
   bairro: string | null;
   tipo: string;
@@ -72,7 +74,7 @@ export default function Portais() {
     const [imRes, pRes] = await Promise.all([
       supabase
         .from('imoveis_proprios')
-        .select('id,titulo,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem,mostrar_endereco')
+        .select('id,titulo,codigo_interno,codigo_imoview,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem,mostrar_endereco')
         .eq('ativo', true)
         .order('titulo'),
       (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),
@@ -264,7 +266,7 @@ export default function Portais() {
     const f = filtro.toLowerCase();
     const limiteData = periodo === 'todos' ? null : Date.now() - Number(periodo) * 24 * 60 * 60 * 1000;
     const lista = imoveis.filter((im) => {
-      if (f && !`${im.titulo} ${im.cidade ?? ''} ${im.bairro ?? ''}`.toLowerCase().includes(f)) return false;
+      if (f && !`${im.titulo} ${im.cidade ?? ''} ${im.bairro ?? ''} ${im.codigo_interno ?? ''} ${im.codigo_imoview ?? ''}`.toLowerCase().includes(f)) return false;
       if (precoMin !== null && Number(im.preco ?? 0) < precoMin) return false;
       if (precoMax !== null && Number(im.preco ?? 0) > precoMax) return false;
       if (filtroFinalidade !== 'todos' && im.finalidade !== filtroFinalidade) return false;
@@ -617,6 +619,11 @@ export default function Portais() {
                       />
                     </td>
                     <td className="p-2">
+                      {(im.codigo_interno || im.codigo_imoview) && (
+                        <div className="text-xs font-mono text-muted-foreground">
+                          {[im.codigo_interno, im.codigo_imoview].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
                       <div className="font-medium">{im.titulo}</div>
 <div className="text-xs text-muted-foreground">
                       {im.tipo} · {im.finalidade} · <span className="font-medium text-foreground">{Number(im.preco ?? 0) > 0 ? `R$ ${Number(im.preco).toLocaleString('pt-BR')}` : '—'}</span>
