@@ -49,11 +49,11 @@ export default function CrmDashboard() {
         atrasadosQ,
       ] = await Promise.all([
         supabase.from('imoveis_proprios').select('id', { count: 'exact', head: true }),
-        supabase.from('leads').select('id', { count: 'exact', head: true }),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', seteDias),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).in('status_funil', ativosStatuses),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status_funil', 'fechamento'),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status_funil', 'perdido'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('arquivado', false),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('arquivado', false).gte('created_at', seteDias),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('arquivado', false).in('status_funil', ativosStatuses),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('arquivado', false).eq('status_funil', 'fechamento'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('arquivado', false).eq('status_funil', 'perdido'),
         supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('status', 'pendente').lt('data_hora', now.toISOString()),
         supabase.rpc('dashboard_pipeline_total'),
         supabase.rpc('dashboard_funil_counts'),
@@ -69,12 +69,14 @@ export default function CrmDashboard() {
           .limit(8),
         supabase.from('leads')
           .select('id, nome, telefone, status_funil, created_at, last_contact_at')
+          .eq('arquivado', false)
           .not('status_funil', 'in', '(fechamento,perdido)')
           .or(`last_contact_at.lt.${tresDias},and(last_contact_at.is.null,created_at.lt.${tresDias})`)
           .order('last_contact_at', { ascending: true, nullsFirst: true })
           .limit(8),
         supabase.from('leads')
           .select('id, nome, status_funil, updated_at')
+          .eq('arquivado', false)
           .not('status_funil', 'in', '(fechamento,perdido)')
           .lt('updated_at', seteDiasEtapa)
           .order('updated_at', { ascending: true })

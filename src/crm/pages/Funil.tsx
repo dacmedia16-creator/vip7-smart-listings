@@ -46,6 +46,7 @@ export default function Funil() {
     const { data } = await supabase
       .from('leads')
       .select('id, nome, telefone, status_funil, orcamento_max, bairro_interesse, created_at, updated_at, last_contact_at')
+      .eq('arquivado', false)
       .in('status_funil', FUNIL_STATUS as any)
       .order('updated_at', { ascending: false })
       .limit(500);

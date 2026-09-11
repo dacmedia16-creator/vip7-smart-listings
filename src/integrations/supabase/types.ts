@@ -1048,6 +1048,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          arquivado: boolean
           bairro_interesse: string | null
           cidade_interesse: string | null
           corretor_id: string | null
@@ -1081,6 +1082,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          arquivado?: boolean
           bairro_interesse?: string | null
           cidade_interesse?: string | null
           corretor_id?: string | null
@@ -1114,6 +1116,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          arquivado?: boolean
           bairro_interesse?: string | null
           cidade_interesse?: string | null
           corretor_id?: string | null

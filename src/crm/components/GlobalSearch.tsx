@@ -188,6 +188,7 @@ export function GlobalSearch() {
       let q = supabase
         .from('leads')
         .select('id, nome, telefone, email, cidade_interesse, bairro_interesse, status_funil')
+        .eq('arquivado', false)
         .order('created_at', { ascending: false })
         .limit(MAX_PER_GROUP);
       if (s) {

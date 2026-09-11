@@ -31,6 +31,7 @@ type Lead = {
   corretor_id: string | null;
   created_at: string;
   last_contact_at: string | null;
+  arquivado: boolean;
 };
 
 const PAGE_SIZE = 20;
@@ -42,6 +43,7 @@ export default function LeadsList() {
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [origemFilter, setOrigemFilter] = useState<string>('all');
+  const [situacao, setSituacao] = useState<'ativos' | 'arquivados' | 'todos'>('ativos');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
@@ -56,6 +58,7 @@ export default function LeadsList() {
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
+    if (situacao !== 'todos') q = q.eq('arquivado', situacao === 'arquivados');
     if (statusFilter !== 'all') q = q.eq('status_funil', statusFilter as any);
     if (origemFilter !== 'all') q = q.eq('origem', origemFilter as any);
     if (search.trim()) {
@@ -70,12 +73,24 @@ export default function LeadsList() {
     setLoading(false);
   };
 
+  const toggleArquivo = async (lead: Lead) => {
+    const novo = !lead.arquivado;
+    const { error } = await supabase.from('leads').update({ arquivado: novo }).eq('id', lead.id);
+    if (error) return;
+    if (situacao === 'todos') {
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, arquivado: novo } : l)));
+    } else {
+      setLeads((prev) => prev.filter((l) => l.id !== lead.id));
+      setTotalCount((c) => Math.max(0, c - 1));
+    }
+  };
+
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, origemFilter]);
+  }, [statusFilter, origemFilter, situacao]);
 
   // Reload when page changes
   useEffect(() => {
@@ -158,6 +173,14 @@ export default function LeadsList() {
                   <SelectItem value="indicacao">Indicação</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={situacao} onValueChange={(v) => setSituacao(v as any)}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Situação" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativos">Ativos</SelectItem>
+                  <SelectItem value="arquivados">Arquivados</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="outline" onClick={() => load()}>Aplicar</Button>
             </div>
           </CardContent>
@@ -175,6 +198,7 @@ export default function LeadsList() {
                 <TableHead className="text-[#4A4A52]">Status</TableHead>
                 <TableHead className="text-[#4A4A52]">Último contato</TableHead>
                 <TableHead className="text-[#4A4A52]">Criado</TableHead>
+                <TableHead className="text-[#4A4A52] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -221,6 +245,15 @@ export default function LeadsList() {
                       </TableCell>
                       <TableCell className="text-[#4A4A52] text-xs">
                         {formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); toggleArquivo(l); }}
+                        >
+                          {l.arquivado ? 'Restaurar' : 'Arquivar'}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
