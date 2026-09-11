@@ -61,6 +61,8 @@ export default function Portais() {
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const PAGE_SIZE = 50;
 
   const webhookUrl = `${PROJECT_URL}/functions/v1/portal-lead-grupozap`;
 
