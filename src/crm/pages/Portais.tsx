@@ -634,6 +634,17 @@ export default function Portais() {
                         </Badge>
                       )}
                     </td>
+                    <td className="p-2">
+                      {im.mostrar_endereco ? (
+                        <Badge variant="outline" className="text-emerald-700 border-emerald-400 whitespace-nowrap" title="Rua e número são enviados aos portais">
+                          Completo
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground whitespace-nowrap" title="Envia apenas bairro, cidade, estado e CEP">
+                          Sem rua/nº
+                        </Badge>
+                      )}
+                    </td>
                     {PORTAIS.map((p) => {
                       const pub = isPub(im.id, p.id);
                       return (
