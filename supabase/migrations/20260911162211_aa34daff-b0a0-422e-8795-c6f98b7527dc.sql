@@ -1,0 +1,1 @@
+ALTER TABLE public.imoveis_proprios ALTER COLUMN mostrar_endereco SET DEFAULT true;
