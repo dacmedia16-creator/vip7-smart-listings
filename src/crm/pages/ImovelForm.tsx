@@ -263,7 +263,7 @@ export default function ImovelForm() {
       preco: 0, destaque: false, ativo: true, estado: 'SP',
       valor_sob_consulta: false, exclusivo: false, imovel_ocupado: false,
       imovel_alugado: false, aceita_financiamento: false, aceita_permuta: false,
-      na_planta: false, permite_animais: false,
+      na_planta: false, permite_animais: false, mostrar_endereco: false,
     },
   });
 
