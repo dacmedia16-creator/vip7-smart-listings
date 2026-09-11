@@ -557,13 +557,21 @@ export default function Portais() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={3 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
+                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Carregando…</td></tr>
               ) : filtrados.length === 0 ? (
-                <tr><td colSpan={3 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
+                <tr><td colSpan={4 + PORTAIS.length} className="p-6 text-center text-muted-foreground">Nenhum imóvel</td></tr>
               ) : filtrados.map((im) => {
                 const erros = validarImovelParaPortais(im);
+                const marcado = selecionados.has(im.id);
                 return (
-                  <tr key={im.id} className="border-t hover:bg-muted/30">
+                  <tr key={im.id} className={`border-t hover:bg-muted/30 ${marcado ? 'bg-primary/5' : ''}`}>
+                    <td className="p-2">
+                      <Checkbox
+                        checked={marcado}
+                        onCheckedChange={(v) => toggleSelecionado(im.id, !!v)}
+                        aria-label={`Selecionar ${im.titulo}`}
+                      />
+                    </td>
                     <td className="p-2">
                       <div className="font-medium">{im.titulo}</div>
 <div className="text-xs text-muted-foreground">
