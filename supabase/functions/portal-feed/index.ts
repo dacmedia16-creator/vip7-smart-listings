@@ -243,7 +243,7 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
 // ===== ImovelWeb / Universal Feed (legado, formato PT genérico) =====
 function buildImovelWeb(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): string {
   const itens = imoveis.map((im) => {
-    const fotos = (im.fotos ?? []).slice(0, 25).map((url, i) =>
+    const fotos = (im.fotos ?? []).map(fotoUrl).filter(Boolean).slice(0, 25).map((url, i) =>
       `<imagem ordem="${i + 1}"><![CDATA[${url}]]></imagem>`
     ).join('');
     const carac = (im.caracteristicas ?? []).map((c) => `<caracteristica>${esc(c)}</caracteristica>`).join('');
