@@ -61,6 +61,7 @@ interface ImovelRow {
   codigo_imoview: number | null;
   codigo_interno: string | null;
   titulo: string;
+  titulo_anuncio?: string | null;
   descricao: string | null;
   finalidade: string;
   tipo: string;
@@ -379,7 +380,7 @@ Deno.serve(async (req) => {
     const { data: imoveis, error: imErr } = await supabase
       .from('imoveis_proprios')
       .select(
-        'id,codigo_imoview,codigo_interno,titulo,descricao,finalidade,tipo,cidade,bairro,estado,endereco,numero,cep,' +
+        'id,codigo_imoview,codigo_interno,titulo,titulo_anuncio,descricao,finalidade,tipo,cidade,bairro,estado,endereco,numero,cep,' +
         'preco,condominio,iptu,iptu_anual,iptu_mensal,area,area_total,quartos,suites,banheiros,vagas,' +
         'caracteristicas,fotos,latitude,longitude,mostrar_endereco,youtube_url,video_url,tour_virtual_url',
       )
@@ -391,6 +392,9 @@ Deno.serve(async (req) => {
     const validos: ImovelRow[] = [];
     const erros: { id: string; erro: string }[] = [];
     for (const im of (imoveis ?? []) as ImovelRow[]) {
+      // Prefere o título do anúncio (formato curto) quando existir.
+      const tituloAnuncio = (im.titulo_anuncio ?? '').trim();
+      if (tituloAnuncio) im.titulo = tituloAnuncio;
       const erro = validar(im);
       if (erro) { erros.push({ id: im.id, erro }); continue; }
       im.destaque_portal = destaqueMap.get(im.id) ?? false;
