@@ -295,7 +295,7 @@ function buildImovelWeb(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): 
 // ===== Chaves na Mão =====
 function buildChavesNaMao(imoveis: ImovelRow[]): string {
   const itens = imoveis.map((im) => {
-    const fotos = (im.fotos ?? []).slice(0, 20).map((url) => `<foto><url><![CDATA[${url}]]></url></foto>`).join('');
+    const fotos = (im.fotos ?? []).map(fotoUrl).filter(Boolean).slice(0, 20).map((url) => `<foto><url><![CDATA[${url}]]></url></foto>`).join('');
     return `
     <imovel>
       <referencia>${esc(im.codigo_interno || im.codigo_imoview || im.id)}</referencia>
