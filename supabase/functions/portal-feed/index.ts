@@ -128,7 +128,7 @@ function validar(im: ImovelRow): string | null {
   if (!im.bairro) return 'Sem bairro';
   if (!im.estado) return 'Sem estado';
   if (!im.cep) return 'Sem CEP';
-  if (!im.fotos || im.fotos.length === 0) return 'Sem fotos';
+  if (!im.fotos || im.fotos.map(fotoUrl).filter(Boolean).length === 0) return 'Sem fotos';
   return null;
 }
 
