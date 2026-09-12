@@ -392,6 +392,9 @@ Deno.serve(async (req) => {
     const validos: ImovelRow[] = [];
     const erros: { id: string; erro: string }[] = [];
     for (const im of (imoveis ?? []) as ImovelRow[]) {
+      // Prefere o título do anúncio (formato curto) quando existir.
+      const tituloAnuncio = (im.titulo_anuncio ?? '').trim();
+      if (tituloAnuncio) im.titulo = tituloAnuncio;
       const erro = validar(im);
       if (erro) { erros.push({ id: im.id, erro }); continue; }
       im.destaque_portal = destaqueMap.get(im.id) ?? false;
