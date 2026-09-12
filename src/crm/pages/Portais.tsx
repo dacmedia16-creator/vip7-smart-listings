@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 interface ImovelLite {
   id: string;
   titulo: string;
+  titulo_anuncio?: string | null;
   codigo_interno: string | null;
   codigo_imoview: number | null;
   cidade: string | null;
@@ -74,7 +75,7 @@ export default function Portais() {
     const [imRes, pRes] = await Promise.all([
       supabase
         .from('imoveis_proprios')
-        .select('id,titulo,codigo_interno,codigo_imoview,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem,mostrar_endereco')
+        .select('id,titulo,titulo_anuncio,codigo_interno,codigo_imoview,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem,mostrar_endereco')
         .eq('ativo', true)
         .order('titulo'),
       (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),

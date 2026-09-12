@@ -31,6 +31,7 @@ export const TIPOS_ANUNCIO: { id: TipoAnuncio; label: string; descricao: string 
 
 export interface ImovelParaValidacao {
   titulo?: string | null;
+  titulo_anuncio?: string | null;
   descricao?: string | null;
   preco?: number | null;
   area?: number | null;
@@ -46,7 +47,8 @@ export interface ImovelParaValidacao {
 
 export function validarImovelParaPortais(im: ImovelParaValidacao): string[] {
   const erros: string[] = [];
-  const titulo = (im.titulo ?? '').trim();
+  // Mesma regra do feed: prefere o título do anúncio quando preenchido.
+  const titulo = ((im.titulo_anuncio ?? '').trim() || (im.titulo ?? '')).trim();
   if (titulo.length < 10) erros.push('Título precisa ter pelo menos 10 caracteres');
   else if (titulo.length > 100) erros.push('Título não pode passar de 100 caracteres');
   const descricao = (im.descricao ?? '').trim();
