@@ -145,7 +145,7 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
     if (im.youtube_url) {
       mediaItems.push(`<Item medium="video">${esc(im.youtube_url)}</Item>`);
     }
-    (im.fotos ?? []).slice(0, 30).forEach((url, idx) => {
+    (im.fotos ?? []).map(fotoUrl).filter(Boolean).slice(0, 30).forEach((url, idx) => {
       const attrs = idx === 0 ? ' primary="true"' : '';
       mediaItems.push(`<Item medium="image" caption="img${idx + 1}"${attrs}>${esc(url)}</Item>`);
     });
