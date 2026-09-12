@@ -45,6 +45,15 @@ const DEFAULT_CONTATO = {
 
 const SITE_URL = 'https://vipsevenimoveis.com.br';
 
+// Fotos podem estar salvas como URL completa (Imoview) ou como path do bucket (upload manual).
+const PHOTO_BASE = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/imoveis-fotos/`;
+function fotoUrl(v: string): string {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i, 'https://');
+  return PHOTO_BASE + s.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+}
+
 function esc(v: unknown): string {
   if (v === null || v === undefined) return '';
   return String(v)
@@ -119,7 +128,7 @@ function validar(im: ImovelRow): string | null {
   if (!im.bairro) return 'Sem bairro';
   if (!im.estado) return 'Sem estado';
   if (!im.cep) return 'Sem CEP';
-  if (!im.fotos || im.fotos.length === 0) return 'Sem fotos';
+  if (!im.fotos || im.fotos.map(fotoUrl).filter(Boolean).length === 0) return 'Sem fotos';
   return null;
 }
 
@@ -136,7 +145,7 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
     if (im.youtube_url) {
       mediaItems.push(`<Item medium="video">${esc(im.youtube_url)}</Item>`);
     }
-    (im.fotos ?? []).slice(0, 30).forEach((url, idx) => {
+    (im.fotos ?? []).map(fotoUrl).filter(Boolean).slice(0, 30).forEach((url, idx) => {
       const attrs = idx === 0 ? ' primary="true"' : '';
       mediaItems.push(`<Item medium="image" caption="img${idx + 1}"${attrs}>${esc(url)}</Item>`);
     });
@@ -234,7 +243,7 @@ function buildVRSync(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): str
 // ===== ImovelWeb / Universal Feed (legado, formato PT genérico) =====
 function buildImovelWeb(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): string {
   const itens = imoveis.map((im) => {
-    const fotos = (im.fotos ?? []).slice(0, 25).map((url, i) =>
+    const fotos = (im.fotos ?? []).map(fotoUrl).filter(Boolean).slice(0, 25).map((url, i) =>
       `<imagem ordem="${i + 1}"><![CDATA[${url}]]></imagem>`
     ).join('');
     const carac = (im.caracteristicas ?? []).map((c) => `<caracteristica>${esc(c)}</caracteristica>`).join('');
@@ -286,7 +295,7 @@ function buildImovelWeb(imoveis: ImovelRow[], contato: typeof DEFAULT_CONTATO): 
 // ===== Chaves na Mão =====
 function buildChavesNaMao(imoveis: ImovelRow[]): string {
   const itens = imoveis.map((im) => {
-    const fotos = (im.fotos ?? []).slice(0, 20).map((url) => `<foto><url><![CDATA[${url}]]></url></foto>`).join('');
+    const fotos = (im.fotos ?? []).map(fotoUrl).filter(Boolean).slice(0, 20).map((url) => `<foto><url><![CDATA[${url}]]></url></foto>`).join('');
     return `
     <imovel>
       <referencia>${esc(im.codigo_interno || im.codigo_imoview || im.id)}</referencia>
