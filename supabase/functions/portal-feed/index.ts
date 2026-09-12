@@ -45,6 +45,15 @@ const DEFAULT_CONTATO = {
 
 const SITE_URL = 'https://vipsevenimoveis.com.br';
 
+// Fotos podem estar salvas como URL completa (Imoview) ou como path do bucket (upload manual).
+const PHOTO_BASE = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/imoveis-fotos/`;
+function fotoUrl(v: string): string {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s.replace(/^http:\/\//i, 'https://');
+  return PHOTO_BASE + s.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+}
+
 function esc(v: unknown): string {
   if (v === null || v === undefined) return '';
   return String(v)
