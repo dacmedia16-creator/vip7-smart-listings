@@ -20,12 +20,12 @@ export function mapPropertyType(tipo: string): string {
   if (t.includes('apartamento') || t === 'apto') return 'Residential / Apartment';
   if (t.includes('studio') || t.includes('kitnet') || t.includes('loft')) return 'Residential / Kitnet';
   if (t.includes('flat')) return 'Residential / Flat';
-  if (t.includes('casa') && t.includes('cond')) return 'Residential / Condominium House';
+  if (t.includes('casa') && t.includes('cond')) return 'Residential / Condo';
   if (t.includes('casa') && t.includes('vila')) return 'Residential / Village House';
   if (t.includes('casa')) return 'Residential / Home';
   if (t.includes('sobrado')) return 'Residential / Home';
   if (t.includes('chac') || t.includes('chá') || t.includes('sitio') || t.includes('sítio') || t.includes('fazenda') || t.includes('rural')) return 'Residential / Country House';
-  if (t.includes('terreno') || t.includes('lote') || t.includes('area')) return 'Allotment Land';
+  if (t.includes('terreno') || t.includes('lote') || t.includes('area')) return 'Residential / Allotment Land';
   // Comercial
   if (t.includes('sala') || t.includes('conjunto')) return 'Commercial / Business';
   if (t.includes('loja')) return 'Commercial / Store';
