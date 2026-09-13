@@ -82,6 +82,7 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const lote = Math.min(Math.max(parseInt(url.searchParams.get("lote") || "3", 10) || 3, 1), 10);
+    const desc = url.searchParams.get("ordem") === "desc";
 
     const sb = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -110,7 +111,7 @@ serve(async (req) => {
         .select("id,codigo_imoview,codigo_interno,fotos")
         .in("id", slice)
         .eq("ativo", true)
-        .order("id");
+        .order("id", { ascending: !desc });
       if (error) throw error;
       for (const im of data || []) {
         if (Array.isArray(im.fotos) && im.fotos.some((f: string) => f.includes(CDN_MARKER))) {
