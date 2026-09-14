@@ -128,6 +128,8 @@ export default function ImovelForm() {
   const lastCepRef = useRef<string>('');
   // Último título gerado automaticamente (permite atualizar enquanto não for editado à mão)
   const autoTituloRef = useRef<string>('');
+  // Fotos adicionadas automaticamente a partir do condomínio selecionado
+  const condoFotosRef = useRef<string[]>([]);
   // Evita gravações concorrentes (que criavam imóveis duplicados)
   const inFlightSaveRef = useRef<Promise<void> | null>(null);
   const currentIdRef = useRef<string | undefined>(id);
