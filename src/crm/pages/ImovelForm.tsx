@@ -131,6 +131,7 @@ export default function ImovelForm() {
   // Evita gravações concorrentes (que criavam imóveis duplicados)
   const inFlightSaveRef = useRef<Promise<void> | null>(null);
   const currentIdRef = useRef<string | undefined>(id);
+  useEffect(() => { if (id) currentIdRef.current = id; }, [id]);
 
   const lookupCep = async (rawCep: string) => {
     const digits = rawCep.replace(/\D/g, '');
