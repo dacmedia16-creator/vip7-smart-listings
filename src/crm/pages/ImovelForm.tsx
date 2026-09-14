@@ -466,9 +466,15 @@ export default function ImovelForm() {
   const canDeleteThisRecord = isManager || (isCorretor && loadedRecord?.corretor_id === user?.id);
 
   const onSubmit = async (values: FormData) => {
+    if (saving) return;
     setSaving(true);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     try {
+      // Aguarda qualquer gravação automática em andamento para não criar registro duplicado
+      if (inFlightSaveRef.current) {
+        try { await inFlightSaveRef.current; } catch { /* ignore */ }
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      }
       // Gera/atualiza título do anúncio se vazio ou se ainda for o gerado automaticamente
       const vals = values as Record<string, any>;
       const tituloAtual = String(vals.titulo_anuncio ?? '').trim();
@@ -490,14 +496,17 @@ export default function ImovelForm() {
       }
 
       let codigoGerado: string | null = null;
-      if (currentId) {
-        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
+      const existingId = currentIdRef.current ?? currentId;
+      if (existingId) {
+        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', existingId);
         if (error) throw error;
       } else {
         delete payload.codigo_interno; // gerado automaticamente pelo banco
         const { data: ins, error } = await supabase.from('imoveis_proprios').insert(payload).select('id, codigo_interno').single();
         if (error) throw error;
         const newId = (ins as { id: string }).id;
+        currentIdRef.current = newId;
+        setCurrentId(newId);
         codigoGerado = (ins as { codigo_interno: string | null }).codigo_interno;
         for (const p of pendingProprietarios) {
           try { await addVinculo(p.cliente.id, newId, 'proprietario', p.percentual ?? undefined); }
