@@ -20,6 +20,8 @@ export interface ImoviewProperty {
   id?: string;
   codigo: number;
   codigoReferencia?: string;
+  /** Código mostrado ao público: código interno (VIP0010) ou o do Imoview. */
+  codigoExibicao?: string | number;
   titulo?: string;
   descricao?: string;
   finalidade: number; // 1 = Aluguel, 2 = Venda
