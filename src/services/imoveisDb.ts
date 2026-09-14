@@ -20,6 +20,8 @@ export interface ImoviewProperty {
   id?: string;
   codigo: number;
   codigoReferencia?: string;
+  /** Código mostrado ao público: código interno (VIP0010) ou o do Imoview. */
+  codigoExibicao?: string | number;
   titulo?: string;
   descricao?: string;
   finalidade: number; // 1 = Aluguel, 2 = Venda
@@ -156,6 +158,7 @@ function mapRow(r: Row): ImoviewProperty {
     id: r.id,
     codigo,
     codigoReferencia: r.codigo_interno ?? undefined,
+    codigoExibicao: r.codigo_interno ?? r.codigo_imoview ?? codigo,
     titulo: r.titulo,
     descricao: r.descricao ?? undefined,
     finalidade: finalidadeNum,

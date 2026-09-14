@@ -3,7 +3,7 @@ import { ChevronRight, Home } from 'lucide-react';
 
 interface PropertyBreadcrumbProps {
   propertyTitle?: string;
-  propertyCode?: number;
+  propertyCode?: number | string;
   isRental?: boolean;
   city?: string;
   neighborhood?: string;

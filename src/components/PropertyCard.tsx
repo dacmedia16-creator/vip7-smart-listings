@@ -64,7 +64,7 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
     return (
       <Link
         ref={ref}
-        to={`/imovel/${property.codigo}`}
+        to={`/imovel/${property.codigoExibicao ?? property.codigo}`}
         target="_blank"
         rel="noopener noreferrer"
         className="group block h-full"
@@ -169,7 +169,7 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
 
             {/* Código */}
             <span className="text-xs text-muted-foreground/70 font-mono">
-              Cód. {property.codigo}
+              Cód. {property.codigoExibicao ?? property.codigo}
             </span>
 
             {/* Location */}
