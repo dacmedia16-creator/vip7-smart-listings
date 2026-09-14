@@ -128,6 +128,8 @@ export default function ImovelForm() {
   const lastCepRef = useRef<string>('');
   // Último título gerado automaticamente (permite atualizar enquanto não for editado à mão)
   const autoTituloRef = useRef<string>('');
+  // Fotos adicionadas automaticamente a partir do condomínio selecionado
+  const condoFotosRef = useRef<string[]>([]);
   // Evita gravações concorrentes (que criavam imóveis duplicados)
   const inFlightSaveRef = useRef<Promise<void> | null>(null);
   const currentIdRef = useRef<string | undefined>(id);
@@ -871,11 +873,26 @@ export default function ImovelForm() {
                           <CondominioAutocomplete
                             nome={(field.value as string) ?? ''}
                             codigo={form.watch('codigo_condominio_imoview') as number | null}
-                            onChange={({ nome, codigo, cidade }) => {
+                            onChange={({ nome, codigo, cidade, fotos: condoFotos }) => {
                               field.onChange(nome);
                               form.setValue('codigo_condominio_imoview', (codigo ?? null) as any, { shouldDirty: true });
                               if (cidade && !form.getValues('cidade')) {
                                 form.setValue('cidade', cidade, { shouldDirty: true });
+                              }
+                              if (!codigo) return;
+                              const novas = (condoFotos ?? []).map((f) => String(f).trim()).filter(Boolean);
+                              const anteriores = condoFotosRef.current;
+                              setFotos((prev) => {
+                                const base = prev.filter((f) => !anteriores.includes(f));
+                                const adicionar = novas.filter((f) => !base.includes(f));
+                                return [...base, ...adicionar];
+                              });
+                              condoFotosRef.current = novas;
+                              if (novas.length) {
+                                toast({
+                                  title: 'Fotos do condomínio adicionadas',
+                                  description: `${novas.length} foto(s) do condomínio foram incluídas na galeria.`,
+                                });
                               }
                             }}
                           />

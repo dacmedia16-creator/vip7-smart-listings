@@ -9,12 +9,13 @@ interface CondominioRow {
   codigo: number;
   nome: string;
   cidade: string | null;
+  fotos?: string[] | null;
 }
 
 interface Props {
   nome: string;
   codigo: number | null | undefined;
-  onChange: (val: { nome: string; codigo: number | null; cidade?: string | null }) => void;
+  onChange: (val: { nome: string; codigo: number | null; cidade?: string | null; fotos?: string[] | null }) => void;
 }
 
 export function CondominioAutocomplete({ nome, codigo, onChange }: Props) {
@@ -44,7 +45,7 @@ export function CondominioAutocomplete({ nome, codigo, onChange }: Props) {
       setLoading(true);
       const { data, error } = await supabase
         .from('condominios_cache')
-        .select('codigo, nome, cidade')
+        .select('codigo, nome, cidade, fotos')
         .ilike('nome', `%${term.trim()}%`)
         .order('nome')
         .limit(20);
@@ -58,7 +59,7 @@ export function CondominioAutocomplete({ nome, codigo, onChange }: Props) {
   };
 
   const select = (r: CondominioRow) => {
-    onChange({ nome: r.nome, codigo: r.codigo, cidade: r.cidade });
+    onChange({ nome: r.nome, codigo: r.codigo, cidade: r.cidade, fotos: r.fotos ?? [] });
     setOpen(false);
     setResults([]);
   };
