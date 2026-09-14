@@ -128,6 +128,9 @@ export default function ImovelForm() {
   const lastCepRef = useRef<string>('');
   // Último título gerado automaticamente (permite atualizar enquanto não for editado à mão)
   const autoTituloRef = useRef<string>('');
+  // Evita gravações concorrentes (que criavam imóveis duplicados)
+  const inFlightSaveRef = useRef<Promise<void> | null>(null);
+  const currentIdRef = useRef<string | undefined>(id);
 
   const lookupCep = async (rawCep: string) => {
     const digits = rawCep.replace(/\D/g, '');
