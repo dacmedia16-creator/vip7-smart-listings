@@ -158,6 +158,7 @@ function mapRow(r: Row): ImoviewProperty {
     id: r.id,
     codigo,
     codigoReferencia: r.codigo_interno ?? undefined,
+    codigoExibicao: r.codigo_interno ?? r.codigo_imoview ?? codigo,
     titulo: r.titulo,
     descricao: r.descricao ?? undefined,
     finalidade: finalidadeNum,

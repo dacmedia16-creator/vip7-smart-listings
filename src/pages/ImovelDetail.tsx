@@ -189,7 +189,7 @@ export default function ImovelDetail() {
         <div className="container mx-auto px-4 py-4">
           <PropertyBreadcrumb
             propertyTitle={property.titulo}
-            propertyCode={property.codigo}
+            propertyCode={property.codigoExibicao ?? property.codigo}
             isRental={isRental}
             city={property.cidade}
             neighborhood={property.bairro}
@@ -233,7 +233,7 @@ export default function ImovelDetail() {
               <div>
                 <div className="flex items-center gap-3 text-muted-foreground mb-3">
                   <span className="text-sm uppercase tracking-wider">
-                    Cód. {property.codigo}
+                    Cód. {property.codigoExibicao ?? property.codigo}
                   </span>
                   {property.tipo && (
                     <>
