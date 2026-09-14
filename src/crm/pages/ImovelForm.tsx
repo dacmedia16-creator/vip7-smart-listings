@@ -378,6 +378,22 @@ export default function ImovelForm() {
 
   const runAutoSave = async () => {
     if (!user) return;
+    // Se já existe uma gravação em andamento, espera terminar e reagenda:
+    // evita dois INSERTs simultâneos criando imóveis duplicados.
+    if (inFlightSaveRef.current) {
+      const pending = inFlightSaveRef.current;
+      try { await pending; } catch { /* ignore */ }
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => { void runAutoSave(); }, 800);
+      return;
+    }
+    const p = doAutoSave();
+    inFlightSaveRef.current = p;
+    try { await p; } finally { inFlightSaveRef.current = null; }
+  };
+
+  const doAutoSave = async () => {
+    if (!user) return;
     const values = form.getValues();
     // Gera/atualiza título do anúncio se vazio ou se ainda for o gerado automaticamente
     const tituloAtual = String((values as any).titulo_anuncio ?? '').trim();
@@ -397,8 +413,9 @@ export default function ImovelForm() {
 
     setAutoSaveStatus('saving');
     try {
-      if (currentId) {
-        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', currentId);
+      const existingId = currentIdRef.current ?? currentId;
+      if (existingId) {
+        const { error } = await supabase.from('imoveis_proprios').update(payload).eq('id', existingId);
         if (error) throw error;
       } else {
         const hasMin = values.titulo && values.titulo.length >= 3 && values.tipo && values.finalidade && Number(values.preco) > 0;
@@ -419,6 +436,7 @@ export default function ImovelForm() {
         const newId = (ins as { id: string }).id;
         const novoCodigo = (ins as { codigo_interno: string | null }).codigo_interno;
         if (novoCodigo) form.setValue('codigo_interno', novoCodigo as any);
+        currentIdRef.current = newId;
         setCurrentId(newId);
         setLoadedRecord({ ...draftPayload, id: newId, codigo_interno: novoCodigo });
         // grava proprietários que estavam pendentes antes do rascunho existir
