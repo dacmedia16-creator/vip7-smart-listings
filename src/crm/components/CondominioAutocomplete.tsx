@@ -9,12 +9,13 @@ interface CondominioRow {
   codigo: number;
   nome: string;
   cidade: string | null;
+  fotos?: string[] | null;
 }
 
 interface Props {
   nome: string;
   codigo: number | null | undefined;
-  onChange: (val: { nome: string; codigo: number | null; cidade?: string | null }) => void;
+  onChange: (val: { nome: string; codigo: number | null; cidade?: string | null; fotos?: string[] | null }) => void;
 }
 
 export function CondominioAutocomplete({ nome, codigo, onChange }: Props) {
