@@ -560,27 +560,33 @@ export default function ImovelForm() {
     return m ? decodeURIComponent(m[1]) : null;
   };
 
-  // Sempre que a lista de fotos mudar, garante uma signed URL válida para cada item.
+  // Sempre que a lista de fotos mudar, garante uma URL válida para cada item.
   useEffect(() => {
     const missing = fotos.filter((f) => !photoUrls[f]);
     if (missing.length === 0) return;
     (async () => {
-      const paths = missing.map(extractStoragePath).filter((p): p is string => !!p);
-      if (paths.length === 0) return;
-      const { data, error } = await supabase.storage
-        .from('imoveis-fotos')
-        .createSignedUrls(paths, 60 * 60 * 24 * 7);
-      if (error || !data) return;
       const next: Record<string, string> = {};
-      missing.forEach((foto, i) => {
-        const signed = data[i]?.signedUrl;
-        if (signed) next[foto] = signed;
-        else if (/^https?:\/\//i.test(foto)) next[foto] = foto; // fallback: URL literal
+      const internos: { foto: string; path: string }[] = [];
+      missing.forEach((foto) => {
+        const path = extractStoragePath(foto);
+        if (path) internos.push({ foto, path });
+        else next[foto] = foto; // URL externa (ex.: fotos do condomínio vindas do Imoview)
       });
-      setPhotoUrls((prev) => ({ ...prev, ...next }));
+      if (internos.length > 0) {
+        const { data } = await supabase.storage
+          .from('imoveis-fotos')
+          .createSignedUrls(internos.map((i) => i.path), 60 * 60 * 24 * 7);
+        internos.forEach((item, i) => {
+          const signed = data?.[i]?.signedUrl;
+          if (signed) next[item.foto] = signed;
+          else if (/^https?:\/\//i.test(item.foto)) next[item.foto] = item.foto;
+        });
+      }
+      if (Object.keys(next).length) setPhotoUrls((prev) => ({ ...prev, ...next }));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fotos]);
+
 
   const handleUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -1139,7 +1145,17 @@ export default function ImovelForm() {
                         onDragEnd={() => setDragIndex(null)}
                         className={`relative aspect-square cursor-move transition-opacity ${dragIndex === idx ? 'opacity-40' : ''}`}
                       >
-                        <img src={photoUrls[url] || url} className="w-full h-full object-cover rounded-md pointer-events-none" />
+                        <img
+                          src={photoUrls[url] || url}
+                          alt={`Foto ${idx + 1} do imóvel`}
+                          loading="lazy"
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            if (/^https?:\/\//i.test(url) && img.src !== url) img.src = url;
+                          }}
+                          className="w-full h-full object-cover rounded-md pointer-events-none bg-muted"
+                        />
+
                         {idx === 0 && (
                           <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground">Capa</span>
                         )}
