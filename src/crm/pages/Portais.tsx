@@ -534,6 +534,14 @@ export default function Portais() {
             </select>
             <select
               className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroTipoAnuncio}
+              onChange={(e) => setFiltroTipoAnuncio(e.target.value as any)}
+            >
+              <option value="todos">Todos os tipos de anúncio</option>
+              {TIPOS_ANUNCIO.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
               value={filtroFinalidade}
               onChange={(e) => setFiltroFinalidade(e.target.value)}
             >
