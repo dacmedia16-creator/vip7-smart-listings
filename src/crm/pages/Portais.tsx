@@ -393,15 +393,26 @@ export default function Portais() {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {PORTAIS.map((p) => (
+          {PORTAIS.map((p) => {
+            const c = contagens[p.id];
+            const destaques = Object.entries(c.porTipo).filter(([t]) => t !== 'simples');
+            const totalDestaques = destaques.reduce((s, [, n]) => s + n, 0);
+            const detalhe = destaques
+              .map(([t, n]) => `${n} ${TIPOS_ANUNCIO.find((x) => x.id === t)?.label ?? t}`)
+              .join(' · ');
+            return (
             <Card key={p.id} className="p-3">
-              <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center justify-between gap-2 mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <Globe className="h-4 w-4 text-primary shrink-0" />
                   <span className="font-medium text-sm truncate">{p.nome}</span>
                 </div>
-                <Badge variant="secondary">{contagens[p.id]}</Badge>
+                <Badge variant="secondary">{c.total}</Badge>
               </div>
+              <p className="text-xs text-muted-foreground mb-2" title={detalhe || undefined}>
+                {c.total} publicados
+                {totalDestaques > 0 ? ` · ${totalDestaques} em destaque` : ' · nenhum em destaque'}
+              </p>
               <Button size="sm" variant="outline" className="w-full gap-2" onClick={() => copiarUrl(p.id)}>
                 <Copy className="h-3 w-3" /> Copiar URL do feed
               </Button>
