@@ -337,11 +337,19 @@ export default function Portais() {
         default: return (a.titulo ?? '').localeCompare(b.titulo ?? '');
       }
     });
-  }, [imoveis, portais, filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
+  }, [imoveis, portais, filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade, filtroTipoAnuncio]);
 
   const contagens = useMemo(() => {
-    const m: Record<PortalId, number> = { zap_vivareal: 0, olx: 0, imovelweb: 0, chavesnamao: 0 };
-    portais.forEach((p) => { if (p.publicar) m[p.portal] = (m[p.portal] ?? 0) + 1; });
+    const vazio = () => ({ total: 0, porTipo: {} as Record<TipoAnuncio, number> });
+    const m: Record<PortalId, { total: number; porTipo: Record<TipoAnuncio, number> }> = {
+      zap_vivareal: vazio(), olx: vazio(), imovelweb: vazio(), chavesnamao: vazio(),
+    };
+    portais.forEach((p) => {
+      if (!p.publicar || !m[p.portal]) return;
+      const tipo = (p.tipo_anuncio ?? 'simples') as TipoAnuncio;
+      m[p.portal].total += 1;
+      m[p.portal].porTipo[tipo] = (m[p.portal].porTipo[tipo] ?? 0) + 1;
+    });
     return m;
   }, [portais]);
 
@@ -349,7 +357,7 @@ export default function Portais() {
   useEffect(() => {
     setSelecionados(new Set());
     setPagina(1);
-  }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
+  }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade, filtroTipoAnuncio]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
   const paginaAtual = Math.min(pagina, totalPaginas);
