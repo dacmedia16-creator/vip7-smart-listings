@@ -86,7 +86,19 @@ export function useSearchParams(): [URLSearchParams, (init: URLSearchParams | Re
   const loc = tsLocation();
   const nav = tsNavigate();
   const router = useRouter();
-  const params = useMemo(() => new URLSearchParams(loc.searchStr ?? ""), [loc.searchStr]);
+  const params = useMemo(() => {
+    // Legacy links may carry JSON-quoted values (`condominios="12"`) produced
+    // by the old default serializer — strip the wrapping quotes on read.
+    const raw = new URLSearchParams(loc.searchStr ?? "");
+    const clean = new URLSearchParams();
+    raw.forEach((value, key) => {
+      const v = value.length > 1 && value.startsWith('"') && value.endsWith('"')
+        ? value.slice(1, -1)
+        : value;
+      clean.append(key, v);
+    });
+    return clean;
+  }, [loc.searchStr]);
   const setParams = useCallback(
     (
       init: URLSearchParams | Record<string, string> | ((prev: URLSearchParams) => URLSearchParams),
