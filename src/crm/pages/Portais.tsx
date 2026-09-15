@@ -70,20 +70,45 @@ export default function Portais() {
 
   const webhookUrl = `${PROJECT_URL}/functions/v1/portal-lead-grupozap`;
 
+  // Busca todas as páginas (PostgREST limita a 1000 linhas por requisição)
+  async function fetchAll<T>(build: (from: number, to: number) => any): Promise<T[]> {
+    const PAGE = 1000;
+    const out: T[] = [];
+    for (let offset = 0; ; offset += PAGE) {
+      const { data, error } = await build(offset, offset + PAGE - 1);
+      if (error) break;
+      const rows = (data ?? []) as T[];
+      out.push(...rows);
+      if (rows.length < PAGE) break;
+    }
+    return out;
+  }
+
   async function load() {
     setLoading(true);
-    const [imRes, pRes] = await Promise.all([
-      supabase
-        .from('imoveis_proprios')
-        .select('id,titulo,titulo_anuncio,codigo_interno,codigo_imoview,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem,mostrar_endereco')
-        .eq('ativo', true)
-        .order('titulo'),
-      (supabase as any).from('imovel_portais').select('imovel_id, portal, publicar, tipo_anuncio'),
+    const [ims, ps] = await Promise.all([
+      fetchAll<ImovelLite>((from, to) =>
+        supabase
+          .from('imoveis_proprios')
+          .select('id,titulo,titulo_anuncio,codigo_interno,codigo_imoview,cidade,bairro,tipo,finalidade,preco,area,area_total,descricao,cep,estado,fotos,created_at,data_atualizacao_origem,mostrar_endereco')
+          .eq('ativo', true)
+          .order('titulo')
+          .order('id')
+          .range(from, to),
+      ),
+      fetchAll<PortalRow>((from, to) =>
+        (supabase as any)
+          .from('imovel_portais')
+          .select('imovel_id, portal, publicar, tipo_anuncio')
+          .order('imovel_id')
+          .range(from, to),
+      ),
     ]);
-    setImoveis((imRes.data ?? []) as ImovelLite[]);
-    setPortais((pRes.data ?? []) as PortalRow[]);
+    setImoveis(ims);
+    setPortais(ps);
     setLoading(false);
   }
+
 
   async function loadWebhookStatus() {
     try {
