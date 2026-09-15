@@ -4,7 +4,7 @@ import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon,
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyGridSkeleton } from '@/components/PropertyCardSkeleton';
-import { PropertyMap } from '@/components/PropertyMap';
+import { PropertyMap } from '@/components/maps-client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';

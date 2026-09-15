@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ContactMap } from '@/components/ContactMap';
+import { ContactMap } from '@/components/maps-client';
 
 export default function Contato() {
   const { toast } = useToast();

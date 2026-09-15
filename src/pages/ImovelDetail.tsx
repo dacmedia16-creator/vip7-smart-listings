@@ -24,7 +24,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PropertyGallery } from '@/components/PropertyGallery';
-import { PropertyLocationMap } from '@/components/PropertyLocationMap';
+import { PropertyLocationMap } from '@/components/maps-client';
 import { PropertyVideo } from '@/components/PropertyVideo';
 import { PropertyBreadcrumb } from '@/components/PropertyBreadcrumb';
 import { SEOHead } from '@/components/SEOHead';
