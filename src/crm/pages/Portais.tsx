@@ -279,7 +279,7 @@ export default function Portais() {
   const filtrosAtivos =
     !!filtro || filtroPortal !== 'todos' || filtroStatus !== 'todos' || precoMin !== null || precoMax !== null ||
     periodo !== 'todos' || ordenacao !== 'recentes' || filtroFinalidade !== 'todos' || filtroTipo !== 'todos' ||
-    filtroCidade !== 'todos';
+    filtroCidade !== 'todos' || filtroTipoAnuncio !== 'todos';
 
   function limparFiltros() {
     setFiltro('');
@@ -292,6 +292,7 @@ export default function Portais() {
     setFiltroFinalidade('todos');
     setFiltroTipo('todos');
     setFiltroCidade('todos');
+    setFiltroTipoAnuncio('todos');
   }
 
   const filtrados = useMemo(() => {
