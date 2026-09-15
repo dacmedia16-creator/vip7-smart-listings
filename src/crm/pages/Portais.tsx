@@ -660,7 +660,7 @@ export default function Portais() {
                     <div className="flex flex-col items-center gap-0.5">
                       <span>{p.nome.split(' ')[0]}</span>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        {contagens[p.id]} publicado{contagens[p.id] === 1 ? '' : 's'}
+                        {contagens[p.id].total} publicado{contagens[p.id].total === 1 ? '' : 's'}
                       </Badge>
                     </div>
                   </th>
