@@ -146,7 +146,7 @@ serve(async (req) => {
     ].filter(Boolean).join(' · ');
     const pageDescription = `${property.tipo} para ${finalidadeTexto.toLowerCase()} em ${[property.bairro, property.cidade].filter(Boolean).join(', ')}${detalhes ? `. ${detalhes}` : ''}`.slice(0, 160);
 
-    const canonicalUrl = buildCanonicalUrl(redirectParam, siteUrl, property.id || codigo);
+    const canonicalUrl = buildCanonicalUrl(redirectParam, siteUrl, String(property.codigoExibicao || property.id || codigo));
     const imageUrl = property.imagem || `${siteUrl}/og-image.jpg`;
     const optimizedImageUrl = imageUrl;
 
