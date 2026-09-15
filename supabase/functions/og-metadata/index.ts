@@ -12,18 +12,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SELECT_COLS =
+  'id,codigo_imoview,codigo_interno,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description,quartos,banheiros,vagas,area,area_total';
+
 async function fetchPropertyDetails(codigo: string) {
   console.log(`[og-metadata] Fetching property details for ${codigo} (local DB)`);
 
   // Try by codigo_imoview first
   let row: Record<string, unknown> | null = null;
   const codigoNum = parseInt(codigo, 10);
-  if (Number.isFinite(codigoNum)) {
+  if (/^\d+$/.test(codigo.trim()) && Number.isFinite(codigoNum)) {
     const { data } = await supabase
       .from('imoveis_proprios')
-      .select('id,codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description,quartos,banheiros,vagas,area,area_total')
+      .select(SELECT_COLS)
       .eq('codigo_imoview', codigoNum)
       .eq('ativo', true)
+      .maybeSingle();
+    row = data as Record<string, unknown> | null;
+  }
+  // Codigo interno (ex.: VIP0010)
+  if (!row && /^[a-z]{2,6}\d+$/i.test(codigo.trim())) {
+    const { data } = await supabase
+      .from('imoveis_proprios')
+      .select(SELECT_COLS)
+      .ilike('codigo_interno', codigo.trim())
       .maybeSingle();
     row = data as Record<string, unknown> | null;
   }
@@ -31,7 +43,7 @@ async function fetchPropertyDetails(codigo: string) {
   if (!row && /^[0-9a-f-]{36}$/i.test(codigo)) {
     const { data } = await supabase
       .from('imoveis_proprios')
-      .select('id,codigo_imoview,titulo,descricao,tipo,bairro,cidade,preco,finalidade,fotos,meta_description,quartos,banheiros,vagas,area,area_total')
+      .select(SELECT_COLS)
       .eq('id', codigo)
       .maybeSingle();
     row = data as Record<string, unknown> | null;
