@@ -417,7 +417,8 @@ export default function Portais() {
                 <Copy className="h-3 w-3" /> Copiar URL do feed
               </Button>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         <Card className="p-4 border-primary/30">
