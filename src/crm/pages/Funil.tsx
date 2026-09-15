@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "@/lib/router-compat";
 import { useToast } from '@/hooks/use-toast';
 import { FUNIL_STATUS, statusMeta, fmtPhone, fmtMoney } from '../lib/leads';
 import {

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from "@/lib/router-compat";
 import { useAuth } from '../hooks/useAuth';
 import { useRoles, type AppRole } from '../hooks/useRole';
 import { Loader2 } from 'lucide-react';

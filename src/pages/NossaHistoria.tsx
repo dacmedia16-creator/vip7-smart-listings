@@ -6,7 +6,7 @@ import {
 import { Layout } from '@/components/Layout';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link } from "@/lib/router-compat";
 
 const whyChooseItems = [
   {

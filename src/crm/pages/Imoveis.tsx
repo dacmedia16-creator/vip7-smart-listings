@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from "@/lib/router-compat";
 import { AutocompleteInput } from '@/crm/components/AutocompleteInput';
 import { Plus, Search, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, MoreVertical, EyeOff, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

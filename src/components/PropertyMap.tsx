@@ -7,7 +7,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { ImoviewProperty } from '@/services/imoviewApi';
 import { formatPropertyValue } from '@/services/imoviewApi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "@/lib/router-compat";
 import { Pencil, Square, Trash2, X, MapPin, AlertCircle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePropertyGeocodes, useGeocodeProperties, mergePropertiesWithGeocodes } from '@/hooks/usePropertyGeocodes';

@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from "@/lib/router-compat";
 import {
   LayoutDashboard,
   Users,
@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useRoles } from '../hooks/useRole';
 import { signOut } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "@/lib/router-compat";
 
 const items = [
   { title: 'Dashboard', url: '/crm', icon: LayoutDashboard, roles: ['admin', 'gestor', 'corretor', 'atendente'] },

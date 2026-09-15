@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from "@/lib/router-compat";
 import { MapPin, Phone, Mail, Instagram, Facebook, Youtube, Sparkles } from 'lucide-react';
 import logoVip7 from '@/assets/logo-vip7.png';
 

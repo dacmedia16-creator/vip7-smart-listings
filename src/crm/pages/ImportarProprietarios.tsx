@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useRoles } from '../hooks/useRole';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link } from "@/lib/router-compat";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Upload, FileSpreadsheet, Download, ArrowLeft, Users } from 'lucide-react';
