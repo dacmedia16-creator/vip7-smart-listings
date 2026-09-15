@@ -60,6 +60,7 @@ async function fetchPropertyDetails(codigo: string) {
   return {
     id: row.id as string,
     codigo: row.codigo_imoview ?? codigo,
+    codigoExibicao: (row.codigo_interno as string) || (row.codigo_imoview as number | null) || codigo,
     titulo: (row.titulo as string) || `${row.tipo || 'Imóvel'} em ${row.bairro || 'Sorocaba'}`,
     descricao: (row.meta_description as string) || (row.descricao as string) || `Imóvel disponível em ${row.bairro || ''}, ${row.cidade || 'Sorocaba'}`,
     imagem,
