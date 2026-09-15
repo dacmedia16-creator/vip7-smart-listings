@@ -139,6 +139,12 @@ export default function Portais() {
   const isPub = (imovelId: string, portal: PortalId) =>
     portais.some((p) => p.imovel_id === imovelId && p.portal === portal && p.publicar);
 
+  // Tipo de anúncio publicado (o "maior" quando há vários portais)
+  const tiposPublicados = (imovelId: string, portal: PortalId | 'todos'): TipoAnuncio[] =>
+    portais
+      .filter((p) => p.imovel_id === imovelId && p.publicar && (portal === 'todos' || p.portal === portal))
+      .map((p) => p.tipo_anuncio ?? 'simples');
+
   async function toggle(imovelId: string, portal: PortalId, value: boolean) {
     setPortais((prev) => {
       const ex = prev.find((p) => p.imovel_id === imovelId && p.portal === portal);
