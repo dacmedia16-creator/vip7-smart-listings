@@ -61,6 +61,7 @@ export default function Portais() {
   const [filtroFinalidade, setFiltroFinalidade] = useState<string>('todos');
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
   const [filtroCidade, setFiltroCidade] = useState<string>('todos');
+  const [filtroTipoAnuncio, setFiltroTipoAnuncio] = useState<TipoAnuncio | 'todos'>('todos');
   const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -138,6 +139,12 @@ export default function Portais() {
 
   const isPub = (imovelId: string, portal: PortalId) =>
     portais.some((p) => p.imovel_id === imovelId && p.portal === portal && p.publicar);
+
+  // Tipo de anúncio publicado (o "maior" quando há vários portais)
+  const tiposPublicados = (imovelId: string, portal: PortalId | 'todos'): TipoAnuncio[] =>
+    portais
+      .filter((p) => p.imovel_id === imovelId && p.publicar && (portal === 'todos' || p.portal === portal))
+      .map((p) => p.tipo_anuncio ?? 'simples');
 
   async function toggle(imovelId: string, portal: PortalId, value: boolean) {
     setPortais((prev) => {
@@ -273,7 +280,7 @@ export default function Portais() {
   const filtrosAtivos =
     !!filtro || filtroPortal !== 'todos' || filtroStatus !== 'todos' || precoMin !== null || precoMax !== null ||
     periodo !== 'todos' || ordenacao !== 'recentes' || filtroFinalidade !== 'todos' || filtroTipo !== 'todos' ||
-    filtroCidade !== 'todos';
+    filtroCidade !== 'todos' || filtroTipoAnuncio !== 'todos';
 
   function limparFiltros() {
     setFiltro('');
@@ -286,6 +293,7 @@ export default function Portais() {
     setFiltroFinalidade('todos');
     setFiltroTipo('todos');
     setFiltroCidade('todos');
+    setFiltroTipoAnuncio('todos');
   }
 
   const filtrados = useMemo(() => {
@@ -313,6 +321,10 @@ export default function Portais() {
         if (filtroStatus === 'publicados' && !algumPub) return false;
         if (filtroStatus === 'nao_publicados' && algumPub) return false;
       }
+      if (filtroTipoAnuncio !== 'todos') {
+        const tipos = tiposPublicados(im.id, filtroPortal);
+        if (!tipos.includes(filtroTipoAnuncio)) return false;
+      }
       return true;
     });
 
@@ -326,11 +338,19 @@ export default function Portais() {
         default: return (a.titulo ?? '').localeCompare(b.titulo ?? '');
       }
     });
-  }, [imoveis, portais, filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
+  }, [imoveis, portais, filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade, filtroTipoAnuncio]);
 
   const contagens = useMemo(() => {
-    const m: Record<PortalId, number> = { zap_vivareal: 0, olx: 0, imovelweb: 0, chavesnamao: 0 };
-    portais.forEach((p) => { if (p.publicar) m[p.portal] = (m[p.portal] ?? 0) + 1; });
+    const vazio = () => ({ total: 0, porTipo: {} as Record<TipoAnuncio, number> });
+    const m: Record<PortalId, { total: number; porTipo: Record<TipoAnuncio, number> }> = {
+      zap_vivareal: vazio(), olx: vazio(), imovelweb: vazio(), chavesnamao: vazio(),
+    };
+    portais.forEach((p) => {
+      if (!p.publicar || !m[p.portal]) return;
+      const tipo = (p.tipo_anuncio ?? 'simples') as TipoAnuncio;
+      m[p.portal].total += 1;
+      m[p.portal].porTipo[tipo] = (m[p.portal].porTipo[tipo] ?? 0) + 1;
+    });
     return m;
   }, [portais]);
 
@@ -338,7 +358,7 @@ export default function Portais() {
   useEffect(() => {
     setSelecionados(new Set());
     setPagina(1);
-  }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade]);
+  }, [filtro, filtroPortal, filtroStatus, precoMin, precoMax, periodo, ordenacao, filtroFinalidade, filtroTipo, filtroCidade, filtroTipoAnuncio]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE));
   const paginaAtual = Math.min(pagina, totalPaginas);
@@ -373,20 +393,32 @@ export default function Portais() {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {PORTAIS.map((p) => (
+          {PORTAIS.map((p) => {
+            const c = contagens[p.id];
+            const destaques = Object.entries(c.porTipo).filter(([t]) => t !== 'simples');
+            const totalDestaques = destaques.reduce((s, [, n]) => s + n, 0);
+            const detalhe = destaques
+              .map(([t, n]) => `${n} ${TIPOS_ANUNCIO.find((x) => x.id === t)?.label ?? t}`)
+              .join(' · ');
+            return (
             <Card key={p.id} className="p-3">
-              <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center justify-between gap-2 mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <Globe className="h-4 w-4 text-primary shrink-0" />
                   <span className="font-medium text-sm truncate">{p.nome}</span>
                 </div>
-                <Badge variant="secondary">{contagens[p.id]}</Badge>
+                <Badge variant="secondary">{c.total}</Badge>
               </div>
+              <p className="text-xs text-muted-foreground mb-2" title={detalhe || undefined}>
+                {c.total} publicados
+                {totalDestaques > 0 ? ` · ${totalDestaques} em destaque` : ' · nenhum em destaque'}
+              </p>
               <Button size="sm" variant="outline" className="w-full gap-2" onClick={() => copiarUrl(p.id)}>
                 <Copy className="h-3 w-3" /> Copiar URL do feed
               </Button>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         <Card className="p-4 border-primary/30">
@@ -499,6 +531,14 @@ export default function Portais() {
               <option value="publicados">Publicados</option>
               <option value="nao_publicados">Não publicados</option>
               <option value="com_erro">Com erro de validação</option>
+            </select>
+            <select
+              className="h-9 rounded-md border px-2 text-sm bg-background"
+              value={filtroTipoAnuncio}
+              onChange={(e) => setFiltroTipoAnuncio(e.target.value as any)}
+            >
+              <option value="todos">Todos os tipos de anúncio</option>
+              {TIPOS_ANUNCIO.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </select>
             <select
               className="h-9 rounded-md border px-2 text-sm bg-background"
@@ -620,7 +660,7 @@ export default function Portais() {
                     <div className="flex flex-col items-center gap-0.5">
                       <span>{p.nome.split(' ')[0]}</span>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                        {contagens[p.id]} publicado{contagens[p.id] === 1 ? '' : 's'}
+                        {contagens[p.id].total} publicado{contagens[p.id].total === 1 ? '' : 's'}
                       </Badge>
                     </div>
                   </th>
