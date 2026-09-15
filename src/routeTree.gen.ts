@@ -20,10 +20,37 @@ import { Route as NossaHistoriaRouteImport } from './routes/nossa-historia'
 import { Route as PoliticaPrivacidadeRouteImport } from './routes/politica-privacidade'
 import { Route as TermosUsoRouteImport } from './routes/termos-uso'
 import { Route as AdminOgTesterRouteImport } from './routes/admin/og-tester'
+import { Route as CrmIndexRouteImport } from './routes/crm/index'
+import { Route as CrmAgendaRouteImport } from './routes/crm/agenda'
+import { Route as CrmFunilRouteImport } from './routes/crm/funil'
 import { Route as CrmLoginRouteImport } from './routes/crm/login'
+import { Route as CrmPortaisRouteImport } from './routes/crm/portais'
+import { Route as CrmRelatoriosRouteImport } from './routes/crm/relatorios'
 import { Route as CrmSemAcessoRouteImport } from './routes/crm/sem-acesso'
 import { Route as CrmSetupRouteImport } from './routes/crm/setup'
+import { Route as CrmTarefasRouteImport } from './routes/crm/tarefas'
 import { Route as ImovelCodigoRouteImport } from './routes/imovel/$codigo'
+import { Route as CrmClientesIndexRouteImport } from './routes/crm/clientes/index'
+import { Route as CrmClientesImportarRouteImport } from './routes/crm/clientes/importar'
+import { Route as CrmClientesNovoRouteImport } from './routes/crm/clientes/novo'
+import { Route as CrmCondominiosIndexRouteImport } from './routes/crm/condominios/index'
+import { Route as CrmCondominiosCodigoRouteImport } from './routes/crm/condominios/$codigo'
+import { Route as CrmConfiguracoesIndexRouteImport } from './routes/crm/configuracoes/index'
+import { Route as CrmConfiguracoesImoviewRouteImport } from './routes/crm/configuracoes/imoview'
+import { Route as CrmImoveisIndexRouteImport } from './routes/crm/imoveis/index'
+import { Route as CrmImoveisImportarCompletoRouteImport } from './routes/crm/imoveis/importar-completo'
+import { Route as CrmImoveisImportarDesativadosRouteImport } from './routes/crm/imoveis/importar-desativados'
+import { Route as CrmImoveisImportarProprietariosRouteImport } from './routes/crm/imoveis/importar-proprietarios'
+import { Route as CrmImoveisNovoRouteImport } from './routes/crm/imoveis/novo'
+import { Route as CrmLeadsIndexRouteImport } from './routes/crm/leads/index'
+import { Route as CrmLeadsImportarRouteImport } from './routes/crm/leads/importar'
+import { Route as CrmLeadsNovoRouteImport } from './routes/crm/leads/novo'
+import { Route as CrmClientesIdIndexRouteImport } from './routes/crm/clientes/$id/index'
+import { Route as CrmClientesIdEditarRouteImport } from './routes/crm/clientes/$id/editar'
+import { Route as CrmImoveisIdIndexRouteImport } from './routes/crm/imoveis/$id/index'
+import { Route as CrmImoveisIdEditarRouteImport } from './routes/crm/imoveis/$id/editar'
+import { Route as CrmLeadsIdIndexRouteImport } from './routes/crm/leads/$id/index'
+import { Route as CrmLeadsIdEditarRouteImport } from './routes/crm/leads/$id/editar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -80,9 +107,34 @@ const AdminOgTesterRoute = AdminOgTesterRouteImport.update({
   path: '/admin/og-tester',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CrmIndexRoute = CrmIndexRouteImport.update({
+  id: '/crm/',
+  path: '/crm/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmAgendaRoute = CrmAgendaRouteImport.update({
+  id: '/crm/agenda',
+  path: '/crm/agenda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmFunilRoute = CrmFunilRouteImport.update({
+  id: '/crm/funil',
+  path: '/crm/funil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CrmLoginRoute = CrmLoginRouteImport.update({
   id: '/crm/login',
   path: '/crm/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmPortaisRoute = CrmPortaisRouteImport.update({
+  id: '/crm/portais',
+  path: '/crm/portais',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmRelatoriosRoute = CrmRelatoriosRouteImport.update({
+  id: '/crm/relatorios',
+  path: '/crm/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CrmSemAcessoRoute = CrmSemAcessoRouteImport.update({
@@ -95,9 +147,122 @@ const CrmSetupRoute = CrmSetupRouteImport.update({
   path: '/crm/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CrmTarefasRoute = CrmTarefasRouteImport.update({
+  id: '/crm/tarefas',
+  path: '/crm/tarefas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImovelCodigoRoute = ImovelCodigoRouteImport.update({
   id: '/imovel/$codigo',
   path: '/imovel/$codigo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmClientesIndexRoute = CrmClientesIndexRouteImport.update({
+  id: '/crm/clientes/',
+  path: '/crm/clientes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmClientesImportarRoute = CrmClientesImportarRouteImport.update({
+  id: '/crm/clientes/importar',
+  path: '/crm/clientes/importar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmClientesNovoRoute = CrmClientesNovoRouteImport.update({
+  id: '/crm/clientes/novo',
+  path: '/crm/clientes/novo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmCondominiosIndexRoute = CrmCondominiosIndexRouteImport.update({
+  id: '/crm/condominios/',
+  path: '/crm/condominios/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmCondominiosCodigoRoute = CrmCondominiosCodigoRouteImport.update({
+  id: '/crm/condominios/$codigo',
+  path: '/crm/condominios/$codigo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmConfiguracoesIndexRoute = CrmConfiguracoesIndexRouteImport.update({
+  id: '/crm/configuracoes/',
+  path: '/crm/configuracoes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmConfiguracoesImoviewRoute = CrmConfiguracoesImoviewRouteImport.update({
+  id: '/crm/configuracoes/imoview',
+  path: '/crm/configuracoes/imoview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmImoveisIndexRoute = CrmImoveisIndexRouteImport.update({
+  id: '/crm/imoveis/',
+  path: '/crm/imoveis/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmImoveisImportarCompletoRoute =
+  CrmImoveisImportarCompletoRouteImport.update({
+    id: '/crm/imoveis/importar-completo',
+    path: '/crm/imoveis/importar-completo',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CrmImoveisImportarDesativadosRoute =
+  CrmImoveisImportarDesativadosRouteImport.update({
+    id: '/crm/imoveis/importar-desativados',
+    path: '/crm/imoveis/importar-desativados',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CrmImoveisImportarProprietariosRoute =
+  CrmImoveisImportarProprietariosRouteImport.update({
+    id: '/crm/imoveis/importar-proprietarios',
+    path: '/crm/imoveis/importar-proprietarios',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CrmImoveisNovoRoute = CrmImoveisNovoRouteImport.update({
+  id: '/crm/imoveis/novo',
+  path: '/crm/imoveis/novo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmLeadsIndexRoute = CrmLeadsIndexRouteImport.update({
+  id: '/crm/leads/',
+  path: '/crm/leads/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmLeadsImportarRoute = CrmLeadsImportarRouteImport.update({
+  id: '/crm/leads/importar',
+  path: '/crm/leads/importar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmLeadsNovoRoute = CrmLeadsNovoRouteImport.update({
+  id: '/crm/leads/novo',
+  path: '/crm/leads/novo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmClientesIdIndexRoute = CrmClientesIdIndexRouteImport.update({
+  id: '/crm/clientes/$id/',
+  path: '/crm/clientes/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmClientesIdEditarRoute = CrmClientesIdEditarRouteImport.update({
+  id: '/crm/clientes/$id/editar',
+  path: '/crm/clientes/$id/editar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmImoveisIdIndexRoute = CrmImoveisIdIndexRouteImport.update({
+  id: '/crm/imoveis/$id/',
+  path: '/crm/imoveis/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmImoveisIdEditarRoute = CrmImoveisIdEditarRouteImport.update({
+  id: '/crm/imoveis/$id/editar',
+  path: '/crm/imoveis/$id/editar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmLeadsIdIndexRoute = CrmLeadsIdIndexRouteImport.update({
+  id: '/crm/leads/$id/',
+  path: '/crm/leads/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmLeadsIdEditarRoute = CrmLeadsIdEditarRouteImport.update({
+  id: '/crm/leads/$id/editar',
+  path: '/crm/leads/$id/editar',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -113,10 +278,37 @@ export interface FileRoutesByFullPath {
   '/politica-privacidade': typeof PoliticaPrivacidadeRoute
   '/termos-uso': typeof TermosUsoRoute
   '/admin/og-tester': typeof AdminOgTesterRoute
+  '/crm/agenda': typeof CrmAgendaRoute
+  '/crm/funil': typeof CrmFunilRoute
   '/crm/login': typeof CrmLoginRoute
+  '/crm/portais': typeof CrmPortaisRoute
+  '/crm/relatorios': typeof CrmRelatoriosRoute
   '/crm/sem-acesso': typeof CrmSemAcessoRoute
   '/crm/setup': typeof CrmSetupRoute
+  '/crm/tarefas': typeof CrmTarefasRoute
   '/imovel/$codigo': typeof ImovelCodigoRoute
+  '/crm/': typeof CrmIndexRoute
+  '/crm/clientes/importar': typeof CrmClientesImportarRoute
+  '/crm/clientes/novo': typeof CrmClientesNovoRoute
+  '/crm/condominios/$codigo': typeof CrmCondominiosCodigoRoute
+  '/crm/configuracoes/imoview': typeof CrmConfiguracoesImoviewRoute
+  '/crm/imoveis/importar-completo': typeof CrmImoveisImportarCompletoRoute
+  '/crm/imoveis/importar-desativados': typeof CrmImoveisImportarDesativadosRoute
+  '/crm/imoveis/importar-proprietarios': typeof CrmImoveisImportarProprietariosRoute
+  '/crm/imoveis/novo': typeof CrmImoveisNovoRoute
+  '/crm/leads/importar': typeof CrmLeadsImportarRoute
+  '/crm/leads/novo': typeof CrmLeadsNovoRoute
+  '/crm/clientes/': typeof CrmClientesIndexRoute
+  '/crm/condominios/': typeof CrmCondominiosIndexRoute
+  '/crm/configuracoes/': typeof CrmConfiguracoesIndexRoute
+  '/crm/imoveis/': typeof CrmImoveisIndexRoute
+  '/crm/leads/': typeof CrmLeadsIndexRoute
+  '/crm/clientes/$id/editar': typeof CrmClientesIdEditarRoute
+  '/crm/imoveis/$id/editar': typeof CrmImoveisIdEditarRoute
+  '/crm/leads/$id/editar': typeof CrmLeadsIdEditarRoute
+  '/crm/clientes/$id/': typeof CrmClientesIdIndexRoute
+  '/crm/imoveis/$id/': typeof CrmImoveisIdIndexRoute
+  '/crm/leads/$id/': typeof CrmLeadsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -130,10 +322,37 @@ export interface FileRoutesByTo {
   '/politica-privacidade': typeof PoliticaPrivacidadeRoute
   '/termos-uso': typeof TermosUsoRoute
   '/admin/og-tester': typeof AdminOgTesterRoute
+  '/crm/agenda': typeof CrmAgendaRoute
+  '/crm/funil': typeof CrmFunilRoute
   '/crm/login': typeof CrmLoginRoute
+  '/crm/portais': typeof CrmPortaisRoute
+  '/crm/relatorios': typeof CrmRelatoriosRoute
   '/crm/sem-acesso': typeof CrmSemAcessoRoute
   '/crm/setup': typeof CrmSetupRoute
+  '/crm/tarefas': typeof CrmTarefasRoute
   '/imovel/$codigo': typeof ImovelCodigoRoute
+  '/crm': typeof CrmIndexRoute
+  '/crm/clientes/importar': typeof CrmClientesImportarRoute
+  '/crm/clientes/novo': typeof CrmClientesNovoRoute
+  '/crm/condominios/$codigo': typeof CrmCondominiosCodigoRoute
+  '/crm/configuracoes/imoview': typeof CrmConfiguracoesImoviewRoute
+  '/crm/imoveis/importar-completo': typeof CrmImoveisImportarCompletoRoute
+  '/crm/imoveis/importar-desativados': typeof CrmImoveisImportarDesativadosRoute
+  '/crm/imoveis/importar-proprietarios': typeof CrmImoveisImportarProprietariosRoute
+  '/crm/imoveis/novo': typeof CrmImoveisNovoRoute
+  '/crm/leads/importar': typeof CrmLeadsImportarRoute
+  '/crm/leads/novo': typeof CrmLeadsNovoRoute
+  '/crm/clientes': typeof CrmClientesIndexRoute
+  '/crm/condominios': typeof CrmCondominiosIndexRoute
+  '/crm/configuracoes': typeof CrmConfiguracoesIndexRoute
+  '/crm/imoveis': typeof CrmImoveisIndexRoute
+  '/crm/leads': typeof CrmLeadsIndexRoute
+  '/crm/clientes/$id/editar': typeof CrmClientesIdEditarRoute
+  '/crm/imoveis/$id/editar': typeof CrmImoveisIdEditarRoute
+  '/crm/leads/$id/editar': typeof CrmLeadsIdEditarRoute
+  '/crm/clientes/$id': typeof CrmClientesIdIndexRoute
+  '/crm/imoveis/$id': typeof CrmImoveisIdIndexRoute
+  '/crm/leads/$id': typeof CrmLeadsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,10 +367,37 @@ export interface FileRoutesById {
   '/politica-privacidade': typeof PoliticaPrivacidadeRoute
   '/termos-uso': typeof TermosUsoRoute
   '/admin/og-tester': typeof AdminOgTesterRoute
+  '/crm/agenda': typeof CrmAgendaRoute
+  '/crm/funil': typeof CrmFunilRoute
   '/crm/login': typeof CrmLoginRoute
+  '/crm/portais': typeof CrmPortaisRoute
+  '/crm/relatorios': typeof CrmRelatoriosRoute
   '/crm/sem-acesso': typeof CrmSemAcessoRoute
   '/crm/setup': typeof CrmSetupRoute
+  '/crm/tarefas': typeof CrmTarefasRoute
   '/imovel/$codigo': typeof ImovelCodigoRoute
+  '/crm/': typeof CrmIndexRoute
+  '/crm/clientes/importar': typeof CrmClientesImportarRoute
+  '/crm/clientes/novo': typeof CrmClientesNovoRoute
+  '/crm/condominios/$codigo': typeof CrmCondominiosCodigoRoute
+  '/crm/configuracoes/imoview': typeof CrmConfiguracoesImoviewRoute
+  '/crm/imoveis/importar-completo': typeof CrmImoveisImportarCompletoRoute
+  '/crm/imoveis/importar-desativados': typeof CrmImoveisImportarDesativadosRoute
+  '/crm/imoveis/importar-proprietarios': typeof CrmImoveisImportarProprietariosRoute
+  '/crm/imoveis/novo': typeof CrmImoveisNovoRoute
+  '/crm/leads/importar': typeof CrmLeadsImportarRoute
+  '/crm/leads/novo': typeof CrmLeadsNovoRoute
+  '/crm/clientes/': typeof CrmClientesIndexRoute
+  '/crm/condominios/': typeof CrmCondominiosIndexRoute
+  '/crm/configuracoes/': typeof CrmConfiguracoesIndexRoute
+  '/crm/imoveis/': typeof CrmImoveisIndexRoute
+  '/crm/leads/': typeof CrmLeadsIndexRoute
+  '/crm/clientes/$id/editar': typeof CrmClientesIdEditarRoute
+  '/crm/imoveis/$id/editar': typeof CrmImoveisIdEditarRoute
+  '/crm/leads/$id/editar': typeof CrmLeadsIdEditarRoute
+  '/crm/clientes/$id/': typeof CrmClientesIdIndexRoute
+  '/crm/imoveis/$id/': typeof CrmImoveisIdIndexRoute
+  '/crm/leads/$id/': typeof CrmLeadsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,10 +413,37 @@ export interface FileRouteTypes {
     | '/politica-privacidade'
     | '/termos-uso'
     | '/admin/og-tester'
+    | '/crm/agenda'
+    | '/crm/funil'
     | '/crm/login'
+    | '/crm/portais'
+    | '/crm/relatorios'
     | '/crm/sem-acesso'
     | '/crm/setup'
+    | '/crm/tarefas'
     | '/imovel/$codigo'
+    | '/crm/'
+    | '/crm/clientes/importar'
+    | '/crm/clientes/novo'
+    | '/crm/condominios/$codigo'
+    | '/crm/configuracoes/imoview'
+    | '/crm/imoveis/importar-completo'
+    | '/crm/imoveis/importar-desativados'
+    | '/crm/imoveis/importar-proprietarios'
+    | '/crm/imoveis/novo'
+    | '/crm/leads/importar'
+    | '/crm/leads/novo'
+    | '/crm/clientes/'
+    | '/crm/condominios/'
+    | '/crm/configuracoes/'
+    | '/crm/imoveis/'
+    | '/crm/leads/'
+    | '/crm/clientes/$id/editar'
+    | '/crm/imoveis/$id/editar'
+    | '/crm/leads/$id/editar'
+    | '/crm/clientes/$id/'
+    | '/crm/imoveis/$id/'
+    | '/crm/leads/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -184,10 +457,37 @@ export interface FileRouteTypes {
     | '/politica-privacidade'
     | '/termos-uso'
     | '/admin/og-tester'
+    | '/crm/agenda'
+    | '/crm/funil'
     | '/crm/login'
+    | '/crm/portais'
+    | '/crm/relatorios'
     | '/crm/sem-acesso'
     | '/crm/setup'
+    | '/crm/tarefas'
     | '/imovel/$codigo'
+    | '/crm'
+    | '/crm/clientes/importar'
+    | '/crm/clientes/novo'
+    | '/crm/condominios/$codigo'
+    | '/crm/configuracoes/imoview'
+    | '/crm/imoveis/importar-completo'
+    | '/crm/imoveis/importar-desativados'
+    | '/crm/imoveis/importar-proprietarios'
+    | '/crm/imoveis/novo'
+    | '/crm/leads/importar'
+    | '/crm/leads/novo'
+    | '/crm/clientes'
+    | '/crm/condominios'
+    | '/crm/configuracoes'
+    | '/crm/imoveis'
+    | '/crm/leads'
+    | '/crm/clientes/$id/editar'
+    | '/crm/imoveis/$id/editar'
+    | '/crm/leads/$id/editar'
+    | '/crm/clientes/$id'
+    | '/crm/imoveis/$id'
+    | '/crm/leads/$id'
   id:
     | '__root__'
     | '/'
@@ -201,10 +501,37 @@ export interface FileRouteTypes {
     | '/politica-privacidade'
     | '/termos-uso'
     | '/admin/og-tester'
+    | '/crm/agenda'
+    | '/crm/funil'
     | '/crm/login'
+    | '/crm/portais'
+    | '/crm/relatorios'
     | '/crm/sem-acesso'
     | '/crm/setup'
+    | '/crm/tarefas'
     | '/imovel/$codigo'
+    | '/crm/'
+    | '/crm/clientes/importar'
+    | '/crm/clientes/novo'
+    | '/crm/condominios/$codigo'
+    | '/crm/configuracoes/imoview'
+    | '/crm/imoveis/importar-completo'
+    | '/crm/imoveis/importar-desativados'
+    | '/crm/imoveis/importar-proprietarios'
+    | '/crm/imoveis/novo'
+    | '/crm/leads/importar'
+    | '/crm/leads/novo'
+    | '/crm/clientes/'
+    | '/crm/condominios/'
+    | '/crm/configuracoes/'
+    | '/crm/imoveis/'
+    | '/crm/leads/'
+    | '/crm/clientes/$id/editar'
+    | '/crm/imoveis/$id/editar'
+    | '/crm/leads/$id/editar'
+    | '/crm/clientes/$id/'
+    | '/crm/imoveis/$id/'
+    | '/crm/leads/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -219,10 +546,37 @@ export interface RootRouteChildren {
   PoliticaPrivacidadeRoute: typeof PoliticaPrivacidadeRoute
   TermosUsoRoute: typeof TermosUsoRoute
   AdminOgTesterRoute: typeof AdminOgTesterRoute
+  CrmAgendaRoute: typeof CrmAgendaRoute
+  CrmFunilRoute: typeof CrmFunilRoute
   CrmLoginRoute: typeof CrmLoginRoute
+  CrmPortaisRoute: typeof CrmPortaisRoute
+  CrmRelatoriosRoute: typeof CrmRelatoriosRoute
   CrmSemAcessoRoute: typeof CrmSemAcessoRoute
   CrmSetupRoute: typeof CrmSetupRoute
+  CrmTarefasRoute: typeof CrmTarefasRoute
   ImovelCodigoRoute: typeof ImovelCodigoRoute
+  CrmIndexRoute: typeof CrmIndexRoute
+  CrmClientesImportarRoute: typeof CrmClientesImportarRoute
+  CrmClientesNovoRoute: typeof CrmClientesNovoRoute
+  CrmCondominiosCodigoRoute: typeof CrmCondominiosCodigoRoute
+  CrmConfiguracoesImoviewRoute: typeof CrmConfiguracoesImoviewRoute
+  CrmImoveisImportarCompletoRoute: typeof CrmImoveisImportarCompletoRoute
+  CrmImoveisImportarDesativadosRoute: typeof CrmImoveisImportarDesativadosRoute
+  CrmImoveisImportarProprietariosRoute: typeof CrmImoveisImportarProprietariosRoute
+  CrmImoveisNovoRoute: typeof CrmImoveisNovoRoute
+  CrmLeadsImportarRoute: typeof CrmLeadsImportarRoute
+  CrmLeadsNovoRoute: typeof CrmLeadsNovoRoute
+  CrmClientesIndexRoute: typeof CrmClientesIndexRoute
+  CrmCondominiosIndexRoute: typeof CrmCondominiosIndexRoute
+  CrmConfiguracoesIndexRoute: typeof CrmConfiguracoesIndexRoute
+  CrmImoveisIndexRoute: typeof CrmImoveisIndexRoute
+  CrmLeadsIndexRoute: typeof CrmLeadsIndexRoute
+  CrmClientesIdEditarRoute: typeof CrmClientesIdEditarRoute
+  CrmImoveisIdEditarRoute: typeof CrmImoveisIdEditarRoute
+  CrmLeadsIdEditarRoute: typeof CrmLeadsIdEditarRoute
+  CrmClientesIdIndexRoute: typeof CrmClientesIdIndexRoute
+  CrmImoveisIdIndexRoute: typeof CrmImoveisIdIndexRoute
+  CrmLeadsIdIndexRoute: typeof CrmLeadsIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -304,11 +658,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOgTesterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crm/': {
+      id: '/crm/'
+      path: '/crm'
+      fullPath: '/crm/'
+      preLoaderRoute: typeof CrmIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/agenda': {
+      id: '/crm/agenda'
+      path: '/crm/agenda'
+      fullPath: '/crm/agenda'
+      preLoaderRoute: typeof CrmAgendaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/funil': {
+      id: '/crm/funil'
+      path: '/crm/funil'
+      fullPath: '/crm/funil'
+      preLoaderRoute: typeof CrmFunilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/crm/login': {
       id: '/crm/login'
       path: '/crm/login'
       fullPath: '/crm/login'
       preLoaderRoute: typeof CrmLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/portais': {
+      id: '/crm/portais'
+      path: '/crm/portais'
+      fullPath: '/crm/portais'
+      preLoaderRoute: typeof CrmPortaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/relatorios': {
+      id: '/crm/relatorios'
+      path: '/crm/relatorios'
+      fullPath: '/crm/relatorios'
+      preLoaderRoute: typeof CrmRelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/crm/sem-acesso': {
@@ -325,11 +714,165 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CrmSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crm/tarefas': {
+      id: '/crm/tarefas'
+      path: '/crm/tarefas'
+      fullPath: '/crm/tarefas'
+      preLoaderRoute: typeof CrmTarefasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/imovel/$codigo': {
       id: '/imovel/$codigo'
       path: '/imovel/$codigo'
       fullPath: '/imovel/$codigo'
       preLoaderRoute: typeof ImovelCodigoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/clientes/': {
+      id: '/crm/clientes/'
+      path: '/crm/clientes'
+      fullPath: '/crm/clientes/'
+      preLoaderRoute: typeof CrmClientesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/clientes/importar': {
+      id: '/crm/clientes/importar'
+      path: '/crm/clientes/importar'
+      fullPath: '/crm/clientes/importar'
+      preLoaderRoute: typeof CrmClientesImportarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/clientes/novo': {
+      id: '/crm/clientes/novo'
+      path: '/crm/clientes/novo'
+      fullPath: '/crm/clientes/novo'
+      preLoaderRoute: typeof CrmClientesNovoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/condominios/': {
+      id: '/crm/condominios/'
+      path: '/crm/condominios'
+      fullPath: '/crm/condominios/'
+      preLoaderRoute: typeof CrmCondominiosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/condominios/$codigo': {
+      id: '/crm/condominios/$codigo'
+      path: '/crm/condominios/$codigo'
+      fullPath: '/crm/condominios/$codigo'
+      preLoaderRoute: typeof CrmCondominiosCodigoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/configuracoes/': {
+      id: '/crm/configuracoes/'
+      path: '/crm/configuracoes'
+      fullPath: '/crm/configuracoes/'
+      preLoaderRoute: typeof CrmConfiguracoesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/configuracoes/imoview': {
+      id: '/crm/configuracoes/imoview'
+      path: '/crm/configuracoes/imoview'
+      fullPath: '/crm/configuracoes/imoview'
+      preLoaderRoute: typeof CrmConfiguracoesImoviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/imoveis/': {
+      id: '/crm/imoveis/'
+      path: '/crm/imoveis'
+      fullPath: '/crm/imoveis/'
+      preLoaderRoute: typeof CrmImoveisIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/imoveis/importar-completo': {
+      id: '/crm/imoveis/importar-completo'
+      path: '/crm/imoveis/importar-completo'
+      fullPath: '/crm/imoveis/importar-completo'
+      preLoaderRoute: typeof CrmImoveisImportarCompletoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/imoveis/importar-desativados': {
+      id: '/crm/imoveis/importar-desativados'
+      path: '/crm/imoveis/importar-desativados'
+      fullPath: '/crm/imoveis/importar-desativados'
+      preLoaderRoute: typeof CrmImoveisImportarDesativadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/imoveis/importar-proprietarios': {
+      id: '/crm/imoveis/importar-proprietarios'
+      path: '/crm/imoveis/importar-proprietarios'
+      fullPath: '/crm/imoveis/importar-proprietarios'
+      preLoaderRoute: typeof CrmImoveisImportarProprietariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/imoveis/novo': {
+      id: '/crm/imoveis/novo'
+      path: '/crm/imoveis/novo'
+      fullPath: '/crm/imoveis/novo'
+      preLoaderRoute: typeof CrmImoveisNovoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/leads/': {
+      id: '/crm/leads/'
+      path: '/crm/leads'
+      fullPath: '/crm/leads/'
+      preLoaderRoute: typeof CrmLeadsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/leads/importar': {
+      id: '/crm/leads/importar'
+      path: '/crm/leads/importar'
+      fullPath: '/crm/leads/importar'
+      preLoaderRoute: typeof CrmLeadsImportarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/leads/novo': {
+      id: '/crm/leads/novo'
+      path: '/crm/leads/novo'
+      fullPath: '/crm/leads/novo'
+      preLoaderRoute: typeof CrmLeadsNovoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/clientes/$id/': {
+      id: '/crm/clientes/$id/'
+      path: '/crm/clientes/$id'
+      fullPath: '/crm/clientes/$id/'
+      preLoaderRoute: typeof CrmClientesIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/clientes/$id/editar': {
+      id: '/crm/clientes/$id/editar'
+      path: '/crm/clientes/$id/editar'
+      fullPath: '/crm/clientes/$id/editar'
+      preLoaderRoute: typeof CrmClientesIdEditarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/imoveis/$id/': {
+      id: '/crm/imoveis/$id/'
+      path: '/crm/imoveis/$id'
+      fullPath: '/crm/imoveis/$id/'
+      preLoaderRoute: typeof CrmImoveisIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/imoveis/$id/editar': {
+      id: '/crm/imoveis/$id/editar'
+      path: '/crm/imoveis/$id/editar'
+      fullPath: '/crm/imoveis/$id/editar'
+      preLoaderRoute: typeof CrmImoveisIdEditarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/leads/$id/': {
+      id: '/crm/leads/$id/'
+      path: '/crm/leads/$id'
+      fullPath: '/crm/leads/$id/'
+      preLoaderRoute: typeof CrmLeadsIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/leads/$id/editar': {
+      id: '/crm/leads/$id/editar'
+      path: '/crm/leads/$id/editar'
+      fullPath: '/crm/leads/$id/editar'
+      preLoaderRoute: typeof CrmLeadsIdEditarRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -347,10 +890,37 @@ const rootRouteChildren: RootRouteChildren = {
   PoliticaPrivacidadeRoute: PoliticaPrivacidadeRoute,
   TermosUsoRoute: TermosUsoRoute,
   AdminOgTesterRoute: AdminOgTesterRoute,
+  CrmAgendaRoute: CrmAgendaRoute,
+  CrmFunilRoute: CrmFunilRoute,
   CrmLoginRoute: CrmLoginRoute,
+  CrmPortaisRoute: CrmPortaisRoute,
+  CrmRelatoriosRoute: CrmRelatoriosRoute,
   CrmSemAcessoRoute: CrmSemAcessoRoute,
   CrmSetupRoute: CrmSetupRoute,
+  CrmTarefasRoute: CrmTarefasRoute,
   ImovelCodigoRoute: ImovelCodigoRoute,
+  CrmIndexRoute: CrmIndexRoute,
+  CrmClientesImportarRoute: CrmClientesImportarRoute,
+  CrmClientesNovoRoute: CrmClientesNovoRoute,
+  CrmCondominiosCodigoRoute: CrmCondominiosCodigoRoute,
+  CrmConfiguracoesImoviewRoute: CrmConfiguracoesImoviewRoute,
+  CrmImoveisImportarCompletoRoute: CrmImoveisImportarCompletoRoute,
+  CrmImoveisImportarDesativadosRoute: CrmImoveisImportarDesativadosRoute,
+  CrmImoveisImportarProprietariosRoute: CrmImoveisImportarProprietariosRoute,
+  CrmImoveisNovoRoute: CrmImoveisNovoRoute,
+  CrmLeadsImportarRoute: CrmLeadsImportarRoute,
+  CrmLeadsNovoRoute: CrmLeadsNovoRoute,
+  CrmClientesIndexRoute: CrmClientesIndexRoute,
+  CrmCondominiosIndexRoute: CrmCondominiosIndexRoute,
+  CrmConfiguracoesIndexRoute: CrmConfiguracoesIndexRoute,
+  CrmImoveisIndexRoute: CrmImoveisIndexRoute,
+  CrmLeadsIndexRoute: CrmLeadsIndexRoute,
+  CrmClientesIdEditarRoute: CrmClientesIdEditarRoute,
+  CrmImoveisIdEditarRoute: CrmImoveisIdEditarRoute,
+  CrmLeadsIdEditarRoute: CrmLeadsIdEditarRoute,
+  CrmClientesIdIndexRoute: CrmClientesIdIndexRoute,
+  CrmImoveisIdIndexRoute: CrmImoveisIdIndexRoute,
+  CrmLeadsIdIndexRoute: CrmLeadsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

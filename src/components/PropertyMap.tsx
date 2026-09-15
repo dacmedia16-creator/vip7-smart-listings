@@ -40,7 +40,7 @@ interface PropertyFeatureProperties {
 export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const draw = useRef<MapboxDraw | null>(null);
+  const draw = useRef<InstanceType<typeof MapboxDraw> | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const navigate = useNavigate();
   

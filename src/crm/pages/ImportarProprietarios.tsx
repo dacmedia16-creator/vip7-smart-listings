@@ -455,7 +455,7 @@ export default function ImportarProprietarios() {
                 if (v != null && v !== '') update[k] = v;
               }
               if (codigoImoviewCli) update.codigo_imoview = codigoImoviewCli;
-              const { error } = await supabase.from('clientes').update(update).eq('id', existing.id);
+              const { error } = await supabase.from('clientes').update(update as any).eq('id', existing.id);
               if (error) throw error;
               clienteId = existing.id;
               agg.clientes_atualizados++;

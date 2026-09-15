@@ -30,7 +30,7 @@ function clientOnly<P extends object>(Comp: ComponentType<P>) {
   };
 }
 
-export const ContactMap = clientOnly<ComponentProps<typeof LazyContactMap>>(LazyContactMap);
+export const ContactMap = clientOnly<object>(LazyContactMap as ComponentType<object>);
 export const PropertyLocationMap = clientOnly<ComponentProps<typeof LazyPropertyLocationMap>>(
   LazyPropertyLocationMap,
 );

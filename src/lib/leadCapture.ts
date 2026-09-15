@@ -37,7 +37,7 @@ export async function capturarLead(input: CapturarLeadInput): Promise<CapturarLe
     try {
       const { data: dup } = await supabase.rpc('find_duplicate_lead', {
         _telefone: input.telefone,
-        _email: input.email ?? null,
+        _email: (input.email ?? null) as unknown as string,
       });
       if (dup) duplicateId = dup as any;
     } catch (e) {

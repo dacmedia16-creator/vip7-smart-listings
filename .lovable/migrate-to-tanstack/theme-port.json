@@ -1,22 +1,14 @@
 {
   "customizations": [
-    { "token": ":root HSL palette (background/foreground/card/popover/primary/secondary/muted/accent/destructive/border/input/ring/radius)", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "--gold / --gold-light / --gold-dark", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "--champagne / --onyx / --charcoal / --platinum / --ivory", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "--gradient-gold / --gradient-gold-shine / --gradient-dark / --gradient-hero / --gradient-card / --gradient-border", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "--shadow-gold / --shadow-gold-intense / --shadow-card / --shadow-elevated / --shadow-glow / --shadow-inner", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "--font-heading (Playfair Display) / --font-body (DM Sans) + font-heading/font-body utilities", "source": "src/index.css + tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": "--sidebar-* palette + sidebar color utilities", "source": "src/index.css + tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": ".crm-scope light-theme variable overrides", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "base layer (border-border, smooth scroll, body font-feature-settings, heading font, ::selection)", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "components layer (.text-gradient-gold, .text-gradient-platinum, .bg-gradient-gold, .bg-gradient-card, .border-gradient, .card-luxury, .glass-luxury, .glass-luxury-dark, .shimmer, .gold-glow, .line-gold, .hover-lift, .title-decorated, .section-divider)", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "utilities layer (.animate-fade-in, .animate-slide-up, .animate-scale-in, .animate-float, .animate-pulse-gold, .delay-100..600)", "source": "src/index.css", "reappliedIn": "src/styles.css" },
-    { "token": "keyframes (shimmer, pulse-ring, fadeIn, slideUp, scaleIn, float, pulse-gold, pulse-marker, accordion-down, accordion-up)", "source": "src/index.css + tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": "tailwind.config colors gold/champagne/onyx/charcoal/platinum/ivory/sidebar mapped to @theme inline", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": "borderRadius xl=1rem / 2xl=1.5rem / 3xl=2rem", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": "letterSpacing tightest=-0.04em / luxury=0.15em", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": "animations accordion-down/up, fade-in, slide-up, scale-in, pulse-gold, shimmer, float as --animate-*", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": "container (center, padding 2rem, max 1400px) as @utility container", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css" },
-    { "token": "Mapbox popup/marker/draw CSS (mapboxgl-*, property-popup, popup-*, property-main-marker, location-popup, poi-popup)", "source": "src/index.css", "reappliedIn": "src/styles.css" }
+    { "token": "dark/gold HSL palette (:root + .crm-scope light scope)", "source": "src/index.css", "reappliedIn": "src/styles.css" },
+    { "token": "luxury tokens (gold, champagne, onyx, charcoal, platinum, ivory)", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css @theme inline" },
+    { "token": "gradients (--gradient-gold, -gold-shine, -dark, -hero, -card, -border)", "source": "src/index.css", "reappliedIn": "src/styles.css" },
+    { "token": "shadows (--shadow-gold, -gold-intense, -card, -elevated, -glow, -inner)", "source": "src/index.css", "reappliedIn": "src/styles.css" },
+    { "token": "font-heading/font-body (Playfair Display / DM Sans)", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css @theme inline" },
+    { "token": "borderRadius scale + tracking-tightest/luxury", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css @theme inline" },
+    { "token": "animations (accordion, fade-in, slide-up, scale-in, pulse-gold, shimmer, float) + delay utilities", "source": "tailwind.config.ts + src/index.css", "reappliedIn": "src/styles.css @theme inline + @utility" },
+    { "token": "component classes (card-luxury, glass-luxury, text-gradient-gold, border-gradient, title-decorated, section-divider, gold-glow, hover-lift, line-gold, shimmer)", "source": "src/index.css", "reappliedIn": "src/styles.css @layer components" },
+    { "token": "Mapbox popup/marker/draw styles", "source": "src/index.css", "reappliedIn": "src/styles.css" },
+    { "token": "container (center, 2rem padding, 1400px 2xl)", "source": "tailwind.config.ts", "reappliedIn": "src/styles.css @utility container" }
   ]
 }

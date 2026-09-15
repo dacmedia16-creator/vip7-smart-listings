@@ -419,7 +419,7 @@ export default function ImovelDetail() {
                         currency: 'BRL', 
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0 
-                      }).format(property.valor / (property.areaConstruida || property.areaTotal))}
+                      }).format((property.valor ?? 0) / (property.areaConstruida || property.areaTotal || 1))}
                     </p>
                   )}
                   

@@ -333,7 +333,7 @@ export default function ImportarLeads() {
         if (!existing.email && lead.email) patch.email = lead.email;
         if (!existing.cidade && lead.cidade_interesse) patch.cidade = lead.cidade_interesse;
         if (!existing.observacoes && lead.observacoes) patch.observacoes = lead.observacoes;
-        const { error } = await supabase.from('clientes').update(patch).eq('id', existing.id);
+        const { error } = await supabase.from('clientes').update(patch as any).eq('id', existing.id);
         return error ? 'erro' : 'atualizado';
       }
 
@@ -370,8 +370,8 @@ export default function ImportarLeads() {
           if ('skip' in built) { agg.ignorados++; continue; }
 
           const { data: dup } = await supabase.rpc('find_duplicate_lead', {
-            _telefone: built.telefone,
-            _email: built.email,
+            _telefone: built.telefone as string,
+            _email: built.email as unknown as string,
           });
           if (dup) {
             agg.duplicados++;
