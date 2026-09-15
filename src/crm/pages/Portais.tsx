@@ -320,6 +320,10 @@ export default function Portais() {
         if (filtroStatus === 'publicados' && !algumPub) return false;
         if (filtroStatus === 'nao_publicados' && algumPub) return false;
       }
+      if (filtroTipoAnuncio !== 'todos') {
+        const tipos = tiposPublicados(im.id, filtroPortal);
+        if (!tipos.includes(filtroTipoAnuncio)) return false;
+      }
       return true;
     });
 
