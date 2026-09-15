@@ -1,4 +1,4 @@
-import { Helmet } from 'react-helmet-async';
+import { useEffect } from 'react';
 
 interface SEOHeadProps {
   title?: string;
@@ -15,6 +15,38 @@ const DEFAULT_DESCRIPTION =
   'Encontre casas, apartamentos e terrenos para comprar ou alugar em Sorocaba e região. VIP7 Imóveis - Sua imobiliária de confiança há mais de 15 anos.';
 const DEFAULT_IMAGE = 'https://vip7imoveis.com.br/og-image.jpg';
 
+function upsertMeta(attr: 'name' | 'property', key: string, content: string | null) {
+  let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
+  if (!content) {
+    el?.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function upsertCanonical(href: string | null) {
+  let el = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!href) {
+    el?.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', 'canonical');
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
+}
+
+/**
+ * Client-side SEO updater (SPA navigations). Server-rendered metadata for
+ * shareable routes lives in each route's head() option.
+ */
 export function SEOHead({
   title,
   description = DEFAULT_DESCRIPTION,
@@ -24,39 +56,30 @@ export function SEOHead({
   type = 'website',
   noIndex = false,
 }: SEOHeadProps) {
-  const fullTitle = title ? `${title} | VIP7 Imóveis` : DEFAULT_TITLE;
-  const currentUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
+  useEffect(() => {
+    const fullTitle = title ? `${title} | VIP7 Imóveis` : DEFAULT_TITLE;
+    const currentUrl = url || window.location.href;
 
-  return (
-    <Helmet>
-      {/* Basic Meta Tags */}
-      <title>{fullTitle}</title>
-      <meta name="description" content={description} />
-      <meta name="keywords" content={keywords} />
-      {noIndex && <meta name="robots" content="noindex, nofollow" />}
+    document.title = fullTitle;
+    upsertMeta('name', 'description', description);
+    upsertMeta('name', 'keywords', keywords);
+    upsertMeta('name', 'robots', noIndex ? 'noindex, nofollow' : null);
+    upsertCanonical(currentUrl || null);
+    upsertMeta('property', 'og:title', fullTitle);
+    upsertMeta('property', 'og:description', description);
+    upsertMeta('property', 'og:type', type);
+    upsertMeta('property', 'og:url', currentUrl || null);
+    upsertMeta('property', 'og:image', image);
+    upsertMeta('property', 'og:site_name', 'VIP7 Imóveis');
+    upsertMeta('property', 'og:locale', 'pt_BR');
+    upsertMeta('name', 'twitter:card', 'summary_large_image');
+    upsertMeta('name', 'twitter:title', fullTitle);
+    upsertMeta('name', 'twitter:description', description);
+    upsertMeta('name', 'twitter:image', image);
+    upsertMeta('name', 'author', 'VIP7 Imóveis');
+    upsertMeta('name', 'geo.region', 'BR-SP');
+    upsertMeta('name', 'geo.placename', 'Sorocaba');
+  }, [title, description, keywords, image, url, type, noIndex]);
 
-      {/* Canonical URL */}
-      {currentUrl && <link rel="canonical" href={currentUrl} />}
-
-      {/* Open Graph */}
-      <meta property="og:title" content={fullTitle} />
-      <meta property="og:description" content={description} />
-      <meta property="og:type" content={type} />
-      {currentUrl && <meta property="og:url" content={currentUrl} />}
-      <meta property="og:image" content={image} />
-      <meta property="og:site_name" content="VIP7 Imóveis" />
-      <meta property="og:locale" content="pt_BR" />
-
-      {/* Twitter Card */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={fullTitle} />
-      <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={image} />
-
-      {/* Additional */}
-      <meta name="author" content="VIP7 Imóveis" />
-      <meta name="geo.region" content="BR-SP" />
-      <meta name="geo.placename" content="Sorocaba" />
-    </Helmet>
-  );
+  return null;
 }
