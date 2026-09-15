@@ -155,4 +155,8 @@ export const Outlet = TSOutlet;
 
 // ---------- NavLink (minimal) ----------
 
-export const NavLink = Link;
+export const NavLink = forwardRef<HTMLAnchorElement, LinkProps & { end?: boolean }>(
+  function NavLink({ end: _end, ...props }, ref) {
+    return <Link ref={ref} {...props} />;
+  },
+);

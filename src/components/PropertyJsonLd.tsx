@@ -1,4 +1,3 @@
-import { Helmet } from 'react-helmet-async';
 import { ImoviewProperty } from '@/services/imoviewApi';
 
 interface PropertyJsonLdProps {
@@ -74,8 +73,9 @@ export function PropertyJsonLd({ property, url }: PropertyJsonLdProps) {
   const cleanJsonLd = JSON.parse(JSON.stringify(jsonLd));
 
   return (
-    <Helmet>
-      <script type="application/ld+json">{JSON.stringify(cleanJsonLd)}</script>
-    </Helmet>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(cleanJsonLd) }}
+    />
   );
 }

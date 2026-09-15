@@ -8,7 +8,6 @@ import {
   createRootRouteWithContext,
   useRouter,
 } from "@tanstack/react-router";
-import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,10 +35,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Especialistas em venda e locação de imóveis de alto padrão em Sorocaba",
       },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "/favicon.png" },
+      { property: "og:site_name", content: "VIP7 Imóveis" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@vip7imoveis" },
-      { name: "twitter:image", content: "/favicon.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -83,19 +81,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <FavoritesProvider>
-            <CompareProvider>
-              <Toaster />
-              <Sonner />
-              <Outlet />
-            </CompareProvider>
-          </FavoritesProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <FavoritesProvider>
+          <CompareProvider>
+            <Toaster />
+            <Sonner />
+            <Outlet />
+          </CompareProvider>
+        </FavoritesProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 

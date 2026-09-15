@@ -93,7 +93,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
 
   // Scroll to active thumbnail
   useEffect(() => {
-    const scrollToThumbnail = (ref: React.RefObject<HTMLDivElement>) => {
+    const scrollToThumbnail = (ref: React.RefObject<HTMLDivElement | null>) => {
       if (ref.current) {
         const activeThumb = ref.current.children[currentImage] as HTMLElement;
         if (activeThumb) {
