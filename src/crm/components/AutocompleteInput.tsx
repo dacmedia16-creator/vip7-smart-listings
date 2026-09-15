@@ -60,7 +60,7 @@ export function AutocompleteInput({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
             className
           )}
         >
@@ -70,7 +70,7 @@ export function AutocompleteInput({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-card border-border z-50" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-card border-border z-50" align="start">
         <Command shouldFilter={false}>
           <div className="flex items-center border-b border-border px-3">
             <input
@@ -81,7 +81,7 @@ export function AutocompleteInput({
                 onValueChange(e.target.value);
               }}
               onFocus={() => setOpen(true)}
-              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <CommandList className="max-h-[240px] overflow-auto">

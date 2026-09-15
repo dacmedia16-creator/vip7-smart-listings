@@ -361,7 +361,7 @@ export function PropertyLocationMap({
         <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2 max-w-[calc(100%-100px)]">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all backdrop-blur-sm ${
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all backdrop-blur-xs ${
               selectedCategory === null
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-card/90 text-foreground hover:bg-card'
@@ -375,7 +375,7 @@ export function PropertyLocationMap({
               onClick={() => setSelectedCategory(
                 selectedCategory === category.type ? null : category.type
               )}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all backdrop-blur-sm flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all backdrop-blur-xs flex items-center gap-1 ${
                 selectedCategory === category.type
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card/90 text-foreground hover:bg-card'

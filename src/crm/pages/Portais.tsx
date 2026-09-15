@@ -10,7 +10,7 @@ import { Globe, Copy, AlertCircle, CheckCircle2, Webhook, ShieldCheck, ShieldAle
 import { useToast } from '@/hooks/use-toast';
 import { PORTAIS, type PortalId, TIPOS_ANUNCIO, type TipoAnuncio, validarImovelParaPortais } from '../lib/portais';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Link } from 'react-router-dom';
+import { Link } from "@/lib/router-compat";
 import { MoneyInput } from '../components/MoneyInput';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

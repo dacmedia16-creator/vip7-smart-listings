@@ -25,7 +25,7 @@ const PoliticaPrivacidade = () => {
           </div>
 
           {/* Content */}
-          <Card className="max-w-4xl mx-auto border-border/50 bg-card/80 backdrop-blur-sm">
+          <Card className="max-w-4xl mx-auto border-border/50 bg-card/80 backdrop-blur-xs">
             <CardContent className="p-8 md:p-12 space-y-8">
               {/* Introdução */}
               <section className="space-y-4">

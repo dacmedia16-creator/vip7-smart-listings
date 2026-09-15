@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Phone, Mail, ExternalLink, RefreshCw, UserPlus, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from "@/lib/router-compat";
 import { useToast } from '@/hooks/use-toast';
 import {
   listProprietariosByImovel,

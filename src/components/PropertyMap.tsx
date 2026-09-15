@@ -7,7 +7,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { ImoviewProperty } from '@/services/imoviewApi';
 import { formatPropertyValue } from '@/services/imoviewApi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "@/lib/router-compat";
 import { Pencil, Square, Trash2, X, MapPin, AlertCircle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePropertyGeocodes, useGeocodeProperties, mergePropertiesWithGeocodes } from '@/hooks/usePropertyGeocodes';
@@ -619,7 +619,7 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       {/* Drawing toolbar */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
         {/* Properties count with transparency info */}
-        <div className="bg-card/90 backdrop-blur-sm rounded-lg px-4 py-2 border border-border shadow-lg">
+        <div className="bg-card/90 backdrop-blur-xs rounded-lg px-4 py-2 border border-border shadow-lg">
           {hasArea && filteredCount !== null ? (
             <p className="text-sm text-foreground">
               <span className="font-semibold text-primary">{filteredCount}</span>
@@ -699,7 +699,7 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
         </div>
 
         {/* Draw controls */}
-        <div className="bg-card/90 backdrop-blur-sm rounded-lg p-2 border border-border shadow-lg">
+        <div className="bg-card/90 backdrop-blur-xs rounded-lg p-2 border border-border shadow-lg">
           <div className="flex items-center gap-1">
             {!isDrawing ? (
               <>
@@ -756,16 +756,16 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-10 bg-card/90 backdrop-blur-sm rounded-lg px-4 py-3 border border-border shadow-lg">
+      <div className="absolute bottom-4 left-4 z-10 bg-card/90 backdrop-blur-xs rounded-lg px-4 py-3 border border-border shadow-lg">
         <p className="text-xs text-muted-foreground mb-2 font-medium">Legenda</p>
         <div className="flex flex-col gap-2 text-sm">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs" />
               <span className="text-muted-foreground">Venda</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
+              <div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shadow-xs" />
               <span className="text-muted-foreground">Aluguel</span>
             </div>
           </div>
@@ -801,7 +801,7 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
 
       {/* Loading overlay with progress */}
       {isLoading && (
-        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center z-20 gap-4">
+        <div className="absolute inset-0 bg-background/70 backdrop-blur-xs flex flex-col items-center justify-center z-20 gap-4">
           <div className="relative w-16 h-16">
             <div className="absolute inset-0 border-4 border-muted rounded-full" />
             <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -816,7 +816,7 @@ export function PropertyMap({ properties, isLoading, onAreaFilter }: PropertyMap
 
       {/* No coordinates message */}
       {!isLoading && propertiesWithCoords.length === 0 && properties.length > 0 && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-20">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-xs flex items-center justify-center z-20">
           <div className="text-center px-6 py-8">
             <p className="text-lg text-foreground mb-2">Nenhum imóvel com localização disponível</p>
             <p className="text-sm text-muted-foreground">

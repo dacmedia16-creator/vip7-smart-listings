@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from "@/lib/router-compat";
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyCardSkeleton } from '@/components/PropertyCardSkeleton';

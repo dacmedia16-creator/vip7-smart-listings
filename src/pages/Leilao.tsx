@@ -7,7 +7,7 @@ import { Layout } from '@/components/Layout';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { SEOHead } from '@/components/SEOHead';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link } from "@/lib/router-compat";
 
 const etapas = [
 { icon: Search, title: 'Busca da Oportunidade', description: 'Garimpo de imóveis alinhados ao perfil do investidor' },

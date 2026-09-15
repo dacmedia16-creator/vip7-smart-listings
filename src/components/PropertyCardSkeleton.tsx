@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export const PropertyCardSkeleton = React.forwardRef<HTMLDivElement>(
   (_, ref) => {
     return (
-      <div ref={ref} className="rounded-2xl overflow-hidden bg-card border border-border shadow-sm h-full">
+      <div ref={ref} className="rounded-2xl overflow-hidden bg-card border border-border shadow-xs h-full">
         {/* Image skeleton with shimmer effect */}
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />

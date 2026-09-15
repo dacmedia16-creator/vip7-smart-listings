@@ -348,7 +348,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
           style={{ animation: 'fade-in 0.3s ease-out' }}
         >
           <div className="container mx-auto px-4 py-8">
-            <div className="flex items-center justify-between mb-8 sticky top-0 bg-background/95 backdrop-blur-sm py-4 -mx-4 px-4 z-10">
+            <div className="flex items-center justify-between mb-8 sticky top-0 bg-background/95 backdrop-blur-xs py-4 -mx-4 px-4 z-10">
               <h2 className="text-2xl font-heading font-bold">
                 Galeria de Fotos
                 <span className="text-muted-foreground font-normal ml-2">
@@ -396,7 +396,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                       Principal
                     </Badge>
                   ) : (
-                    <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium">
+                    <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-xs px-2 py-1 rounded-full text-xs font-medium">
                       {index + 1}
                     </div>
                   )}
@@ -437,7 +437,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
         {/* Fullscreen Button */}
         <button
           onClick={() => setLightboxOpen(true)}
-          className="absolute bottom-6 right-6 p-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-all hover:scale-110 group"
+          className="absolute bottom-6 right-6 p-3 rounded-full bg-background/80 backdrop-blur-xs hover:bg-background transition-all hover:scale-110 group"
           title="Ver em tela cheia"
         >
           <Expand className="h-5 w-5 group-hover:scale-110 transition-transform" />
@@ -448,13 +448,13 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
           <>
             <button
               onClick={prevImage}
-              className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-full bg-background/70 backdrop-blur-sm hover:bg-background/90 transition-all group hover:scale-110"
+              className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-full bg-background/70 backdrop-blur-xs hover:bg-background/90 transition-all group hover:scale-110"
             >
               <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 group-hover:scale-110 transition-transform" />
             </button>
             <button
               onClick={nextImage}
-              className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-full bg-background/70 backdrop-blur-sm hover:bg-background/90 transition-all group hover:scale-110"
+              className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-full bg-background/70 backdrop-blur-xs hover:bg-background/90 transition-all group hover:scale-110"
             >
               <ChevronRight className="h-5 w-5 md:h-6 md:w-6 group-hover:scale-110 transition-transform" />
             </button>
@@ -469,7 +469,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
               Principal
             </Badge>
           )}
-          <div className="px-4 py-2 rounded-full bg-background/80 backdrop-blur-sm text-sm font-medium flex items-center gap-2">
+          <div className="px-4 py-2 rounded-full bg-background/80 backdrop-blur-xs text-sm font-medium flex items-center gap-2">
             <span className="text-primary font-bold">{currentImage + 1}</span>
             <span className="text-muted-foreground">/</span>
             <span className="text-muted-foreground">{images.length}</span>
@@ -505,7 +505,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
               {images.length > 6 && (
                 <button 
                   onClick={() => setShowAllThumbnails(true)}
-                  className="flex-shrink-0 w-14 h-10 md:w-20 md:h-14 rounded-lg bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center text-sm font-medium hover:bg-background transition-all border border-border hover:border-primary hover:scale-105"
+                  className="flex-shrink-0 w-14 h-10 md:w-20 md:h-14 rounded-lg bg-background/90 backdrop-blur-xs flex flex-col items-center justify-center text-sm font-medium hover:bg-background transition-all border border-border hover:border-primary hover:scale-105"
                   title="Ver todas as fotos"
                 >
                   <Grid3X3 className="h-4 w-4 mb-0.5" />

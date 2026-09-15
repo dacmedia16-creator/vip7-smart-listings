@@ -1,4 +1,4 @@
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link } from "@/lib/router-compat";
 import { useQueries } from '@tanstack/react-query';
 import {
   MapPin,

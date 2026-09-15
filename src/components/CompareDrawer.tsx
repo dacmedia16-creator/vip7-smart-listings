@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from "@/lib/router-compat";
 import { X, Scale, Trash2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCompareContext } from '@/contexts/CompareContext';

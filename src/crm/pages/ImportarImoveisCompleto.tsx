@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useRoles } from '../hooks/useRole';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link } from "@/lib/router-compat";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, FileSpreadsheet, ArrowLeft, Download, CheckCircle2, AlertTriangle } from 'lucide-react';

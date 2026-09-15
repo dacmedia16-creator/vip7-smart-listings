@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from "@/lib/router-compat";
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, List, MapIcon, Plus, Building2, BedDouble, Bath, Ruler } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyGridSkeleton } from '@/components/PropertyCardSkeleton';
-import { PropertyMap } from '@/components/PropertyMap';
+import { PropertyMap } from '@/components/maps-client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';

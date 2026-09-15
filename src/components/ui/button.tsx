@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 font-body tracking-wide",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 font-body tracking-wide",
   {
     variants: {
       variant: {
@@ -18,7 +18,7 @@ const buttonVariants = cva(
         gold: "relative overflow-hidden bg-gradient-to-r from-gold via-gold-light to-gold text-primary-foreground font-semibold shadow-[0_0_40px_hsla(38,90%,55%,0.25)] hover:shadow-[0_0_60px_hsla(38,90%,55%,0.4)] before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-700",
         goldOutline: "border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-500 hover:shadow-[0_0_30px_hsla(38,90%,55%,0.3)]",
         whatsapp: "bg-[#25D366] text-white hover:bg-[#20BA5C] font-semibold shadow-lg hover:shadow-[0_0_30px_rgba(37,211,102,0.4)]",
-        luxury: "bg-transparent border border-primary/30 text-foreground hover:border-primary hover:text-primary backdrop-blur-sm",
+        luxury: "bg-transparent border border-primary/30 text-foreground hover:border-primary hover:text-primary backdrop-blur-xs",
       },
       size: {
         default: "h-11 px-5 py-2",
