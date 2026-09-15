@@ -204,7 +204,8 @@ export default function ImovelDetail() {
           {(() => {
             const backendOrigin = import.meta.env.VITE_SUPABASE_URL;
             const cacheBuster = Math.floor(Date.now() / 60000);
-            const linkPublico = `${backendOrigin}/functions/v1/og-metadata?v=${cacheBuster}&codigo=${imovel.id}`;
+            const codigoPublico = imovel.codigo_interno || imovel.codigo_imoview || imovel.id;
+            const linkPublico = `${backendOrigin}/functions/v1/og-metadata?v=${cacheBuster}&codigo=${codigoPublico}`;
             const copiar = async () => {
               try {
                 await navigator.clipboard.writeText(linkPublico);
