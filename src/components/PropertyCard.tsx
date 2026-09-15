@@ -115,7 +115,7 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
                       "p-2 rounded-full transition-all duration-200",
                       isSelected 
                         ? "bg-primary text-primary-foreground shadow-lg" 
-                        : "bg-background/80 backdrop-blur-sm text-foreground hover:bg-primary hover:text-primary-foreground",
+                        : "bg-background/80 backdrop-blur-xs text-foreground hover:bg-primary hover:text-primary-foreground",
                       !canAddMore && !isSelected && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -133,7 +133,7 @@ export const PropertyCard = React.forwardRef<HTMLAnchorElement, PropertyCardProp
             </div>
 
             {/* Finalidade Badge */}
-            <Badge className="absolute top-4 right-14 bg-background/80 backdrop-blur-sm text-foreground border-none text-xs uppercase tracking-wider">
+            <Badge className="absolute top-4 right-14 bg-background/80 backdrop-blur-xs text-foreground border-none text-xs uppercase tracking-wider">
               {isRental ? 'Locação' : 'Venda'}
             </Badge>
 

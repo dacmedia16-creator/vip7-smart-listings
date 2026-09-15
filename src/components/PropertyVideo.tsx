@@ -175,7 +175,7 @@ export function PropertyVideo({ videoUrl, title = 'Vídeo do imóvel', className
               </button>
 
               {/* Badge */}
-              <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2">
+              <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-xs px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2">
                 <Play className="h-3.5 w-3.5 text-primary" />
                 Clique para assistir
               </div>

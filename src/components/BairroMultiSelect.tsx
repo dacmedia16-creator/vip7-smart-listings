@@ -150,7 +150,7 @@ export function BairroMultiSelect({
               placeholder="Buscar bairro..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <CommandList className="max-h-[300px] overflow-auto">

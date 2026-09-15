@@ -70,7 +70,7 @@ export function DiferenciaisSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {differentials.map((item, index) => (
             <ScrollReveal key={item.number} variant="zoom-in" delay={index * 0.1}>
-              <div className="group relative p-8 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-500 h-full">
+              <div className="group relative p-8 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-xs hover:border-primary/30 hover:bg-card/80 transition-all duration-500 h-full">
                 {/* Number */}
                 <span className="absolute top-6 right-6 text-5xl font-heading font-bold text-primary/10 group-hover:text-primary/20 transition-colors">
                   {item.number}
