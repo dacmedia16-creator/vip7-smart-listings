@@ -61,6 +61,7 @@ export default function Portais() {
   const [filtroFinalidade, setFiltroFinalidade] = useState<string>('todos');
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
   const [filtroCidade, setFiltroCidade] = useState<string>('todos');
+  const [filtroTipoAnuncio, setFiltroTipoAnuncio] = useState<TipoAnuncio | 'todos'>('todos');
   const [tokenConfigurado, setTokenConfigurado] = useState<boolean | null>(null);
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
