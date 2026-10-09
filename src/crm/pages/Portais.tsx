@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Copy, AlertCircle, CheckCircle2, Webhook, ShieldCheck, ShieldAlert, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PORTAIS, type PortalId, TIPOS_ANUNCIO, type TipoAnuncio, validarImovelParaPortais } from '../lib/portais';
+import { PORTAIS, type PortalId, TIPOS_ANUNCIO, TIPOS_ZAP, tiposAnuncioDoPortal, type TipoAnuncio, validarImovelParaPortais } from '../lib/portais';
+import { ZapPacote } from '../components/ZapPacote';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from "@/lib/router-compat";
 import { MoneyInput } from '../components/MoneyInput';
@@ -66,6 +67,7 @@ export default function Portais() {
   const [leadsPortal, setLeadsPortal] = useState<any[]>([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [tipoZapLote, setTipoZapLote] = useState<TipoAnuncio>('triple');
   const [pagina, setPagina] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -191,7 +193,7 @@ export default function Portais() {
     });
   }
 
-  async function bulkSetPortal(portal: PortalId, publicar: boolean) {
+  async function bulkSetPortal(portal: PortalId, publicar: boolean, tipo?: TipoAnuncio) {
     const ids = Array.from(selecionados);
     if (ids.length === 0) return;
     let elegiveis = ids;
@@ -208,7 +210,7 @@ export default function Portais() {
       return;
     }
     setBulkLoading(true);
-    const rows = elegiveis.map((imovel_id) => ({ imovel_id, portal, publicar }));
+    const rows = elegiveis.map((imovel_id) => ({ imovel_id, portal, publicar, ...(tipo ? { tipo_anuncio: tipo, destaque_portal: tipo !== 'simples' } : {}) }));
     const { error } = await (supabase as any)
       .from('imovel_portais')
       .upsert(rows, { onConflict: 'imovel_id,portal' });
@@ -221,8 +223,8 @@ export default function Portais() {
       const next = [...prev];
       elegiveis.forEach((imovel_id) => {
         const i = next.findIndex((p) => p.imovel_id === imovel_id && p.portal === portal);
-        if (i >= 0) next[i] = { ...next[i], publicar };
-        else next.push({ imovel_id, portal, publicar });
+        if (i >= 0) next[i] = { ...next[i], publicar, ...(tipo ? { tipo_anuncio: tipo } : {}) };
+        else next.push({ imovel_id, portal, publicar, ...(tipo ? { tipo_anuncio: tipo } : {}) });
       });
       return next;
     });
@@ -398,7 +400,7 @@ export default function Portais() {
             const destaques = Object.entries(c.porTipo).filter(([t]) => t !== 'simples');
             const totalDestaques = destaques.reduce((s, [, n]) => s + n, 0);
             const detalhe = destaques
-              .map(([t, n]) => `${n} ${TIPOS_ANUNCIO.find((x) => x.id === t)?.label ?? t}`)
+              .map(([t, n]) => `${n} ${tiposAnuncioDoPortal(p.id, t as TipoAnuncio).find((x) => x.id === t)?.label ?? t}`)
               .join(' · ');
             return (
             <Card key={p.id} className="p-3">
@@ -420,6 +422,8 @@ export default function Portais() {
             );
           })}
         </div>
+
+        <ZapPacote total={contagens.zap_vivareal.total} porTipo={contagens.zap_vivareal.porTipo} carregando={loading} />
 
         <Card className="p-4 border-primary/30">
           <div className="flex items-start justify-between gap-3 mb-3">
@@ -603,6 +607,11 @@ export default function Portais() {
           <Card className="p-3 border-primary/40">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium">{selecionados.size} selecionado{selecionados.size > 1 ? 's' : ''}</span>
+              <Select value={tipoZapLote} onValueChange={(v) => setTipoZapLote(v as TipoAnuncio)} disabled={bulkLoading}>
+                <SelectTrigger aria-label="Tipo de anúncio Zap em lote" className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>{TIPOS_ZAP.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button size="sm" disabled={bulkLoading} onClick={() => bulkSetPortal('zap_vivareal', true, tipoZapLote)}>Aplicar no Zap</Button>
               <div className="flex flex-wrap gap-2 ml-auto">
                 {PORTAIS.map((p) => (
                   <div key={p.id} className="flex gap-1">
@@ -730,11 +739,11 @@ export default function Portais() {
                             />
                             {pub && (
                               <Select value={tipoOf(im.id, p.id)} onValueChange={(v) => setTipo(im.id, p.id, v as TipoAnuncio)}>
-                                <SelectTrigger className="h-7 text-[11px] px-2 w-28">
+                                <SelectTrigger aria-label={`Tipo de anúncio ${p.nome} ${im.codigo_interno || im.codigo_imoview || im.titulo}`} className="h-8 text-[11px] px-2 w-44">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {TIPOS_ANUNCIO.map((t) => (
+                                  {tiposAnuncioDoPortal(p.id, tipoOf(im.id, p.id)).map((t) => (
                                     <SelectItem key={t.id} value={t.id} className="text-xs">{t.label}</SelectItem>
                                   ))}
                                 </SelectContent>
