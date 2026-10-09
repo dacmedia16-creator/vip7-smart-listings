@@ -29,6 +29,19 @@ export const TIPOS_ANUNCIO: { id: TipoAnuncio; label: string; descricao: string 
   { id: 'premiere_especial', label: 'Premiere (Destaque especial)', descricao: 'Máxima exposição' },
 ];
 
+// Exclusivo é o antigo Destaque Premium (VRSync PREMIERE_1).
+// https://help-center-eddie.olx.com.br/s/article/como-funcionam-os-destaques
+export const TIPOS_ZAP = TIPOS_ANUNCIO.filter((t) => t.id !== 'premiere_especial').map((t) => ({
+  ...t,
+  label: t.id === 'simples' ? 'Sem Destaque' : t.id === 'triple' ? 'Destaque Triplo' : t.id === 'premiere_premium' ? 'Destaque Exclusivo' : t.label,
+}));
+
+export function tiposAnuncioDoPortal(portal: PortalId, atual?: TipoAnuncio) {
+  if (portal !== 'zap_vivareal') return TIPOS_ANUNCIO;
+  // Preserva acesso aos anúncios legados sem converter seu tipo.
+  return atual === 'premiere_especial' ? [...TIPOS_ZAP, { id: 'premiere_especial' as const, label: 'Premiere (Destaque especial) — legado', descricao: 'Anúncio existente' }] : TIPOS_ZAP;
+}
+
 export interface ImovelParaValidacao {
   titulo?: string | null;
   titulo_anuncio?: string | null;
